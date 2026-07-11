@@ -13,6 +13,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { APP_CONFIG } from "@/config/app";
+import { brandTheme } from "@/lib/editor-utils";
 import {
   customerEditorPath,
   customerProjects,
@@ -23,6 +24,9 @@ import { useProjectsStore } from "@/stores/projects-store";
 import { useSessionStore } from "@/stores/session-store";
 import { useSuggestionsStore } from "@/stores/suggestions-store";
 import type { Project } from "@/types";
+import { ScaledPreview } from "@/components/collab/scaled-preview";
+import { SectionRenderer } from "@/components/editor/wireframes/section-renderer";
+import { WireProvider } from "@/components/editor/wireframes/primitives";
 import { ProjectStatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -96,12 +100,13 @@ export function CustomerHome() {
       <p className="mt-1 text-sm text-[var(--text-secondary)]">
         Choose a project to continue working on its wireframe.
       </p>
-      <ul className="mt-6 space-y-3">
+      <ul className="mt-6 grid gap-4 sm:grid-cols-2">
         {ordered.map((project, index) => (
-          <li key={project.id}>
+          <li key={project.id} className={index === 0 ? "sm:col-span-2" : undefined}>
             <ProjectPickerCard
               project={project}
               userId={user.id}
+              featured={index === 0}
               continueHint={lastOpened?.projectId === project.id && index === 0}
               onOpen={() =>
                 router.push(
@@ -121,9 +126,49 @@ export function CustomerHome() {
   );
 }
 
+/** A sheet from the flat file: live wireframe on top, title block below. */
+function SheetPreview({ project, tall }: { project: Project; tall: boolean }) {
+  const homepage =
+    project.pages.find((p) => p.isHomepage) ?? project.pages[0] ?? null;
+  const sections = homepage
+    ? [...homepage.sections]
+        .sort((a, b) => a.order - b.order)
+        .filter((sec) => !sec.isHidden)
+        .slice(0, 6)
+    : [];
+  return (
+    <div
+      aria-hidden
+      className={
+        "pointer-events-none relative shrink-0 overflow-hidden bg-white select-none " +
+        (tall ? "h-56 sm:h-72" : "h-40")
+      }
+    >
+      {sections.length > 0 ? (
+        <ScaledPreview scale={0.28}>
+          <WireProvider
+            value={{ styled: false, theme: brandTheme(project), device: "desktop" }}
+          >
+            {sections.map((section) => (
+              <SectionRenderer key={section.id} section={section} />
+            ))}
+          </WireProvider>
+        </ScaledPreview>
+      ) : (
+        <div className="flex h-full items-center justify-center font-mono text-[10px] tracking-[0.18em] text-slate-400 uppercase">
+          Blank sheet
+        </div>
+      )}
+      {/* paper fade so the crop reads as a sheet, not a bug */}
+      <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white to-transparent" />
+    </div>
+  );
+}
+
 function ProjectPickerCard({
   project,
   userId,
+  featured,
   continueHint,
   onOpen,
   onOpenRevisions,
@@ -131,6 +176,7 @@ function ProjectPickerCard({
 }: {
   project: Project;
   userId: string;
+  featured: boolean;
   continueHint: boolean;
   onOpen: () => void;
   onOpenRevisions: () => void;
@@ -159,40 +205,76 @@ function ProjectPickerCard({
   const needsApproval =
     project.status === "awaiting-approval" || project.status === "partially-approved";
 
-  return (
-    <div className="group flex w-full flex-col gap-3 rounded-xl border border-[var(--border-default)] bg-white p-4 text-left shadow-[var(--shadow-card)] transition-colors hover:border-[var(--border-strong)]">
-      <button
-        type="button"
-        className="flex w-full cursor-pointer items-center gap-4 text-left"
-        onClick={onOpen}
-      >
-        <div className="min-w-0 flex-1">
-          <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-            {project.name}
-            <ProjectStatusBadge status={project.status} />
-            {continueHint && (
-              <span className="text-xs font-medium text-[var(--text-muted)]">
-                Continue where you left off
-              </span>
-            )}
-          </p>
-          <p className="mt-0.5 text-[13px] text-[var(--text-secondary)]">
-            {project.companyName} · {project.pages.length}{" "}
-            {project.pages.length === 1 ? "page" : "pages"}
-          </p>
-        </div>
-        <ArrowRight
-          className="size-4 shrink-0 text-slate-300 transition-colors group-hover:text-slate-500"
-          aria-hidden
-        />
-      </button>
+  const hasSignals =
+    needsApproval ||
+    needsRevisions ||
+    myTasks.length > 0 ||
+    pendingSuggestions.length > 0 ||
+    openFeedback.length > 0;
 
-      {(needsApproval ||
-        needsRevisions ||
-        myTasks.length > 0 ||
-        pendingSuggestions.length > 0 ||
-        openFeedback.length > 0) && (
-        <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border-default)] pt-3">
+  return (
+    <div
+      className={
+        "group flex h-full w-full overflow-hidden rounded-xl border border-[var(--border-default)] bg-white text-left shadow-[var(--shadow-card)] transition-colors hover:border-[var(--border-strong)] " +
+        (featured ? "flex-col sm:flex-row" : "flex-col")
+      }
+    >
+      {/* Decorative sheet preview — wireframe sections render real buttons,
+          so this must not be a <button> itself. The title below is the
+          accessible way in; this is a pointer shortcut. */}
+      <div
+        aria-hidden
+        onClick={onOpen}
+        className={
+          "cursor-pointer border-[var(--border-default)] " +
+          (featured ? "border-b sm:w-[46%] sm:border-r sm:border-b-0" : "border-b")
+        }
+      >
+        <SheetPreview project={project} tall={featured} />
+      </div>
+
+      {/* Title block */}
+      <div className="flex min-w-0 flex-1 flex-col gap-2.5 p-4">
+        <div className="flex items-start justify-between gap-2">
+          <p className="font-mono text-[10px] font-medium tracking-[0.18em] text-[var(--text-muted)] uppercase">
+            {project.companyName}
+          </p>
+          {continueHint && (
+            <span className="shrink-0 rounded-sm bg-[var(--surface-secondary)] px-1.5 py-0.5 font-mono text-[9px] tracking-[0.14em] text-[var(--text-secondary)] uppercase">
+              Last opened
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex w-full cursor-pointer items-center justify-between gap-3 text-left"
+        >
+          <span
+            className={
+              "font-display min-w-0 truncate font-semibold tracking-tight text-[var(--text-primary)] " +
+              (featured ? "text-xl" : "text-base")
+            }
+          >
+            {project.name}
+          </span>
+          <ArrowRight
+            className="size-4 shrink-0 text-slate-300 transition-colors group-hover:text-slate-500"
+            aria-hidden
+          />
+        </button>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-[var(--border-default)] pt-2.5 font-mono text-[10px] tracking-[0.14em] text-[var(--text-muted)] uppercase">
+          <span>
+            <span className="text-[var(--text-muted)]/70">Sheets</span>{" "}
+            <span className="text-[var(--text-secondary)]">{project.pages.length}</span>
+          </span>
+          <span className="normal-case">
+            <ProjectStatusBadge status={project.status} />
+          </span>
+        </div>
+
+      {hasSignals && (
+        <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
           {needsApproval && (
             <button
               type="button"
@@ -242,6 +324,7 @@ function ProjectPickerCard({
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

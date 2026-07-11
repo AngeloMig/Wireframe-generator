@@ -87,7 +87,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             inEditor ? (
               children
             ) : (
-              <div className="mx-auto w-full max-w-3xl">{children}</div>
+              <div className="mx-auto w-full max-w-4xl">{children}</div>
             )
           ) : (
             <PageSkeleton />
