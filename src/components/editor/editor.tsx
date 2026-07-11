@@ -44,6 +44,7 @@ import { CollaborationPanel } from "@/components/collab/collaboration-panel";
 import { EditorTour } from "@/components/customer/editor-tour";
 import { SuggestionBanner } from "@/components/collab/suggestion-banner";
 import { CANVAS_APPEND_ID, EditorCanvas, type DropTarget } from "./canvas/editor-canvas";
+import { ContextCommentMenu, type ContextMenuState } from "./canvas/context-comment-menu";
 import { EditorToolbar } from "./editor-toolbar";
 import { LibraryDragPreview, LIBRARY_DRAG_PREFIX } from "./library/library-item";
 import { SectionLibrary } from "./library/section-library";
@@ -87,6 +88,7 @@ export function Editor({
   const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null);
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
   const [previewVariation, setPreviewVariation] = useState<SectionVariation | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
   const user = useSessionStore((s) => s.user);
   const isCustomer = user.role === "customer";
@@ -655,6 +657,21 @@ export function Editor({
               if (first) selectComment(first.id);
             }}
             onInsertStarter={contentEditable ? insertStarter : undefined}
+            onContextComment={
+              isPreview
+                ? undefined
+                : (sectionId, x, y) =>
+                    setContextMenu({
+                      sectionId,
+                      sectionName: sectionId
+                        ? (getVariation(
+                            ordered.find((s) => s.id === sectionId)?.variationId ?? "",
+                          )?.name ?? "this section")
+                        : null,
+                      x,
+                      y,
+                    })
+            }
           />
 
           {!isPreview && commentMode && (
@@ -694,6 +711,22 @@ export function Editor({
           )}
         </DragOverlay>
       </DndContext>
+
+      {contextMenu && (
+        <ContextCommentMenu
+          menu={contextMenu}
+          onClose={() => setContextMenu(null)}
+          onCommentSection={(sectionId) => {
+            setCommentMode(true);
+            select(sectionId);
+            openComposer({ pageId: page.id, sectionId });
+          }}
+          onCommentPage={() => {
+            setCommentMode(true);
+            openComposer({ pageId: page.id });
+          }}
+        />
+      )}
 
       {isCustomer && contentEditable && <EditorTour />}
 

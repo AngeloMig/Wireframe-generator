@@ -66,6 +66,7 @@ export function CanvasSection({
   marker = null,
   onCommentTarget,
   onMarkerSelect,
+  onContextComment,
 }: {
   section: PageSection;
   /** Display name of the section's design (for labels and the toolbar). */
@@ -83,6 +84,8 @@ export function CanvasSection({
   marker?: SectionCommentMarker | null;
   onCommentTarget?: (sectionId: string) => void;
   onMarkerSelect?: (sectionId: string) => void;
+  /** Right-click anywhere on the section: start a comment there. */
+  onContextComment?: (sectionId: string, x: number, y: number) => void;
 }) {
   const approvalLocked = Boolean(section.approvalLocked);
 
@@ -136,6 +139,12 @@ export function CanvasSection({
           e.stopPropagation();
           if (commentMode) onCommentTarget?.(section.id);
           else if (!readOnly) actions.onSelect(section.id);
+        }}
+        onContextMenu={(e) => {
+          if (!onContextComment) return;
+          e.preventDefault();
+          e.stopPropagation();
+          onContextComment(section.id, e.clientX, e.clientY);
         }}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {

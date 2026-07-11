@@ -38,6 +38,7 @@ export function EditorCanvas({
   onCommentTarget,
   onMarkerSelect,
   onInsertStarter,
+  onContextComment,
 }: {
   sections: PageSection[];
   theme: BrandTheme;
@@ -52,6 +53,8 @@ export function EditorCanvas({
   onMarkerSelect?: (sectionId: string) => void;
   /** One-click starter layouts offered on an empty page. */
   onInsertStarter?: (variationIds: string[]) => void;
+  /** Right-click comment hook: sectionId, or null for the page background. */
+  onContextComment?: (sectionId: string | null, x: number, y: number) => void;
 }) {
   const device = useEditorStore((s) => s.device);
   const mode = useEditorStore((s) => s.mode);
@@ -108,6 +111,11 @@ export function EditorCanvas({
       ref={scrollRef}
       className="h-full flex-1 overflow-auto bg-slate-100 p-8"
       onClick={() => select(null)}
+      onContextMenu={(e) => {
+        if (!onContextComment) return;
+        e.preventDefault();
+        onContextComment(null, e.clientX, e.clientY);
+      }}
     >
       <div
         className="mx-auto"
@@ -159,6 +167,7 @@ export function EditorCanvas({
                         marker={markers?.get(section.id) ?? null}
                         onCommentTarget={onCommentTarget}
                         onMarkerSelect={onMarkerSelect}
+                        onContextComment={onContextComment}
                       />
                     );
                   })}
