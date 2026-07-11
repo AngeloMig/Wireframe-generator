@@ -119,6 +119,16 @@ export function CommentCard({
   const isInternal = comment.visibility === "agency";
   const isResolved = comment.status === "resolved";
   const isOpenActionItem = comment.isActionItem && !comment.completedAt;
+  const reactionOptions = ["👍", "✅", "❤️", "👀"];
+  const toggleReaction = (emoji: string) => {
+    const current = comment.reactions?.[emoji] ?? [];
+    const next = current.includes(user.id)
+      ? current.filter((id) => id !== user.id)
+      : [...current, user.id];
+    void store.updateComment(project.id, comment.id, {
+      reactions: { ...(comment.reactions ?? {}), [emoji]: next },
+    });
+  };
 
   const handleReply = async () => {
     const trimmed = replyText.trim();
@@ -482,6 +492,29 @@ export function CommentCard({
       ) : (
         <p className="mt-2 text-sm whitespace-pre-wrap text-slate-800">{comment.message}</p>
       )}
+
+      <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Comment reactions">
+        {reactionOptions.map((emoji) => {
+          const users = comment.reactions?.[emoji] ?? [];
+          return (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => toggleReaction(emoji)}
+              aria-label={`${emoji} reaction${users.length ? `, ${users.length}` : ""}`}
+              aria-pressed={users.includes(user.id)}
+              className={cn(
+                "rounded-full border px-2 py-0.5 text-xs transition-colors",
+                users.includes(user.id)
+                  ? "border-[var(--primary)] bg-[var(--primary-soft)]"
+                  : "border-slate-200 bg-white hover:bg-slate-50",
+              )}
+            >
+              {emoji}{users.length > 0 && <span className="ml-1 text-[10px] text-slate-500">{users.length}</span>}
+            </button>
+          );
+        })}
+      </div>
 
       {comment.attachments.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-2">

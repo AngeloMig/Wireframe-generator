@@ -162,7 +162,7 @@ export default function AgencyReviewPage() {
         <CardBody className="flex flex-wrap items-center gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-base font-semibold text-slate-900">Agency Review</h1>
+              <h1 className="font-display text-base font-semibold tracking-tight text-slate-900">Agency Review</h1>
               <ProjectStatusBadge status={project.status} />
             </div>
             <p className="mt-1 text-sm text-slate-600">

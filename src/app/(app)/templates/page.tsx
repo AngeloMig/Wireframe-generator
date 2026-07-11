@@ -47,7 +47,7 @@ export default function TemplatesPage() {
         <div className="flex max-w-2xl items-start gap-4">
           <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/10"><Sparkles className="size-5 text-[#f3b96c]" aria-hidden /></span>
           <div>
-            <h1 className="text-2xl font-bold tracking-[-0.03em] sm:text-3xl">Find a confident starting point</h1>
+            <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Find a confident starting point</h1>
             <p className="mt-2 text-sm leading-6 text-emerald-50/75">Explore complete page structures or individual section designs. Everything can be changed after you add it.</p>
           </div>
         </div>

@@ -10,6 +10,7 @@ import {
   Mail,
   MessageSquare,
   RefreshCcw,
+  ShieldCheck,
 } from "lucide-react";
 import { APP_CONFIG } from "@/config/app";
 import {
@@ -88,7 +89,8 @@ export function CustomerHome() {
 
   return (
     <div className="mt-6">
-      <h1 className="text-xl font-semibold text-[var(--text-primary)]">
+      <p className="mb-1.5 font-mono text-[11px] font-medium tracking-[0.18em] text-[var(--text-muted)] uppercase">Your drafting table</p>
+      <h1 className="font-display text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
         Welcome back, {user.name.split(" ")[0]}
       </h1>
       <p className="mt-1 text-sm text-[var(--text-secondary)]">
@@ -110,6 +112,7 @@ export function CustomerHome() {
                 )
               }
               onOpenRevisions={() => router.push(`/projects/${project.id}/revisions`)}
+              onOpenReview={() => router.push(`/projects/${project.id}/review`)}
             />
           </li>
         ))}
@@ -124,12 +127,14 @@ function ProjectPickerCard({
   continueHint,
   onOpen,
   onOpenRevisions,
+  onOpenReview,
 }: {
   project: Project;
   userId: string;
   continueHint: boolean;
   onOpen: () => void;
   onOpenRevisions: () => void;
+  onOpenReview: () => void;
 }) {
   const loadComments = useCommentsStore((s) => s.load);
   const loadSuggestions = useSuggestionsStore((s) => s.load);
@@ -151,6 +156,8 @@ function ProjectPickerCard({
   const pendingSuggestions = (suggestions ?? []).filter((s) => s.status === "pending");
   const needsRevisions =
     project.status === "revisions-requested" || project.status === "customer-revising";
+  const needsApproval =
+    project.status === "awaiting-approval" || project.status === "partially-approved";
 
   return (
     <div className="group flex w-full flex-col gap-3 rounded-xl border border-[var(--border-default)] bg-white p-4 text-left shadow-[var(--shadow-card)] transition-colors hover:border-[var(--border-strong)]">
@@ -180,11 +187,22 @@ function ProjectPickerCard({
         />
       </button>
 
-      {(needsRevisions ||
+      {(needsApproval ||
+        needsRevisions ||
         myTasks.length > 0 ||
         pendingSuggestions.length > 0 ||
         openFeedback.length > 0) && (
         <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border-default)] pt-3">
+          {needsApproval && (
+            <button
+              type="button"
+              onClick={onOpenReview}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100"
+            >
+              <ShieldCheck className="size-3" aria-hidden />
+              Review & approve
+            </button>
+          )}
           {needsRevisions && (
             <button
               type="button"

@@ -34,6 +34,24 @@ export interface ProjectMember {
   addedAt: string;
 }
 
+export type AccessRequestLevel = "page" | "content" | "builder";
+export type AccessRequestStatus = "pending" | "approved" | "declined";
+
+export interface AccessRequest {
+  id: string;
+  projectId: string;
+  requesterId: string;
+  requesterName: string;
+  level: AccessRequestLevel;
+  pageId?: string;
+  reason: string;
+  status: AccessRequestStatus;
+  createdAt: string;
+  decidedAt?: string;
+  decidedById?: string;
+  response?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Comments
 // ---------------------------------------------------------------------------
@@ -79,6 +97,11 @@ export interface ProjectComment {
   projectId: string;
   pageId?: string;
   sectionId?: string;
+  /** Optional exact canvas target, e.g. content.ctaLabel or hero.primaryButton. */
+  anchorKey?: string;
+  anchorLabel?: string;
+  /** Emoji reaction name -> user ids. */
+  reactions?: Record<string, string[]>;
 
   scope: CommentScope;
   visibility: CommentVisibility;
@@ -114,6 +137,8 @@ export interface CreateCommentInput {
   projectId: string;
   pageId?: string;
   sectionId?: string;
+  anchorKey?: string;
+  anchorLabel?: string;
   scope: CommentScope;
   visibility: CommentVisibility;
   authorId: string;

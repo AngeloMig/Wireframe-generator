@@ -121,7 +121,7 @@ export function StructurePanel({
   }, [ordered]);
 
   return (
-    <nav aria-label="Page structure" className="flex h-full flex-col overflow-y-auto py-3">
+    <nav aria-label="Page structure" className="flex h-full flex-col overflow-y-auto border-r border-[var(--border-default)] bg-[#f8faf7] py-4">
       {groups.map((group) => {
         const rows = group.items.map((section, index) => (
           <StructureRow
@@ -139,7 +139,7 @@ export function StructurePanel({
         ));
         return (
           <div key={group.label} className="px-2 pb-3">
-            <p className="px-2 pb-1 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+            <p className="px-3 pb-2 text-[10px] font-bold tracking-[0.12em] text-[var(--text-muted)] uppercase">
               {group.label}
             </p>
             {group.items.length === 0 && !group.addable && (
@@ -161,7 +161,7 @@ export function StructurePanel({
               <button
                 type="button"
                 onClick={onAddSection}
-                className="mt-1 flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-medium text-indigo-600 transition-colors hover:bg-indigo-50"
+                className="mt-1 flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold text-[var(--primary)] transition-colors hover:bg-[var(--primary-soft)]"
               >
                 <Plus className="size-4" aria-hidden />
                 Add section

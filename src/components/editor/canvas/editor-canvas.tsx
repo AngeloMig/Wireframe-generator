@@ -35,7 +35,6 @@ export function EditorCanvas({
   readOnly = false,
   commentMode = false,
   markers,
-  onCommentTarget,
   onMarkerSelect,
   onInsertStarter,
   onContextComment,
@@ -49,7 +48,6 @@ export function EditorCanvas({
   readOnly?: boolean;
   commentMode?: boolean;
   markers?: Map<string, SectionCommentMarker>;
-  onCommentTarget?: (sectionId: string) => void;
   onMarkerSelect?: (sectionId: string) => void;
   /** One-click starter layouts offered on an empty page. */
   onInsertStarter?: (variationIds: string[]) => void;
@@ -109,7 +107,7 @@ export function EditorCanvas({
   return (
     <div
       ref={scrollRef}
-      className="h-full flex-1 overflow-auto bg-slate-100 p-8"
+      className="h-full flex-1 overflow-auto bg-[#e9ece8] p-6 sm:p-8"
       onClick={() => select(null)}
       onContextMenu={(e) => {
         if (!onContextComment) return;
@@ -128,10 +126,16 @@ export function EditorCanvas({
             transformOrigin: "top left",
           }}
         >
-          <WireProvider value={{ styled: mode === "styled", theme, device }}>
+          <WireProvider
+            value={{
+              styled: mode === "styled",
+              theme,
+              device,
+            }}
+          >
             <div
               className={cn(
-                "overflow-hidden rounded-lg bg-white shadow-[var(--shadow-card)] ring-1 ring-slate-200",
+                "overflow-hidden rounded-[1.1rem] bg-white shadow-[0_18px_45px_rgb(23_32_29/0.12)] ring-1 ring-[#d6ddd8]",
                 device !== "desktop" && "rounded-xl",
               )}
             >
@@ -165,7 +169,6 @@ export function EditorCanvas({
                         actions={actions}
                         commentMode={commentMode}
                         marker={markers?.get(section.id) ?? null}
-                        onCommentTarget={onCommentTarget}
                         onMarkerSelect={onMarkerSelect}
                         onContextComment={onContextComment}
                       />

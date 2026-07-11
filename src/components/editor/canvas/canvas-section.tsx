@@ -64,7 +64,6 @@ export function CanvasSection({
   actions,
   commentMode = false,
   marker = null,
-  onCommentTarget,
   onMarkerSelect,
   onContextComment,
 }: {
@@ -82,7 +81,6 @@ export function CanvasSection({
   /** Comment mode: clicking targets the section with a composer instead of editing. */
   commentMode?: boolean;
   marker?: SectionCommentMarker | null;
-  onCommentTarget?: (sectionId: string) => void;
   onMarkerSelect?: (sectionId: string) => void;
   /** Right-click anywhere on the section: start a comment there. */
   onContextComment?: (sectionId: string, x: number, y: number) => void;
@@ -134,10 +132,17 @@ export function CanvasSection({
             ? `Comment on the ${name} section`
             : `${name} section${section.isHidden ? " (hidden)" : ""}${section.isLocked ? " (locked)" : ""}${approvalLocked ? " (approved and locked)" : ""}`
         }
-        aria-pressed={isSelected}
-        onClick={(e) => {
+      aria-pressed={isSelected}
+      onPointerDownCapture={() => {
+        // Select before child controls/contentEditable elements can consume
+        // the click, so the contextual inspector always follows the canvas.
+        if (!commentMode) actions.onSelect(section.id);
+      }}
+      onClick={(e) => {
           e.stopPropagation();
-          if (commentMode) onCommentTarget?.(section.id);
+          // Comment placement is intentionally right-click only. A normal
+          // click keeps the canvas calm while the user scans existing pins.
+          if (commentMode) return;
           else if (!readOnly) actions.onSelect(section.id);
         }}
         onContextMenu={(e) => {
@@ -149,8 +154,8 @@ export function CanvasSection({
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             if (commentMode) {
-              e.preventDefault();
-              onCommentTarget?.(section.id);
+              // Use the context menu to place an exact comment pin.
+              return;
             } else if (!readOnly) {
               e.preventDefault();
               actions.onSelect(section.id);

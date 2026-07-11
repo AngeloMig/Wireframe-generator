@@ -8,7 +8,8 @@ auth providers, billing, or external APIs yet.
 ## Stack
 Next.js 15 (App Router) · React 19 · TypeScript · Tailwind v4 (`@theme` in
 `src/app/globals.css`, no config file) · dnd-kit · Zustand · React Hook Form + Zod ·
-lucide-react. Scripts: `npm run dev` / `npm run build` / `npm run lint` (eslint src).
+lucide-react. Scripts: `npm run dev` (port 3002, `.next-dev`) /
+`npm run build` (`.next`) / `npm run lint` (eslint src).
 
 ## Status by phase
 - **Phase 1 (foundation)** ✅ types, mock data, repositories, stores, UI kit, app shell.
@@ -25,6 +26,10 @@ lucide-react. Scripts: `npm run dev` / `npm run build` / `npm run lint` (eslint 
 - **Phase 4 (collaboration, review, versions, approvals)** ✅ COMPLETE — see the
   "PHASE 4" section below. Build + lint clean, primary workflow browser-tested
   end-to-end (submit → agency review → revisions → resubmit → approvals → export).
+- **Phase 4.5 (guided client workspace + access control)** ✅ IN PROGRESS —
+  customer-focused editor, fullscreen Figma-style comment mode, right-click canvas
+  comment pins, project overview command center, customer access requests, agency
+  approval controls, and controlled editor access levels.
 - **Phase 5 (Supabase backend)** ⬜ NOT STARTED — do not begin until the Phase 4
   work has been reviewed and approved by the user.
 
@@ -200,8 +205,69 @@ export, internal/customer privacy verified. Zero console errors.
   `outputFileTracingRoot` in next.config.ts.
 - Zustand: never return fresh `[]` from a selector (infinite getSnapshot
   loop) and never read a pre-`await` getState() snapshot after a load.
+- Keep the dev server and production build caches separate. `npm run dev` uses
+  `.next-dev`; `npm run build` uses `.next`. If a live preview reports missing
+  generated files after a build, stop duplicate Next processes, remove only
+  `.next-dev`, and restart `npm run dev -p 3002`.
 
-## Phase 5 pointers (Supabase — DO NOT START until Phase 4 is approved)
+## Phase 4.5 — Current product direction
+
+The customer/client experience is editor-first. After login, customers should be
+guided to their assigned project and spend most of their time in the wireframe
+editor. The customer should not feel like they are operating an agency admin tool.
+
+### Customer editor
+
+- The editor is the primary customer workspace; the project overview is a command
+  center for status, progress, next action, pages, feedback, and submission readiness.
+- Customers can edit approved content fields, add comments, preview responsive modes,
+  and submit changes according to their access level.
+- Comment mode is a temporary fullscreen workspace. Comment placement is right-click
+  only: choose **Comment here** anywhere on the canvas. The thread opens in a floating
+  popover beside the location, not in a permanent sidebar.
+- The editor selects a section on pointer-down so clicking canvas content immediately
+  opens the contextual inspector. The structure rail is optional for selection.
+- Customer-facing language should remain simple: Add section, Change design, Ask the
+  agency, Request access, Submit for review.
+
+### Controlled access model
+
+Project members retain the existing `view`, `comment`, and `edit` access levels.
+Access requests are persisted in `STORAGE_KEYS.accessRequests` and represented by
+`AccessRequest` in `src/types/collaboration.ts`.
+
+Customers can request:
+
+- Page access — request to add or edit a page.
+- Content editing — request to edit page content.
+- Builder access — request to build and arrange sections.
+
+Requests are created from the editor toolbar and reviewed by agency users from
+**Project → More → People & access**. Agency users can approve or decline requests;
+approval updates the member's controlled editor access level. The request record
+keeps requester, reason, page, status, decision, and response for future audit history.
+
+### Current visual system
+
+- Warm neutral application background with white elevated surfaces.
+- Deep evergreen primary accent with amber action accent.
+- Canvas-first editor with structure rail, contextual inspector, responsive preview,
+  and stronger page elevation.
+- Project overview uses a dark command-center hero with recommended next action,
+  progress, status, checklist attention, and calmer quick actions.
+- `src/app/globals.css` owns the centralized design tokens; avoid scattering new
+  application colors across components.
+
+### Remaining access-control work
+
+- Make access grants page-specific instead of project-wide.
+- Add access expiry and explicit section locks.
+- Add an agency request queue/dashboard view with notifications.
+- Add customer-visible access status and request history.
+- Enforce controlled access on page creation, section reorder, and global design
+  settings (not only the editor's general edit gate).
+
+## Phase 5 pointers (Supabase — DO NOT START until Phase 4.5 is approved)
 Swap Local* repositories for Supabase* implementations behind the same
 interfaces; enforce `src/lib/permissions.ts` + `review-transitions.ts` rules
 in RLS/server functions; all ids are UUID-compatible; organization/project

@@ -36,7 +36,7 @@ export default function ActivityPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Activity</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Activity</h1>
         <p className="mt-1 text-sm text-slate-500">
           Recent actions across all of your projects.
         </p>

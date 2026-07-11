@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Eye,
   LifeBuoy,
+  Keyboard,
   Maximize,
   MessageSquare,
   Monitor,
@@ -20,6 +21,7 @@ import {
   ZoomIn,
   ZoomOut,
   Paintbrush,
+  Share2,
 } from "lucide-react";
 import type { BrandTheme } from "@/lib/editor-utils";
 import { canEditProjectContent } from "@/lib/permissions";
@@ -33,10 +35,12 @@ import {
   type DeviceKind,
 } from "@/stores/editor-store";
 import { useSessionStore } from "@/stores/session-store";
+import { toast } from "@/stores/ui-store";
 import type { Project, ProjectPage } from "@/types";
 import { cn } from "@/utils/cn";
 import { AskAgencyDialog } from "@/components/customer/ask-agency-dialog";
 import { SubmissionDialog } from "@/components/collab/submission-dialog";
+import { AccessRequestDialog } from "@/components/collab/access-request-dialog";
 import { PageStatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageSelector } from "./page-selector";
@@ -91,6 +95,8 @@ export function EditorToolbar({
       : ("review" as const);
   const [submitOpen, setSubmitOpen] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
+  const [accessRequestOpen, setAccessRequestOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const device = useEditorStore((s) => s.device);
   const setDevice = useEditorStore((s) => s.setDevice);
   const mode = useEditorStore((s) => s.mode);
@@ -110,7 +116,7 @@ export function EditorToolbar({
     );
 
   return (
-    <div className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--border-default)] bg-white px-3 py-2 shadow-[var(--shadow-subtle)]">
+    <div className="relative flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--border-default)] bg-white px-3 py-2 shadow-[var(--shadow-subtle)]">
       {/* Left: project / page context */}
       <div className="flex min-w-0 items-center gap-2">
         <Link
@@ -268,6 +274,25 @@ export function EditorToolbar({
       {/* Right: comment mode + preview + submit */}
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
         <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Keyboard shortcuts"
+          onClick={() => setShortcutsOpen((open) => !open)}
+        >
+          <Keyboard className="size-4" aria-hidden />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Copy preview link"
+          onClick={() => {
+            void navigator.clipboard?.writeText(window.location.href);
+            toast("Preview link copied", "success");
+          }}
+        >
+          <Share2 className="size-4" aria-hidden />
+        </Button>
+        <Button
           variant={commentMode ? "secondary" : "outline"}
           size="sm"
           onClick={() => setCommentMode(!commentMode)}
@@ -307,6 +332,12 @@ export function EditorToolbar({
               <LifeBuoy className="size-4" aria-hidden />
               <span className="hidden xl:inline">Ask the agency</span>
             </Button>
+            {!customerCanEdit && (
+              <Button variant="ghost" size="sm" onClick={() => setAccessRequestOpen(true)} aria-label="Request editor access">
+                <Plus className="size-4" aria-hidden />
+                <span className="hidden xl:inline">Request access</span>
+              </Button>
+            )}
             <UserMenu />
           </>
         ) : (
@@ -316,6 +347,15 @@ export function EditorToolbar({
           </Button>
         )}
       </div>
+
+      {shortcutsOpen && (
+        <div className="absolute top-14 right-3 z-50 w-64 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[var(--shadow-panel)]">
+          <div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-bold text-[var(--text-primary)]">Keyboard shortcuts</h2><button type="button" className="text-xs text-[var(--text-muted)]" onClick={() => setShortcutsOpen(false)}>Close</button></div>
+          <dl className="space-y-2 text-xs text-[var(--text-secondary)]">
+            {[['Undo', '⌘/Ctrl + Z'], ['Redo', '⌘/Ctrl + Shift + Z'], ['Delete section', 'Delete'], ['Comment mode', 'Right-click canvas'], ['Preview', 'Toolbar button']].map(([label, key]) => <div key={label} className="flex items-center justify-between gap-3"><dt>{label}</dt><dd className="rounded bg-[var(--surface-secondary)] px-1.5 py-0.5 font-mono text-[10px]">{key}</dd></div>)}
+          </dl>
+        </div>
+      )}
 
       {isCustomer && (
         <>
@@ -332,6 +372,7 @@ export function EditorToolbar({
             open={askOpen}
             onClose={() => setAskOpen(false)}
           />
+          <AccessRequestDialog project={project} page={page} open={accessRequestOpen} onClose={() => setAccessRequestOpen(false)} />
         </>
       )}
     </div>

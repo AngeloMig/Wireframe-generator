@@ -72,10 +72,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {!inEditor && (
           <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-[var(--border-default)] bg-white px-4 sm:px-6">
             <div className="flex items-center gap-2.5">
-              <div className="flex size-7 items-center justify-center rounded-lg bg-[var(--primary)] text-white">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-[var(--drafting-ink)] text-white">
                 <PencilRuler className="size-4" aria-hidden />
               </div>
-              <span className="text-sm font-semibold text-[var(--text-primary)]">
+              <span className="font-display text-sm font-semibold tracking-tight text-[var(--text-primary)]">
                 {APP_CONFIG.name}
               </span>
             </div>

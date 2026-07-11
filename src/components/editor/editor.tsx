@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -17,7 +18,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { X } from "lucide-react";
+import { MessageCircle, X } from "lucide-react";
 import { getVariation } from "@/data/section-variations";
 import { brandTheme, setContentValue } from "@/lib/editor-utils";
 import {
@@ -27,8 +28,10 @@ import {
 } from "@/lib/theme-overrides";
 import { canEditProjectContent, editRestrictionReason } from "@/lib/permissions";
 import { createSectionFromVariation, switchSectionVariation } from "@/lib/sections";
+import { cn } from "@/utils/cn";
 import { useCollabUiStore } from "@/stores/collab-ui-store";
 import { selectProjectComments, useCommentsStore } from "@/stores/comments-store";
+import { selectProjectMembers, useMembersStore } from "@/stores/members-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { useSessionStore } from "@/stores/session-store";
 import { toast } from "@/stores/ui-store";
@@ -40,7 +43,7 @@ import type {
   SectionVariation,
 } from "@/types";
 import { createId } from "@/utils/id";
-import { CollaborationPanel } from "@/components/collab/collaboration-panel";
+import { CanvasCommentPopover } from "./canvas/canvas-comment-popover";
 import { EditorTour } from "@/components/customer/editor-tour";
 import { SuggestionBanner } from "@/components/collab/suggestion-banner";
 import { CANVAS_APPEND_ID, EditorCanvas, type DropTarget } from "./canvas/editor-canvas";
@@ -100,6 +103,8 @@ export function Editor({
   const openComposer = useCollabUiStore((s) => s.openComposer);
   const selectComment = useCollabUiStore((s) => s.selectComment);
   const loadComments = useCommentsStore((s) => s.load);
+  const loadMembers = useMembersStore((s) => s.load);
+  const members = useMembersStore((s) => selectProjectMembers(s, project.id));
   const updateComment = useCommentsStore((s) => s.updateComment);
   const comments = useCommentsStore((s) => selectProjectComments(s, project.id));
 
@@ -117,7 +122,8 @@ export function Editor({
 
   useEffect(() => {
     void loadComments(project.id);
-  }, [project.id, loadComments]);
+    void loadMembers(project.id);
+  }, [project.id, loadComments, loadMembers]);
 
   // Leaving the editor exits comment mode so other pages start clean.
   useEffect(() => () => setCommentMode(false), [setCommentMode]);
@@ -150,7 +156,10 @@ export function Editor({
   const selectedSection = ordered.find((s) => s.id === selectedSectionId) ?? null;
 
   // Status-based editing restriction (submission locks editing for customers).
-  const contentEditable = canEditProjectContent(user.role, project.status);
+  const memberAccess = members.find((member) => member.userId === user.id)?.accessLevel;
+  const contentEditable =
+    canEditProjectContent(user.role, project.status) &&
+    (user.role !== "customer" || !memberAccess || memberAccess === "edit");
   const restrictionReason = editRestrictionReason(user.role, project.status);
 
   // Numbered comment markers per section, in page order.
@@ -182,6 +191,17 @@ export function Editor({
     return map;
   }, [comments, ordered, page.id, user.role]);
 
+  const pointComments = useMemo(
+    () =>
+      comments.filter(
+        (comment) =>
+          comment.pageId === page.id &&
+          comment.anchorKey?.startsWith("point:") &&
+          (user.role !== "customer" || comment.visibility === "customer"),
+      ),
+    [comments, page.id, user.role],
+  );
+
   // Sections still waiting on someone: open feedback threads, incomplete
   // action items, or content flags on the section itself. Shown as amber
   // dots in the structure rail.
@@ -205,6 +225,11 @@ export function Editor({
     }
     return ids;
   }, [ordered, comments, page.id, user.role]);
+
+  const missingSections = useMemo(
+    () => ordered.filter((section) => ["content-needed", "image-needed", "revisions-requested"].includes(section.reviewStatus)),
+    [ordered],
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -526,7 +551,15 @@ export function Editor({
   // ----- Render ------------------------------------------------------------------
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col bg-[var(--app-background)]">
+    <div
+      className={cn(
+        "flex flex-col bg-[var(--app-background)]",
+        commentMode
+          ? "fixed inset-0 z-[70] h-screen overflow-hidden shadow-[var(--shadow-overlay)]"
+          : "relative h-[calc(100vh-4rem)]",
+      )}
+      aria-label={commentMode ? "Fullscreen comment workspace" : "Wireframe editor"}
+    >
       <EditorToolbar
         project={project}
         page={page}
@@ -568,10 +601,38 @@ export function Editor({
           aria-live="polite"
         >
           {restrictionReason}
+          {(project.status === "awaiting-approval" ||
+            project.status === "partially-approved") && (
+            <Link
+              href={`/projects/${project.id}/review`}
+              className="ml-1.5 font-semibold text-emerald-700 underline underline-offset-2 hover:text-emerald-800"
+            >
+              Review &amp; approve →
+            </Link>
+          )}
         </p>
       )}
 
       <SuggestionBanner project={project} page={page} />
+
+      {!commentMode && missingSections.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 border-b border-amber-200 bg-[#fff9ef] px-4 py-2.5 text-xs text-[#79572f]">
+          <span className="flex size-6 items-center justify-center rounded-full bg-[#f3b96c]/30 font-bold">{missingSections.length}</span>
+          <span className="font-semibold">{missingSections.length === 1 ? "One section needs attention" : `${missingSections.length} sections need attention`}</span>
+          <span className="hidden text-[#98734c] sm:inline">Add content or resolve requested changes before you submit.</span>
+          <button
+            type="button"
+            className="ml-auto rounded-lg bg-[#f3b96c]/25 px-2.5 py-1 font-semibold text-[#79572f] hover:bg-[#f3b96c]/40"
+            onClick={() => {
+              const target = missingSections[0];
+              select(target.id);
+              document.querySelector(`[data-canvas-section="${target.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+          >
+            Review first issue
+          </button>
+        </div>
+      )}
 
       <div className="border-b border-[var(--border-default)] bg-[#fff9ef] px-4 py-2 text-center text-xs text-[#79572f] md:hidden">
         You can review, comment, and make simple edits here. For arranging sections, a larger screen works best.
@@ -645,10 +706,6 @@ export function Editor({
             readOnly={!contentEditable}
             commentMode={commentMode}
             markers={markers}
-            onCommentTarget={(sectionId) => {
-              select(sectionId);
-              openComposer({ pageId: page.id, sectionId });
-            }}
             onMarkerSelect={(sectionId) => {
               const first = comments.find(
                 (c) => c.sectionId === sectionId && c.status !== "resolved",
@@ -673,21 +730,6 @@ export function Editor({
                     })
             }
           />
-
-          {!isPreview && commentMode && (
-            <aside
-              className="hidden w-96 shrink-0 flex-col bg-white px-4 pt-4 lg:flex"
-              aria-label="Comments"
-            >
-              <CollaborationPanel
-                project={project}
-                currentPageId={page.id}
-                currentSectionId={selectedSectionId ?? undefined}
-                compact
-                className="h-full"
-              />
-            </aside>
-          )}
 
           {!isPreview && !commentMode && (
             <aside
@@ -725,8 +767,47 @@ export function Editor({
             setCommentMode(true);
             openComposer({ pageId: page.id });
           }}
+          onCommentHere={() => {
+            setCommentMode(true);
+            openComposer({
+              pageId: page.id,
+              sectionId: contextMenu.sectionId,
+              anchorKey: `point:${contextMenu.x}:${contextMenu.y}`,
+              anchorLabel: "Pinned canvas comment",
+              position: { x: contextMenu.x, y: contextMenu.y },
+            });
+          }}
         />
       )}
+
+      {commentMode && pointComments.map((comment, index) => {
+        const [, rawX, rawY] = comment.anchorKey?.split(":") ?? [];
+        const x = Number(rawX);
+        const y = Number(rawY);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+        return (
+          <button
+            key={comment.id}
+            type="button"
+            aria-label={`Open comment ${index + 1}`}
+            onClick={() =>
+              openComposer({
+                pageId: page.id,
+                sectionId: comment.sectionId,
+                anchorKey: comment.anchorKey,
+                anchorLabel: comment.anchorLabel ?? "Pinned canvas comment",
+                position: { x, y },
+              })
+            }
+            className="fixed z-[75] flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-[var(--primary)] text-white shadow-[0_4px_14px_rgb(22_107_87/0.3)] transition-transform hover:scale-110"
+            style={{ left: x, top: y }}
+          >
+            <MessageCircle className="size-3.5" aria-hidden />
+          </button>
+        );
+      })}
+
+      {!isPreview && commentMode && <CanvasCommentPopover project={project} />}
 
       {isCustomer && contentEditable && <EditorTour />}
 

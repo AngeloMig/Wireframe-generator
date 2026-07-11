@@ -55,6 +55,9 @@ interface CollabUiState {
   /** Section id a composer should target (set by comment-mode clicks). */
   composerSectionId: string | null;
   composerPageId: string | null;
+  composerAnchorKey: string | null;
+  composerAnchorLabel: string | null;
+  composerPosition: { x: number; y: number } | null;
   composerOpen: boolean;
   /** Version comparison picks. */
   compareFromId: string | null;
@@ -68,7 +71,7 @@ interface CollabUiState {
   setFilters: (filters: Partial<CommentFilters>) => void;
   resetFilters: () => void;
   setSort: (sort: CommentSort) => void;
-  openComposer: (target: { pageId?: string | null; sectionId?: string | null }) => void;
+  openComposer: (target: { pageId?: string | null; sectionId?: string | null; anchorKey?: string | null; anchorLabel?: string | null; position?: { x: number; y: number } | null }) => void;
   closeComposer: () => void;
   setCompare: (fromId: string | null, toId: string | null) => void;
 }
@@ -82,6 +85,9 @@ export const useCollabUiStore = create<CollabUiState>((set) => ({
   sort: "newest",
   composerSectionId: null,
   composerPageId: null,
+  composerAnchorKey: null,
+  composerAnchorLabel: null,
+  composerPosition: null,
   composerOpen: false,
   compareFromId: null,
   compareToId: null,
@@ -95,14 +101,17 @@ export const useCollabUiStore = create<CollabUiState>((set) => ({
   setFilters: (filters) => set((s) => ({ filters: { ...s.filters, ...filters } })),
   resetFilters: () => set({ filters: DEFAULT_COMMENT_FILTERS, quickFilter: "all" }),
   setSort: (sort) => set({ sort }),
-  openComposer: ({ pageId, sectionId }) =>
+  openComposer: ({ pageId, sectionId, anchorKey, anchorLabel, position }) =>
     set({
       composerOpen: true,
       composerPageId: pageId ?? null,
       composerSectionId: sectionId ?? null,
+      composerAnchorKey: anchorKey ?? null,
+      composerAnchorLabel: anchorLabel ?? null,
+      composerPosition: position ?? null,
       panelOpen: true,
     }),
   closeComposer: () =>
-    set({ composerOpen: false, composerPageId: null, composerSectionId: null }),
+    set({ composerOpen: false, composerPageId: null, composerSectionId: null, composerAnchorKey: null, composerAnchorLabel: null, composerPosition: null }),
   setCompare: (fromId, toId) => set({ compareFromId: fromId, compareToId: toId }),
 }));

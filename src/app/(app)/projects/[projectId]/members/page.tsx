@@ -10,6 +10,7 @@ import { useProject } from "@/hooks/use-project";
 import { selectProjectMembers, useMembersStore } from "@/stores/members-store";
 import { useProjectsStore } from "@/stores/projects-store";
 import { useSessionStore } from "@/stores/session-store";
+import { useAccessRequestsStore, accessLevelForRequest } from "@/stores/access-requests-store";
 import { toast } from "@/stores/ui-store";
 import type { ProjectAccessLevel, ProjectMember, UserRole } from "@/types";
 import { cn } from "@/utils/cn";
@@ -34,18 +35,23 @@ export default function MembersPage() {
   const updateProject = useProjectsStore((s) => s.updateProject);
   const store = useMembersStore();
   const members = useMembersStore((s) => selectProjectMembers(s, projectId));
+  const requests = useAccessRequestsStore((s) => s.requests.filter((r) => r.projectId === projectId));
+  const hydrateRequests = useAccessRequestsStore((s) => s.hydrate);
+  const decideRequest = useAccessRequestsStore((s) => s.decide);
 
   const [addOpen, setAddOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<ProjectMember | null>(null);
 
   useEffect(() => {
     if (projectId) void store.load(projectId);
+    hydrateRequests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
+  }, [projectId, hydrateRequests]);
 
   if (!project) return null;
 
   const canManage = canManageMembers(user.role);
+  const pendingRequests = requests.filter((request) => request.status === "pending");
   const availableUsers = ALL_MOCK_USERS.filter(
     (u) => !members.some((m) => m.userId === u.id),
   );
@@ -58,6 +64,17 @@ export default function MembersPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      {canManage && pendingRequests.length > 0 && (
+        <Card>
+          <CardHeader title={`Access requests (${pendingRequests.length})`} description="Review customer requests before granting additional editor permissions." />
+          <CardBody className="space-y-3">
+            {pendingRequests.map((request) => {
+              const requester = members.find((member) => member.userId === request.requesterId);
+              return <div key={request.id} className="rounded-xl border border-amber-200 bg-amber-50/60 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-semibold text-slate-900">{request.requesterName} requested {request.level === "page" ? "page access" : request.level === "content" ? "content editing" : "builder access"}</p><p className="mt-1 text-sm text-slate-600">{request.reason}</p><p className="mt-1 text-xs text-slate-500">{request.pageId ? project.pages.find((page) => page.id === request.pageId)?.name : "Project-wide"}</p></div><div className="flex gap-2"><Button size="sm" onClick={() => { decideRequest(request.id, "approved", user.id, "Access granted"); if (requester) void store.updateMember(projectId, requester.id, { accessLevel: accessLevelForRequest(request.level) as ProjectAccessLevel }); toast("Access approved", "success"); }}>Approve</Button><Button variant="outline" size="sm" onClick={() => { decideRequest(request.id, "declined", user.id, "Please discuss this change with the agency first."); toast("Request declined", "info"); }}>Decline</Button></div></div></div>;
+            })}
+          </CardBody>
+        </Card>
+      )}
       <Card>
         <CardHeader
           title={

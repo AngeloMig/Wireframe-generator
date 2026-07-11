@@ -5,10 +5,10 @@ import type { AppUser, UserRole } from "@/types";
 export const MOCK_USERS: AppUser[] = [
   {
     id: "user-customer-1",
-    name: "Angelo Bermejo",
+    name: "Angelo Miguel",
     email: "angelobmig@gmail.com",
     role: "customer",
-    initials: "AB",
+    initials: "AM",
     avatarColor: "bg-indigo-500",
     title: "Founder, Nordhaus Furniture",
     organization: "Nordhaus Furniture",

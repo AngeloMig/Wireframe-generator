@@ -67,4 +67,5 @@ export const STORAGE_KEYS = {
   customerLastOpened: "customer-last-opened",
   themeOverrides: "theme-overrides",
   editorTourDone: "editor-tour-done",
+  accessRequests: "access-requests",
 } as const;

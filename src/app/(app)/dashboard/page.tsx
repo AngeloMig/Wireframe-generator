@@ -184,8 +184,8 @@ function AgencyDashboard() {
     <div className="space-y-9">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="mb-1 text-xs font-bold tracking-[0.12em] text-[var(--primary)] uppercase">Your workspace</p>
-          <h1 className="text-3xl font-bold tracking-[-0.035em] text-[var(--text-primary)]">
+          <p className="mb-1.5 font-mono text-[11px] font-medium tracking-[0.18em] text-[var(--text-muted)] uppercase">Your workspace</p>
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-[var(--text-primary)]">
             {isAgencySide ? `Good to see you, ${firstName}` : `Welcome back, ${firstName}`}
           </h1>
           <p className="mt-1 text-sm text-slate-500">

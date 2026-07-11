@@ -65,7 +65,7 @@ export function SidebarContent({
       ))}
       {adminItems.length > 0 && (
         <>
-          <div className={cn("mt-4 mb-1 px-2 text-[11px] font-semibold tracking-wide text-slate-400 uppercase", collapsed && "sr-only")}>
+          <div className={cn("mt-4 mb-1 px-2 font-mono text-[10px] font-medium tracking-[0.18em] text-slate-400 uppercase", collapsed && "sr-only")}>
             Admin
           </div>
           {adminItems.map((item) => (
@@ -94,11 +94,11 @@ export function Sidebar() {
       )}
     >
       <div className={cn("flex h-14 items-center gap-2.5 border-b border-[var(--border-default)] px-4", collapsed && "justify-center px-2")}>
-        <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)] text-white">
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--drafting-ink)] text-white">
           <PencilRuler className="size-4" aria-hidden />
         </div>
         {!collapsed && (
-          <span className="truncate text-sm font-semibold tracking-[-0.01em] text-[var(--text-primary)]">{APP_CONFIG.name}</span>
+          <span className="font-display truncate text-sm font-semibold tracking-tight text-[var(--text-primary)]">{APP_CONFIG.name}</span>
         )}
       </div>
       <SidebarContent collapsed={collapsed} />

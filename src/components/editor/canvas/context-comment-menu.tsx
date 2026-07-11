@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { FileText, MessageSquarePlus } from "lucide-react";
+import { FileText, MessageSquarePlus, Pin } from "lucide-react";
 
 export interface ContextMenuState {
   /** Section under the cursor, or null when the page background was clicked. */
@@ -19,11 +19,13 @@ export function ContextCommentMenu({
   menu,
   onCommentSection,
   onCommentPage,
+  onCommentHere,
   onClose,
 }: {
   menu: ContextMenuState;
   onCommentSection: (sectionId: string) => void;
   onCommentPage: () => void;
+  onCommentHere: () => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -73,6 +75,18 @@ export function ContextCommentMenu({
           </span>
         </button>
       )}
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => {
+          onCommentHere();
+          onClose();
+        }}
+        className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] font-semibold text-[var(--primary)] hover:bg-[var(--primary-soft)]"
+      >
+        <Pin className="size-4 shrink-0" aria-hidden />
+        Comment here
+      </button>
       <button
         type="button"
         role="menuitem"

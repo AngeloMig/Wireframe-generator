@@ -2,20 +2,23 @@
 
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-archivo), var(--font-inter), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-spline-mono), ui-monospace, "SF Mono", monospace;
 
-  /* Shopify-admin neutral scale. slate-* is the app's workhorse neutral, so the
-     whole scale is remapped to Polaris grays rather than sweeping every usage. */
-  --color-slate-50: #fafafa;
-  --color-slate-100: #f1f1f1;
-  --color-slate-200: #e3e3e3;
-  --color-slate-300: #d4d4d4;
-  --color-slate-400: #8a8a8a;
-  --color-slate-500: #616161;
-  --color-slate-600: #4a4a4a;
-  --color-slate-700: #303030;
-  --color-slate-800: #212121;
-  --color-slate-900: #1a1a1a;
-  --color-slate-950: #0f0f0f;
+  /* Drafting-studio neutral scale: Polaris structure, warmed to paper and
+     graphite. slate-* is the app's workhorse neutral, so the whole ramp is
+     remapped here rather than sweeping every usage. */
+  --color-slate-50: #fafaf7;
+  --color-slate-100: #f1f0eb;
+  --color-slate-200: #e4e3db;
+  --color-slate-300: #d4d3c9;
+  --color-slate-400: #8b8a82;
+  --color-slate-500: #62615a;
+  --color-slate-600: #4b4a44;
+  --color-slate-700: #31302c;
+  --color-slate-800: #22211e;
+  --color-slate-900: #1b1a17;
+  --color-slate-950: #100f0d;
 
   /* Accent: Polaris blue — focus rings, selection, interactive emphasis. */
   --color-indigo-50: #eff6fe;
@@ -78,24 +81,28 @@
 
 :root {
   color-scheme: light;
-  --app-background: #f1f1f1;
+  /* Drafting-studio surfaces: warm paper, white sheets, graphite ink. */
+  --app-background: #edece7;
   --surface-primary: #ffffff;
-  --surface-secondary: #f7f7f7;
+  --surface-secondary: #f6f5f0;
   --surface-elevated: #ffffff;
-  --surface-pressed: #f1f1f1;
-  --text-primary: #1a1a1a;
-  --text-secondary: #616161;
-  --text-muted: #8a8a8a;
+  --surface-pressed: #edece7;
+  --text-primary: #1b1a17;
+  --text-secondary: #62615a;
+  --text-muted: #8b8a82;
   --text-on-dark: #ffffff;
-  --border-default: #e3e3e3;
-  --border-strong: #d4d4d4;
-  --border-input: #8a8a8a;
-  --primary: #1a1a1a;
-  --primary-hover: #303030;
-  --primary-active: #454545;
-  --primary-soft: #f1f1f1;
+  --border-default: #e2e1d9;
+  --border-strong: #cfcec5;
+  --border-input: #8b8a82;
+  --primary: #1b1a17;
+  --primary-hover: #31302c;
+  --primary-active: #45443f;
+  --primary-soft: #f1f0eb;
   --focus-ring: #005bd3;
-  --supporting: #616161;
+  /* Deep drafting green — identity moments only (login panel, brand marks).
+     Matched to the overview hero so the app carries one identity dark. */
+  --drafting-ink: #1c3a30;
+  --supporting: #62615a;
   --success: #29845a;
   --success-soft: #cdfee1;
   --success-text: #0c5132;
@@ -154,6 +161,27 @@ body {
 @keyframes scale-in {
   from { opacity: 0; transform: scale(0.98); }
   to { opacity: 1; transform: scale(1); }
+}
+
+/* Login blueprint assembly: sheet blocks rise into place, the redline pin
+   drops in last. Fill mode keeps blocks hidden until their turn. */
+@keyframes draft-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pin-drop {
+  0% { opacity: 0; transform: translateY(-14px) scale(0.7); }
+  70% { opacity: 1; transform: translateY(2px) scale(1.04); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-draft-rise {
+  animation: draft-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-pin-drop {
+  animation: pin-drop 460ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
 
 /* Entrance motion is quiet fades only; slide-up/slide-in-right are kept as

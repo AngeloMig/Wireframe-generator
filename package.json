@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "NEXT_DIST_DIR=.next-dev next dev -p 3002",
+    "dev": "sh -c 'if pgrep -f \"next dev\" >/dev/null; then echo \"✋ next dev is already running (two servers corrupt .next-dev) — reuse http://localhost:3002 or pkill -f \\\"next dev\\\" first.\"; exit 1; fi; NEXT_DIST_DIR=.next-dev exec next dev -p 3002'",
     "build": "NEXT_DIST_DIR=.next next build",
     "start": "next start",
     "lint": "eslint src"

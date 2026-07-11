@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ChevronDown, FolderX } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Check, ChevronDown, FolderX } from "lucide-react";
 import { projectCompletion } from "@/lib/project-utils";
 import { useProject } from "@/hooks/use-project";
 import { useSessionStore } from "@/stores/session-store";
@@ -10,6 +10,7 @@ import { isAgencyUser, type UserRole } from "@/types";
 import { cn } from "@/utils/cn";
 import { ProjectStatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DropdownItem, DropdownMenu } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ProgressBar } from "@/components/ui/progress";
 import { PageSkeleton } from "@/components/ui/skeleton";
@@ -46,6 +47,7 @@ const MORE_TABS: ProjectTab[] = [
  */
 export function ProjectShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { project, projectId, hydrated } = useProject();
   const user = useSessionStore((s) => s.user);
 
@@ -91,7 +93,7 @@ export function ProjectShell({ children }: { children: React.ReactNode }) {
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <h1 className="truncate text-lg font-semibold text-[var(--text-primary)]">
+            <h1 className="font-display truncate text-lg font-semibold tracking-tight text-[var(--text-primary)]">
               {project.name}
             </h1>
             <ProjectStatusBadge status={project.status} />
@@ -111,7 +113,7 @@ export function ProjectShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="truncate text-2xl font-bold tracking-[-0.025em] text-[var(--text-primary)]">
+            <h1 className="font-display truncate text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
               {project.name}
             </h1>
             <ProjectStatusBadge status={project.status} />
@@ -131,40 +133,78 @@ export function ProjectShell({ children }: { children: React.ReactNode }) {
       </div>
       </div>
 
-      <nav aria-label="Project sections" className="-mx-1 flex items-end gap-2 overflow-x-auto border-b border-[var(--border-default)] px-1">
-        <ul className="flex min-w-max flex-1 items-center gap-1">
-          {PROJECT_TABS.filter((tab) => !tab.show || tab.show(user.role)).map((tab) => {
-            const isActive = activeSegment === tab.segment;
-            return (
-              <li key={tab.segment}>
-                <Link
-                  href={`/projects/${projectId}/${tab.segment}`}
-                  aria-current={isActive ? "page" : undefined}
+      <nav
+        aria-label="Project sections"
+        className="-mx-1 flex items-center gap-2 border-b border-[var(--border-default)] px-1"
+      >
+        {/* Only the tab list scrolls; the More menu lives outside the
+            overflow container so its popover never clips. */}
+        <div className="min-w-0 flex-1 overflow-x-auto">
+          <ul className="flex min-w-max items-center gap-1">
+            {PROJECT_TABS.filter((tab) => !tab.show || tab.show(user.role)).map((tab) => {
+              const isActive = activeSegment === tab.segment;
+              return (
+                <li key={tab.segment}>
+                  <Link
+                    href={`/projects/${projectId}/${tab.segment}`}
+                    aria-current={isActive ? "page" : undefined}
+                    className={cn(
+                      "inline-block border-b-2 px-3 py-3 text-sm font-semibold transition-colors",
+                      isActive
+                        ? "border-[var(--primary)] text-[var(--primary)]"
+                        : "border-transparent text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]",
+                    )}
+                  >
+                    {tab.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+        <div className="shrink-0 pb-1">
+          <DropdownMenu
+            align="end"
+            className="w-52"
+            trigger={(props) => (
+              <button
+                type="button"
+                {...props}
+                className={cn(
+                  "flex cursor-pointer items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
+                  MORE_TABS.some((tab) => tab.segment === activeSegment)
+                    ? "text-[var(--text-primary)]"
+                    : "text-[var(--text-secondary)] hover:bg-white hover:text-[var(--text-primary)]",
+                )}
+              >
+                More
+                <ChevronDown
+                  className={cn("size-4 transition-transform", props["aria-expanded"] && "rotate-180")}
+                  aria-hidden
+                />
+              </button>
+            )}
+          >
+            {MORE_TABS.filter((tab) => !tab.show || tab.show(user.role)).map((tab) => (
+              <DropdownItem
+                key={tab.segment}
+                onSelect={() => router.push(`/projects/${projectId}/${tab.segment}`)}
+              >
+                <span
                   className={cn(
-                    "inline-block border-b-2 px-3 py-3 text-sm font-semibold transition-colors",
-                    isActive
-                      ? "border-[var(--primary)] text-[var(--primary)]"
-                      : "border-transparent text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]",
+                    "flex-1",
+                    activeSegment === tab.segment && "font-semibold text-[var(--text-primary)]",
                   )}
                 >
                   {tab.label}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-        <details className="group relative shrink-0 pb-1">
-          <summary className="flex cursor-pointer list-none items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-[var(--text-secondary)] hover:bg-white hover:text-[var(--text-primary)]">
-            More <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
-          </summary>
-          <div className="absolute right-0 z-20 mt-1 w-52 rounded-xl border border-[var(--border-default)] bg-white p-1.5 shadow-[var(--shadow-panel)]">
-            {MORE_TABS.filter((tab) => !tab.show || tab.show(user.role)).map((tab) => (
-              <Link key={tab.segment} href={`/projects/${projectId}/${tab.segment}`} className="block rounded-lg px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary)]">
-                {tab.label}
-              </Link>
+                </span>
+                {activeSegment === tab.segment && (
+                  <Check className="size-4 text-indigo-600" aria-hidden />
+                )}
+              </DropdownItem>
             ))}
-          </div>
-        </details>
+          </DropdownMenu>
+        </div>
       </nav>
 
       <div>{children}</div>

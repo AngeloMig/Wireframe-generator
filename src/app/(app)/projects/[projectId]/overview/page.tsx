@@ -15,6 +15,7 @@ import {
   Network,
   Send,
   Settings2,
+  Sparkles,
 } from "lucide-react";
 import { PLATFORM_OPTIONS } from "@/config/options";
 import { PROJECT_STATUS_META } from "@/config/labels";
@@ -83,25 +84,20 @@ function ProjectOverview() {
   );
 
   return (
-    <div className="space-y-6">
-      {/* Next recommended action */}
-      <Card className="border-indigo-200 bg-indigo-50/50">
-        <CardBody className="flex flex-wrap items-center gap-4">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium tracking-wide text-indigo-600 uppercase">
-              Recommended next step
-            </p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">{action.label}</p>
-            <p className="mt-0.5 text-sm text-slate-600">{action.description}</p>
+    <div className="space-y-8">
+      {/* Project command center */}
+      <section className="relative overflow-hidden rounded-[1.5rem] border border-[#285d4f] bg-[#173f36] px-6 py-7 text-white shadow-[0_22px_55px_rgb(23_63_54/0.18)] sm:px-8 sm:py-8">
+        <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_center,rgb(229_180_111/0.2),transparent_65%)]" aria-hidden />
+        <div className="relative grid gap-8 lg:grid-cols-[1fr_280px] lg:items-end">
+          <div>
+            <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-emerald-100"><span className="flex size-7 items-center justify-center rounded-full bg-white/10"><Sparkles className="size-3.5" aria-hidden /></span>Project workspace</div>
+            <h2 className="max-w-2xl text-3xl font-bold tracking-[-0.04em] sm:text-4xl">{action.label}</h2>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-emerald-50/80 sm:text-base">{action.description}</p>
+            <div className="mt-6 flex flex-wrap items-center gap-3"><Link href={action.href}><Button size="lg" className="bg-[#f3b96c] text-[#24332e] shadow-none hover:bg-[#ffc77d]">{action.label}<ArrowRight className="size-4" aria-hidden /></Button></Link><span className="text-sm text-white/70">{statusMeta.label}</span></div>
           </div>
-          <Link href={action.href}>
-            <Button>
-              {action.label}
-              <ArrowRight className="size-4" aria-hidden />
-            </Button>
-          </Link>
-        </CardBody>
-      </Card>
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm"><div className="flex items-center justify-between text-xs text-emerald-50/80"><span>Blueprint progress</span><span className="font-bold text-white">{completion}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-[#f3b96c]" style={{ width: `${completion}%` }} /></div><p className="mt-3 text-xs leading-5 text-emerald-50/70">{missing.length ? `${missing.length} checklist item${missing.length === 1 ? "" : "s"} still need attention.` : "Everything is ready for the next step."}</p></div>
+        </div>
+      </section>
 
       {/* Open action items */}
       {openActionItems.length > 0 && (
@@ -151,10 +147,10 @@ function ProjectOverview() {
           <Link
             key={item.href + item.label}
             href={item.href}
-            className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+            className="group rounded-[var(--radius-large)] border border-[var(--border-default)] bg-white p-5 shadow-[var(--shadow-card)] transition-[transform,box-shadow,border-color] hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-panel)]"
           >
-            <item.icon className="size-5 text-indigo-600" aria-hidden />
-            <p className="mt-2.5 text-sm font-semibold text-slate-900 group-hover:text-indigo-700">
+            <span className="flex size-9 items-center justify-center rounded-xl bg-[var(--primary-soft)]"><item.icon className="size-4.5 text-[var(--primary)]" aria-hidden /></span>
+            <p className="mt-3 text-sm font-bold text-[var(--text-primary)] group-hover:text-[var(--primary)]">
               {item.label}
             </p>
             <p className="mt-0.5 text-xs text-slate-500">{item.hint}</p>
@@ -162,7 +158,7 @@ function ProjectOverview() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.75fr)]">
         <div className="space-y-6 lg:col-span-2">
           {/* Pages */}
           <Card>

@@ -40,6 +40,8 @@ export function CommentComposer({
   scope,
   pageId,
   sectionId,
+  anchorKey,
+  anchorLabel,
   onSubmitted,
   onCancel,
   autoFocus,
@@ -49,6 +51,8 @@ export function CommentComposer({
   scope: "project" | "page" | "section";
   pageId?: string;
   sectionId?: string;
+  anchorKey?: string;
+  anchorLabel?: string;
   onSubmitted?: () => void;
   onCancel?: () => void;
   autoFocus?: boolean;
@@ -105,6 +109,8 @@ export function CommentComposer({
         projectId: project.id,
         pageId,
         sectionId,
+        anchorKey,
+        anchorLabel,
         scope,
         visibility,
         authorId: user.id,
