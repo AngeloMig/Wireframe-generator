@@ -27,9 +27,9 @@ function CtaText({
   const center = section.layout.alignment === "center";
   return (
     <>
-      <Eyebrow text={str(c, "eyebrow")} />
-      <Heading text={str(c, "heading")} size={headingSize} />
-      <Para text={str(c, "description")} className={center ? "max-w-lg" : "max-w-xl"} />
+      <Eyebrow text={str(c, "eyebrow")} path="eyebrow" />
+      <Heading text={str(c, "heading")} path="heading" size={headingSize} />
+      <Para text={str(c, "description")} path="description" className={center ? "max-w-lg" : "max-w-xl"} />
     </>
   );
 }
@@ -43,6 +43,8 @@ export function CtaCentered({ section }: SectionComponentProps) {
       <ButtonRow
         primary={str(c, "buttonLabel")}
         secondary={str(c, "secondaryButtonLabel")}
+        primaryPath="buttonLabel"
+        secondaryPath="secondaryButtonLabel"
         center={section.layout.alignment === "center"}
       />
     </div>
@@ -60,7 +62,7 @@ export function CtaSplit({ section }: SectionComponentProps) {
         <CtaText section={section} headingSize="md" />
       </div>
       <div className="shrink-0">
-        <ButtonRow primary={str(c, "buttonLabel")} secondary={str(c, "secondaryButtonLabel")} />
+        <ButtonRow primary={str(c, "buttonLabel")} secondary={str(c, "secondaryButtonLabel")} primaryPath="buttonLabel" secondaryPath="secondaryButtonLabel" />
       </div>
     </div>
   );
@@ -77,7 +79,7 @@ export function CtaNewsletter({ section }: SectionComponentProps) {
       <span className="flex h-9 flex-1 items-center rounded border border-current/25 bg-white/80 px-3 text-xs text-slate-500">
         {str(c, "placeholder") || "Email address"}
       </span>
-      <WireButton label={str(c, "buttonLabel") || "Subscribe"} />
+      <WireButton label={str(c, "buttonLabel") || "Subscribe"} path="buttonLabel" />
     </div>
   );
 
@@ -85,8 +87,8 @@ export function CtaNewsletter({ section }: SectionComponentProps) {
     return (
       <div className="flex items-center justify-between gap-10">
         <div className="flex flex-col gap-2">
-          <Heading text={str(c, "heading")} size="md" />
-          <Para text={str(c, "description")} className="max-w-md" />
+          <Heading text={str(c, "heading")} path="heading" size="md" />
+          <Para text={str(c, "description")} path="description" className="max-w-md" />
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           {input}
@@ -98,8 +100,8 @@ export function CtaNewsletter({ section }: SectionComponentProps) {
 
   return (
     <div className={cn("flex flex-col gap-4", alignClass(section.layout.alignment))}>
-      <Heading text={str(c, "heading")} size="md" />
-      <Para text={str(c, "description")} className="max-w-md" />
+      <Heading text={str(c, "heading")} path="heading" size="md" />
+      <Para text={str(c, "description")} path="description" className="max-w-md" />
       {input}
       {str(c, "note") && <p className="text-[11px] opacity-50">{str(c, "note")}</p>}
     </div>
@@ -141,7 +143,7 @@ export function CtaContactForm({ section }: SectionComponentProps) {
                 />
               </div>
             ))}
-            <WireButton label={str(c, "buttonLabel") || "Send message"} />
+            <WireButton label={str(c, "buttonLabel") || "Send message"} path="buttonLabel" />
           </div>
         </div>
       </div>
@@ -165,7 +167,7 @@ export function CtaImage({ section }: SectionComponentProps) {
       {imageFirst && media}
       <div className={cn("flex flex-col gap-4", stacked ? "w-full" : "w-1/2")}>
         <CtaText section={section} />
-        <ButtonRow primary={str(c, "buttonLabel")} secondary={str(c, "secondaryButtonLabel")} />
+        <ButtonRow primary={str(c, "buttonLabel")} secondary={str(c, "secondaryButtonLabel")} primaryPath="buttonLabel" secondaryPath="secondaryButtonLabel" />
       </div>
       {!imageFirst && media}
     </div>
@@ -183,9 +185,9 @@ export function CtaStatBanner({ section }: SectionComponentProps) {
         <p className="text-xs font-semibold tracking-widest uppercase opacity-70">
           {str(c, "eyebrow")}
         </p>
-        <Heading text={str(c, "heading")} size="md" />
+        <Heading text={str(c, "heading")} path="heading" size="md" />
       </div>
-      <WireButton label={str(c, "buttonLabel") || "Get started"} />
+      <WireButton label={str(c, "buttonLabel") || "Get started"} path="buttonLabel" />
     </div>
   );
 }
@@ -202,7 +204,7 @@ export function CtaCard({ section }: SectionComponentProps) {
       )}
     >
       <CtaText section={section} />
-      <ButtonRow primary={str(c, "buttonLabel")} secondary={str(c, "secondaryButtonLabel")} center />
+      <ButtonRow primary={str(c, "buttonLabel")} secondary={str(c, "secondaryButtonLabel")} center primaryPath="buttonLabel" secondaryPath="secondaryButtonLabel" />
     </div>
   );
 }

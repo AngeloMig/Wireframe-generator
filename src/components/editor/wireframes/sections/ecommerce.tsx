@@ -28,10 +28,10 @@ function ProductHeader({ section }: { section: SectionComponentProps["section"] 
   return (
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div className={cn("flex flex-col gap-2", alignClass(section.layout.alignment))}>
-        <Eyebrow text={str(c, "eyebrow")} />
-        <Heading text={str(c, "heading")} size="md" />
+        <Eyebrow text={str(c, "eyebrow")} path="eyebrow" />
+        <Heading text={str(c, "heading")} path="heading" size="md" />
       </div>
-      {str(c, "buttonLabel") && <WireButton label={str(c, "buttonLabel")} kind="secondary" />}
+      {str(c, "buttonLabel") && <WireButton label={str(c, "buttonLabel")} kind="secondary" path="buttonLabel" />}
     </div>
   );
 }

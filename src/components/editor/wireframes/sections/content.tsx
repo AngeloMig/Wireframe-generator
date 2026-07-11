@@ -31,14 +31,15 @@ export function ContentIntro({ section }: SectionComponentProps) {
   const c = section.content;
   return (
     <div className={cn("flex flex-col gap-4", alignClass(section.layout.alignment))}>
-      <Eyebrow text={str(c, "eyebrow")} />
-      <Heading text={str(c, "heading")} size="lg" />
+      <Eyebrow text={str(c, "eyebrow")} path="eyebrow" />
+      <Heading text={str(c, "heading")} path="heading" size="lg" />
       <Para
         text={str(c, "description")}
         className={section.layout.alignment === "center" ? "max-w-lg" : "max-w-xl"}
       />
       <ButtonRow
         primary={str(c, "buttonLabel")}
+        primaryPath="buttonLabel"
         center={section.layout.alignment === "center"}
       />
     </div>
@@ -62,10 +63,10 @@ export function ContentImageText({ section }: SectionComponentProps) {
     <div className={cn("flex items-center gap-10", stacked && "flex-col gap-6")}>
       {imageFirst && media}
       <div className={cn("flex flex-col gap-4", stacked ? "w-full" : "w-1/2")}>
-        <Eyebrow text={str(c, "eyebrow")} />
-        <Heading text={str(c, "heading")} size="lg" />
-        <Para text={str(c, "description")} />
-        <ButtonRow primary={str(c, "buttonLabel")} />
+        <Eyebrow text={str(c, "eyebrow")} path="eyebrow" />
+        <Heading text={str(c, "heading")} path="heading" size="lg" />
+        <Para text={str(c, "description")} path="description" />
+        <ButtonRow primary={str(c, "buttonLabel")} primaryPath="buttonLabel" />
       </div>
       {!imageFirst && media}
     </div>
@@ -77,7 +78,7 @@ export function ContentStatement({ section }: SectionComponentProps) {
   const c = section.content;
   return (
     <div className={cn("flex flex-col gap-5", alignClass(section.layout.alignment))}>
-      <Eyebrow text={str(c, "eyebrow")} />
+      <Eyebrow text={str(c, "eyebrow")} path="eyebrow" />
       <p className="text-2xl leading-snug font-medium">
         {str(c, "heading") || <Bar width="80%" className="h-5" />}
       </p>
@@ -158,10 +159,10 @@ export function ContentBlog({ section }: SectionComponentProps) {
     <>
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-2">
-          <Eyebrow text={str(c, "eyebrow")} />
-          <Heading text={str(c, "heading")} size="md" />
+          <Eyebrow text={str(c, "eyebrow")} path="eyebrow" />
+          <Heading text={str(c, "heading")} path="heading" size="md" />
         </div>
-        {str(c, "buttonLabel") && <WireButton label={str(c, "buttonLabel")} kind="secondary" />}
+        {str(c, "buttonLabel") && <WireButton label={str(c, "buttonLabel")} kind="secondary" path="buttonLabel" />}
       </div>
       <Grid columns={cols}>
         {posts.map((post, i) => (

@@ -56,12 +56,14 @@ function HeroText({
   const center = section.layout.alignment === "center";
   return (
     <>
-      <Eyebrow text={str(c, "eyebrow")} />
-      <Heading text={str(c, "heading")} size={headingSize} />
-      <Para text={str(c, "description")} className={center ? "max-w-lg" : "max-w-xl"} />
+      <Eyebrow text={str(c, "eyebrow")} path="eyebrow" />
+      <Heading text={str(c, "heading")} path="heading" size={headingSize} />
+      <Para text={str(c, "description")} path="description" className={center ? "max-w-lg" : "max-w-xl"} />
       <ButtonRow
         primary={str(c, "buttonLabel")}
         secondary={str(c, "secondaryButtonLabel")}
+        primaryPath="buttonLabel"
+        secondaryPath="secondaryButtonLabel"
         center={center}
       />
     </>
@@ -109,11 +111,12 @@ export function HeroFullBg({ section }: SectionComponentProps) {
           alignClass(section.layout.alignment),
         )}
       >
-        <Eyebrow text={str(c, "eyebrow")} />
-        <Heading text={str(c, "heading")} size="xl" />
-        <Para text={str(c, "description")} className="max-w-md" muted={false} />
+        <Eyebrow text={str(c, "eyebrow")} path="eyebrow" />
+        <Heading text={str(c, "heading")} path="heading" size="xl" />
+        <Para text={str(c, "description")} path="description" className="max-w-md" muted={false} />
         <ButtonRow
           primary={str(c, "buttonLabel")}
+          primaryPath="buttonLabel"
           center={section.layout.alignment === "center"}
         />
       </div>
@@ -146,14 +149,14 @@ export function HeroForm({ section }: SectionComponentProps) {
                 />
               </div>
             ))}
-            <WireButton label={str(c, "buttonLabel") || "Submit"} />
+            <WireButton label={str(c, "buttonLabel") || "Submit"} path="buttonLabel" />
           </div>
         </div>
       }
     >
-      <Eyebrow text={str(c, "eyebrow")} />
-      <Heading text={str(c, "heading")} size="lg" />
-      <Para text={str(c, "description")} />
+      <Eyebrow text={str(c, "eyebrow")} path="eyebrow" />
+      <Heading text={str(c, "heading")} path="heading" size="lg" />
+      <Para text={str(c, "description")} path="description" />
     </Split>
   );
 }
@@ -166,13 +169,13 @@ export function HeroProduct({ section }: SectionComponentProps) {
       layout={section.layout}
       media={<ImagePh image={imageOf(c, "image")} ratio="aspect-square" label="Product image" />}
     >
-      <Eyebrow text={str(c, "eyebrow")} />
-      <Heading text={str(c, "heading")} size="xl" />
-      <Para text={str(c, "description")} />
+      <Eyebrow text={str(c, "eyebrow")} path="eyebrow" />
+      <Heading text={str(c, "heading")} path="heading" size="xl" />
+      <Para text={str(c, "description")} path="description" />
       <p className="text-2xl font-semibold">
         {str(c, "price") || <Bar width={64} className="h-5" />}
       </p>
-      <ButtonRow primary={str(c, "buttonLabel")} />
+      <ButtonRow primary={str(c, "buttonLabel")} primaryPath="buttonLabel" />
     </Split>
   );
 }
@@ -247,7 +250,7 @@ export function HeroEditorial({ section }: SectionComponentProps) {
   const c = section.content;
   return (
     <div className={cn("flex flex-col gap-6 py-6", alignClass(section.layout.alignment))}>
-      <Eyebrow text={str(c, "eyebrow")} />
+      <Eyebrow text={str(c, "eyebrow")} path="eyebrow" />
       {str(c, "heading") ? (
         <h3 className={cn("max-w-3xl text-5xl leading-[1.08] font-semibold tracking-tight", theme.headingFont)}>
           {str(c, "heading")}
@@ -258,8 +261,8 @@ export function HeroEditorial({ section }: SectionComponentProps) {
           <Bar width="60%" className="h-7" />
         </div>
       )}
-      <Para text={str(c, "description")} className="max-w-xl" />
-      <ButtonRow primary={str(c, "buttonLabel")} secondary={str(c, "secondaryButtonLabel")} />
+      <Para text={str(c, "description")} path="description" className="max-w-xl" />
+      <ButtonRow primary={str(c, "buttonLabel")} secondary={str(c, "secondaryButtonLabel")} primaryPath="buttonLabel" secondaryPath="secondaryButtonLabel" />
     </div>
   );
 }
@@ -327,6 +330,7 @@ export function HeroMinimal({ section }: SectionComponentProps) {
       )}
       <ButtonRow
         primary={str(c, "buttonLabel")}
+        primaryPath="buttonLabel"
         center={section.layout.alignment === "center"}
       />
     </div>

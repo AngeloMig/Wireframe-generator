@@ -19,7 +19,7 @@ import {
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { X } from "lucide-react";
 import { getVariation } from "@/data/section-variations";
-import { brandTheme } from "@/lib/editor-utils";
+import { brandTheme, setContentValue } from "@/lib/editor-utils";
 import { canEditProjectContent, editRestrictionReason } from "@/lib/permissions";
 import { createSectionFromVariation } from "@/lib/sections";
 import { useCollabUiStore } from "@/stores/collab-ui-store";
@@ -41,7 +41,11 @@ import { CANVAS_APPEND_ID, EditorCanvas, type DropTarget } from "./canvas/editor
 import { EditorToolbar } from "./editor-toolbar";
 import { LibraryDragPreview, LIBRARY_DRAG_PREFIX } from "./library/library-item";
 import { SectionLibrary } from "./library/section-library";
-import { StructurePanel } from "./structure-panel";
+import { RAIL_DRAG_PREFIX, StructurePanel } from "./structure-panel";
+
+function stripRailPrefix(id: string): string {
+  return id.startsWith(RAIL_DRAG_PREFIX) ? id.slice(RAIL_DRAG_PREFIX.length) : id;
+}
 import { VariationPreview } from "./library/variation-preview";
 import { SectionInspector } from "./inspector/section-inspector";
 import type { CanvasSectionActions, SectionCommentMarker } from "./canvas/canvas-section";
@@ -186,14 +190,29 @@ export function Editor({
         project.id,
         (sections) => {
           const next = [...sections].sort((a, b) => a.order - b.order);
-          next.splice(index ?? next.length, 0, section);
+          // No explicit index: insert right below the selected section
+          // (Shopify-style), falling back to the end of the page.
+          let at = index;
+          if (at === undefined) {
+            const selectedIndex = selectedSectionId
+              ? next.findIndex((s) => s.id === selectedSectionId)
+              : -1;
+            at = selectedIndex === -1 ? next.length : selectedIndex + 1;
+          }
+          next.splice(at, 0, section);
           return next;
         },
         { activity: { type: "section-added", message: `${variation.name} section added` } },
       );
       select(section.id, "content");
+      // Bring the new section into view once it has rendered.
+      setTimeout(() => {
+        document
+          .querySelector(`[data-canvas-section="${section.id}"]`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 80);
     },
-    [applySections, project.id, select],
+    [applySections, project.id, select, selectedSectionId],
   );
 
   const moveSection = useCallback(
@@ -237,6 +256,12 @@ export function Editor({
           sections.map((s) => (s.id === id ? { ...s, isLocked: !s.isLocked } : s)),
         ),
       onToggleCollapsed: (id) => toggleCollapsed(id),
+      onInlineEdit: (id, path, value) =>
+        applySections(project.id, (sections) =>
+          sections.map((s) =>
+            s.id === id ? { ...s, content: setContentValue(s.content, path, value) } : s,
+          ),
+        ),
       onDelete: (id) => {
         const section = ordered.find((s) => s.id === id);
         if (section?.approvalLocked) {
@@ -293,7 +318,8 @@ export function Editor({
       const variation = getVariation(id.slice(LIBRARY_DRAG_PREFIX.length));
       if (variation) setActiveDrag({ type: "library", variation });
     } else {
-      const section = ordered.find((s) => s.id === id);
+      // Canvas sections use raw ids; structure-rail rows use a "rail:" prefix.
+      const section = ordered.find((s) => s.id === stripRailPrefix(id));
       if (section) {
         const variation = getVariation(section.variationId);
         setActiveDrag({
@@ -348,14 +374,14 @@ export function Editor({
       return;
     }
 
-    // Reordering an existing section.
-    const oldIndex = ordered.findIndex((s) => s.id === String(active.id));
+    // Reordering an existing section (from the canvas or the structure rail).
+    const oldIndex = ordered.findIndex((s) => s.id === stripRailPrefix(String(active.id)));
     if (oldIndex === -1) return;
     let newIndex: number;
     if (over.id === CANVAS_APPEND_ID) {
       newIndex = ordered.length - 1;
     } else {
-      newIndex = ordered.findIndex((s) => s.id === String(over.id));
+      newIndex = ordered.findIndex((s) => s.id === stripRailPrefix(String(over.id)));
       if (newIndex === -1) return;
     }
     if (newIndex === oldIndex) return;

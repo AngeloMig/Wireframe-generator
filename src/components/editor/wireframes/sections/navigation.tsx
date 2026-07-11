@@ -102,7 +102,7 @@ export function NavStandard({ section }: SectionComponentProps) {
     <nav aria-label="Main" className="flex items-center justify-between gap-6">
       <Logo content={c} />
       <NavLinks content={c} />
-      {str(c, "ctaLabel") && <WireButton label={str(c, "ctaLabel")} />}
+      {str(c, "ctaLabel") && <WireButton label={str(c, "ctaLabel")} path="ctaLabel" />}
     </nav>
   );
 }
@@ -214,7 +214,7 @@ export function NavMega({ section }: SectionComponentProps) {
       <nav aria-label="Main" className="flex items-center justify-between gap-6">
         <Logo content={c} />
         <NavLinks content={c} withCaret />
-        {str(c, "ctaLabel") && <WireButton label={str(c, "ctaLabel")} />}
+        {str(c, "ctaLabel") && <WireButton label={str(c, "ctaLabel")} path="ctaLabel" />}
       </nav>
       {/* Open dropdown preview for the first category */}
       <div className="relative mt-3">
@@ -268,7 +268,7 @@ export function NavOverlay({ section }: SectionComponentProps) {
       {device !== "mobile" ? (
         <>
           <NavLinks content={c} />
-          {str(c, "ctaLabel") && <WireButton label={str(c, "ctaLabel")} />}
+          {str(c, "ctaLabel") && <WireButton label={str(c, "ctaLabel")} path="ctaLabel" />}
         </>
       ) : (
         <Menu className="size-5 opacity-80" aria-hidden />
@@ -384,7 +384,7 @@ export function NavUtility({ section }: SectionComponentProps) {
         <nav aria-label="Main" className="flex items-center justify-between gap-6">
           <Logo content={c} />
           <NavLinks content={c} />
-          {str(c, "ctaLabel") && <WireButton label={str(c, "ctaLabel")} />}
+          {str(c, "ctaLabel") && <WireButton label={str(c, "ctaLabel")} path="ctaLabel" />}
         </nav>
       )}
     </div>
@@ -399,7 +399,7 @@ export function NavCta({ section }: SectionComponentProps) {
   const { device } = useWire();
   const c = section.content;
   if (device === "mobile") {
-    return <MobileBar content={c} trailing={<WireButton label={str(c, "ctaLabel") || "Start"} />} />;
+    return <MobileBar content={c} trailing={<WireButton label={str(c, "ctaLabel") || "Start"} path="ctaLabel" />} />;
   }
   return (
     <nav aria-label="Main" className="flex items-center justify-between gap-6">
@@ -409,7 +409,7 @@ export function NavCta({ section }: SectionComponentProps) {
         {str(c, "loginLabel") && (
           <span className="text-sm font-medium opacity-70">{str(c, "loginLabel")}</span>
         )}
-        <WireButton label={str(c, "ctaLabel") || "Get started"} />
+        <WireButton label={str(c, "ctaLabel") || "Get started"} path="ctaLabel" />
       </div>
     </nav>
   );

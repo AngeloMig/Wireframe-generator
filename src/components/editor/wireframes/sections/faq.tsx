@@ -390,8 +390,8 @@ export function FaqContactCta({ section }: SectionComponentProps) {
         >
           <LifeBuoy className="size-6 opacity-50" aria-hidden />
           <p className="text-sm font-semibold">{str(c, "ctaHeading") || "Still have questions?"}</p>
-          <Para text={str(c, "ctaDescription")} className="text-xs" />
-          <WireButton label={str(c, "ctaButtonLabel") || "Contact support"} />
+          <Para text={str(c, "ctaDescription")} path="ctaDescription" className="text-xs" />
+          <WireButton label={str(c, "ctaButtonLabel") || "Contact support"} path="ctaButtonLabel" />
         </div>
       </div>
     </>

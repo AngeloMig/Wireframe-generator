@@ -6,7 +6,8 @@ import { switchSectionVariation } from "@/lib/sections";
 import { toast } from "@/stores/ui-store";
 import type { PageSection, SectionLayoutSettings } from "@/types";
 import { cn } from "@/utils/cn";
-import { Label, Select } from "@/components/ui/input";
+import { Label } from "@/components/ui/input";
+import { SectionThumbnail } from "../library/section-thumbnail";
 import type { SectionMutator } from "./inspector-types";
 
 /** Design variation, alignment, columns, widths, visibility, mobile behaviour. */
@@ -41,22 +42,40 @@ export function LayoutTab({
       {designs.length > 1 && (
         <div>
           <Label htmlFor={variationId} className="mb-1.5 text-xs">
-            Design variation
+            Design
           </Label>
-          <Select
-            id={variationId}
-            value={section.variationId}
-            onChange={(e) => handleSwitch(e.target.value)}
-            className="h-8 text-xs"
-          >
-            {designs.map((variation) => (
-              <option key={variation.id} value={variation.id}>
-                {variation.name}
-              </option>
-            ))}
-          </Select>
+          <div id={variationId} role="radiogroup" aria-label="Design" className="grid grid-cols-2 gap-2">
+            {designs.map((variation) => {
+              const isCurrent = variation.id === section.variationId;
+              return (
+                <button
+                  key={variation.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={isCurrent}
+                  onClick={() => handleSwitch(variation.id)}
+                  className={cn(
+                    "flex cursor-pointer flex-col gap-1.5 rounded-lg border p-1.5 text-left transition-colors",
+                    isCurrent
+                      ? "border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600"
+                      : "border-slate-200 bg-white hover:border-slate-300",
+                  )}
+                >
+                  <SectionThumbnail variation={variation} className="w-full" />
+                  <span
+                    className={cn(
+                      "truncate text-[11px] font-medium",
+                      isCurrent ? "text-indigo-900" : "text-slate-600",
+                    )}
+                  >
+                    {variation.name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
           {current && (
-            <p className="mt-1 text-[11px] text-slate-400">
+            <p className="mt-1.5 text-[11px] text-slate-400">
               Switching designs keeps your content — only the layout changes.
             </p>
           )}

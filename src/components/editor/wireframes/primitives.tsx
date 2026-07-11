@@ -37,6 +37,63 @@ const Ctx = createContext<WireContext>({
 export const WireProvider = Ctx.Provider;
 export const useWire = () => useContext(Ctx);
 
+// ---------------------------------------------------------------------------
+// Inline text editing
+// ---------------------------------------------------------------------------
+
+export interface InlineEditContextValue {
+  /** Commit an edited text value at a dot-path inside section.content. */
+  onEdit: (path: string, value: string) => void;
+}
+
+/** Null when the surrounding section isn't editable (preview, locked, role). */
+const EditCtx = createContext<InlineEditContextValue | null>(null);
+export const InlineEditProvider = EditCtx.Provider;
+
+/** Merge onto editable elements alongside the spread from useEditableText. */
+export const EDITABLE_TEXT_CLASS =
+  "-mx-0.5 cursor-text rounded-sm px-0.5 outline-none transition-shadow hover:ring-1 hover:ring-indigo-300/70 focus:ring-2 focus:ring-indigo-500";
+
+/**
+ * Spread onto a text element to make it editable in place. Commits on blur;
+ * Enter commits, Escape reverts. Uncontrolled while focused — React only
+ * sees the value again once it lands in the store.
+ */
+export function useEditableText(
+  path: string | undefined,
+  current: string,
+): React.HTMLAttributes<HTMLElement> | null {
+  const edit = useContext(EditCtx);
+  if (!edit || !path) return null;
+  return {
+    contentEditable: true,
+    suppressContentEditableWarning: true,
+    spellCheck: false,
+    onBlur: (e) => {
+      const value = (e.currentTarget.textContent ?? "").trim();
+      if (value !== current) edit.onEdit(path, value);
+    },
+    onKeyDown: (e) => {
+      e.stopPropagation();
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.currentTarget.blur();
+      } else if (e.key === "Escape") {
+        e.currentTarget.textContent = current;
+        e.currentTarget.blur();
+      }
+    },
+    onPaste: (e) => {
+      e.preventDefault();
+      document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
+    },
+    onClick: (e) => {
+      // Let the click select the section, but never trigger links/buttons.
+      e.preventDefault();
+    },
+  };
+}
+
 /** Columns to actually render at the current device width. */
 export function effectiveColumns(
   device: DeviceKind,
@@ -127,12 +184,17 @@ export function Bar({ width, className }: { width: number | string; className?: 
   );
 }
 
-export function Eyebrow({ text }: { text: string }) {
+export function Eyebrow({ text, path }: { text: string; path?: string }) {
   const { styled, theme } = useWire();
+  const editable = useEditableText(path, text);
   if (!text) return null;
   return (
     <p
-      className="text-xs font-semibold tracking-widest uppercase opacity-80"
+      {...editable}
+      className={cn(
+        "text-xs font-semibold tracking-widest uppercase opacity-80",
+        editable && EDITABLE_TEXT_CLASS,
+      )}
       style={styled ? { color: theme.accent } : undefined}
     >
       {text}
@@ -144,12 +206,15 @@ export function Heading({
   text,
   size = "lg",
   className,
+  path,
 }: {
   text: string;
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
+  path?: string;
 }) {
   const { theme } = useWire();
+  const editable = useEditableText(path, text);
   const sizeClass = {
     sm: "text-lg",
     md: "text-2xl",
@@ -158,7 +223,16 @@ export function Heading({
   }[size];
   if (!text) return <Bar width="55%" className="h-5" />;
   return (
-    <h3 className={cn(sizeClass, "leading-tight font-semibold", theme.headingFont, className)}>
+    <h3
+      {...editable}
+      className={cn(
+        sizeClass,
+        "leading-tight font-semibold",
+        theme.headingFont,
+        editable && EDITABLE_TEXT_CLASS,
+        className,
+      )}
+    >
       {text}
     </h3>
   );
@@ -168,11 +242,14 @@ export function Para({
   text,
   className,
   muted = true,
+  path,
 }: {
   text: string;
   className?: string;
   muted?: boolean;
+  path?: string;
 }) {
+  const editable = useEditableText(path, text);
   if (!text) {
     return (
       <div className={cn("w-full space-y-1.5", className)}>
@@ -181,17 +258,32 @@ export function Para({
       </div>
     );
   }
-  return <p className={cn("text-sm leading-relaxed", muted && "opacity-70", className)}>{text}</p>;
+  return (
+    <p
+      {...editable}
+      className={cn(
+        "text-sm leading-relaxed",
+        muted && "opacity-70",
+        editable && EDITABLE_TEXT_CLASS,
+        className,
+      )}
+    >
+      {text}
+    </p>
+  );
 }
 
 export function WireButton({
   label,
   kind = "primary",
+  path,
 }: {
   label: string;
   kind?: "primary" | "secondary";
+  path?: string;
 }) {
   const { styled, theme } = useWire();
+  const editable = useEditableText(path, label);
   if (!label) return null;
   if (styled) {
     return (
@@ -207,7 +299,7 @@ export function WireButton({
             : { borderColor: theme.primary, color: theme.primary }
         }
       >
-        {label}
+        <span {...editable} className={cn(editable && EDITABLE_TEXT_CLASS)}>{label}</span>
       </span>
     );
   }
@@ -220,7 +312,7 @@ export function WireButton({
           : "border border-current opacity-70",
       )}
     >
-      {label}
+      <span {...editable} className={cn(editable && EDITABLE_TEXT_CLASS)}>{label}</span>
     </span>
   );
 }
@@ -229,16 +321,20 @@ export function ButtonRow({
   primary,
   secondary,
   center,
+  primaryPath,
+  secondaryPath,
 }: {
   primary: string;
   secondary?: string;
   center?: boolean;
+  primaryPath?: string;
+  secondaryPath?: string;
 }) {
   if (!primary && !secondary) return null;
   return (
     <div className={cn("flex flex-wrap gap-2.5", center && "justify-center")}>
-      <WireButton label={primary} />
-      {secondary && <WireButton label={secondary} kind="secondary" />}
+      <WireButton label={primary} path={primaryPath} />
+      {secondary && <WireButton label={secondary} kind="secondary" path={secondaryPath} />}
     </div>
   );
 }
@@ -341,12 +437,18 @@ export function HeadingBlock({
   size?: "sm" | "md" | "lg" | "xl";
 }) {
   if (!eyebrow && !heading && !description) return null;
+  // Every caller stores these under the same content keys, so the block is
+  // inline-editable by default.
   return (
     <div className={cn("mb-8 flex flex-col gap-2.5", ALIGN_CLASS[alignment])}>
-      <Eyebrow text={eyebrow} />
-      <Heading text={heading} size={size} />
+      <Eyebrow text={eyebrow} path="eyebrow" />
+      <Heading text={heading} size={size} path="heading" />
       {description ? (
-        <Para text={description} className={alignment === "center" ? "max-w-lg" : "max-w-xl"} />
+        <Para
+          text={description}
+          path="description"
+          className={alignment === "center" ? "max-w-lg" : "max-w-xl"}
+        />
       ) : null}
     </div>
   );

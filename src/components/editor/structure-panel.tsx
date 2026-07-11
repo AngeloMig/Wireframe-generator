@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   ChevronDown,
   ChevronUp,
@@ -26,6 +28,9 @@ import type { PageSection, SectionType } from "@/types";
 import { cn } from "@/utils/cn";
 import type { CanvasSectionActions } from "./canvas/canvas-section";
 
+/** Rail drag ids are namespaced so they never collide with canvas sortables. */
+export const RAIL_DRAG_PREFIX = "rail:";
+
 const TYPE_ICONS: Record<SectionType, LucideIcon> = {
   navigation: Navigation,
   hero: Sparkles,
@@ -42,8 +47,7 @@ const TYPE_ICONS: Record<SectionType, LucideIcon> = {
 /**
  * Shopify-theme-editor-style left rail: the page's structure as a grouped
  * list (Header / Template / Footer). Click selects + scrolls the canvas;
- * hover reveals reorder, hide, duplicate, and delete — the same actions the
- * canvas toolbar offers, in keyboard-friendly button form.
+ * Template rows drag to reorder; hover reveals move and hide controls.
  */
 export function StructurePanel({
   sections,
@@ -70,109 +74,203 @@ export function StructurePanel({
       (s) => s.sectionType !== "navigation" && s.sectionType !== "footer",
     );
     return [
-      { label: "Header", items: header, addable: false },
-      { label: "Template", items: template, addable: true },
-      { label: "Footer", items: footer, addable: false },
+      { label: "Header", items: header, addable: false, sortable: false },
+      { label: "Template", items: template, addable: true, sortable: true },
+      { label: "Footer", items: footer, addable: false, sortable: false },
     ];
   }, [ordered]);
 
-  const select = (id: string) => {
-    actions.onSelect(id);
+  // Scroll-sync: softly mark the rail row for the section nearest the middle
+  // of the viewport as the canvas scrolls.
+  const [inViewId, setInViewId] = useState<string | null>(null);
+  useEffect(() => {
+    const els = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-canvas-section]"),
+    );
+    if (els.length === 0) return;
+    const visible = new Map<string, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = (entry.target as HTMLElement).dataset.canvasSection;
+          if (!id) continue;
+          if (entry.isIntersecting) {
+            const rect = entry.boundingClientRect;
+            visible.set(id, Math.abs(rect.top + rect.height / 2 - window.innerHeight / 2));
+          } else {
+            visible.delete(id);
+          }
+        }
+        let best: string | null = null;
+        let bestDistance = Infinity;
+        for (const [id, distance] of visible) {
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            best = id;
+          }
+        }
+        setInViewId(best);
+      },
+      { threshold: [0, 0.25, 0.5, 0.75, 1] },
+    );
+    els.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [ordered]);
+
+  return (
+    <nav aria-label="Page structure" className="flex h-full flex-col overflow-y-auto py-3">
+      {groups.map((group) => {
+        const rows = group.items.map((section, index) => (
+          <StructureRow
+            key={section.id}
+            section={section}
+            index={index}
+            count={group.items.length}
+            isSelected={section.id === selectedId}
+            isInView={section.id === inViewId}
+            readOnly={readOnly}
+            sortable={group.sortable && !readOnly}
+            actions={actions}
+          />
+        ));
+        return (
+          <div key={group.label} className="px-2 pb-3">
+            <p className="px-2 pb-1 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+              {group.label}
+            </p>
+            {group.items.length === 0 && !group.addable && (
+              <p className="px-2 py-1 text-xs text-slate-400">
+                No {group.label.toLowerCase()} yet
+              </p>
+            )}
+            {group.sortable && !readOnly ? (
+              <SortableContext
+                items={group.items.map((s) => `${RAIL_DRAG_PREFIX}${s.id}`)}
+                strategy={verticalListSortingStrategy}
+              >
+                <ul className="space-y-0.5">{rows}</ul>
+              </SortableContext>
+            ) : (
+              <ul className="space-y-0.5">{rows}</ul>
+            )}
+            {group.addable && !readOnly && (
+              <button
+                type="button"
+                onClick={onAddSection}
+                className="mt-1 flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-medium text-indigo-600 transition-colors hover:bg-indigo-50"
+              >
+                <Plus className="size-4" aria-hidden />
+                Add section
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </nav>
+  );
+}
+
+function StructureRow({
+  section,
+  index,
+  count,
+  isSelected,
+  isInView,
+  readOnly,
+  sortable,
+  actions,
+}: {
+  section: PageSection;
+  index: number;
+  count: number;
+  isSelected: boolean;
+  isInView: boolean;
+  readOnly: boolean;
+  sortable: boolean;
+  actions: CanvasSectionActions;
+}) {
+  const locked = Boolean(section.approvalLocked || section.isLocked);
+  const canDrag = sortable && !locked;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: `${RAIL_DRAG_PREFIX}${section.id}`,
+    data: { type: "rail-section" },
+    disabled: !canDrag,
+  });
+
+  const variation = getVariation(section.variationId);
+  const Icon = TYPE_ICONS[section.sectionType] ?? LayoutGrid;
+
+  const select = () => {
+    actions.onSelect(section.id);
     document
-      .querySelector(`[data-canvas-section="${id}"]`)
+      .querySelector(`[data-canvas-section="${section.id}"]`)
       ?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   return (
-    <nav aria-label="Page structure" className="flex h-full flex-col overflow-y-auto py-3">
-      {groups.map((group) => (
-        <div key={group.label} className="px-2 pb-3">
-          <p className="px-2 pb-1 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-            {group.label}
-          </p>
-          {group.items.length === 0 && !group.addable && (
-            <p className="px-2 py-1 text-xs text-slate-400">No {group.label.toLowerCase()} yet</p>
-          )}
-          <ul className="space-y-0.5">
-            {group.items.map((section, index) => {
-              const variation = getVariation(section.variationId);
-              const Icon = TYPE_ICONS[section.sectionType] ?? LayoutGrid;
-              const isSelected = section.id === selectedId;
-              const locked = section.approvalLocked || section.isLocked;
-              return (
-                <li key={section.id} className="group/row relative">
-                  <button
-                    type="button"
-                    onClick={() => select(section.id)}
-                    aria-current={isSelected ? "true" : undefined}
-                    className={cn(
-                      "flex w-full cursor-pointer items-center gap-2 rounded-lg py-1.5 pl-2 pr-1 text-left text-[13px] transition-colors",
-                      isSelected
-                        ? "bg-indigo-50 font-medium text-indigo-900"
-                        : "text-slate-700 hover:bg-slate-100",
-                      section.isHidden && "opacity-50",
-                    )}
-                  >
-                    <Icon
-                      className={cn("size-4 shrink-0", isSelected ? "text-indigo-600" : "text-slate-400")}
-                      strokeWidth={1.75}
-                      aria-hidden
-                    />
-                    <span className="min-w-0 flex-1 truncate">
-                      {variation?.name ?? SECTION_TYPE_LABELS[section.sectionType]}
-                    </span>
-                    {locked && (
-                      <Lock className="size-3 shrink-0 text-slate-400" aria-label="Locked" />
-                    )}
-                    {section.isHidden && (
-                      <EyeOff className="size-3.5 shrink-0 text-slate-400" aria-label="Hidden" />
-                    )}
-                  </button>
-                  {!readOnly && !locked && (
-                    <span className="absolute top-1/2 right-1 hidden -translate-y-1/2 items-center gap-0 rounded-md bg-white shadow-[var(--shadow-subtle)] ring-1 ring-slate-200 group-focus-within/row:flex group-hover/row:flex">
-                      <RowAction
-                        label="Move up"
-                        disabled={index === 0}
-                        onClick={() => actions.onMoveUp(section.id)}
-                      >
-                        <ChevronUp className="size-3.5" aria-hidden />
-                      </RowAction>
-                      <RowAction
-                        label="Move down"
-                        disabled={index === group.items.length - 1}
-                        onClick={() => actions.onMoveDown(section.id)}
-                      >
-                        <ChevronDown className="size-3.5" aria-hidden />
-                      </RowAction>
-                      <RowAction
-                        label={section.isHidden ? "Show section" : "Hide section"}
-                        onClick={() => actions.onToggleHidden(section.id)}
-                      >
-                        {section.isHidden ? (
-                          <Eye className="size-3.5" aria-hidden />
-                        ) : (
-                          <EyeOff className="size-3.5" aria-hidden />
-                        )}
-                      </RowAction>
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-          {group.addable && !readOnly && (
-            <button
-              type="button"
-              onClick={onAddSection}
-              className="mt-1 flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-medium text-indigo-600 transition-colors hover:bg-indigo-50"
-            >
-              <Plus className="size-4" aria-hidden />
-              Add section
-            </button>
-          )}
-        </div>
-      ))}
-    </nav>
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn("group/row relative", isDragging && "z-10 opacity-60")}
+      // Drag props only on rows that actually sort — dnd-kit would otherwise
+      // mark Header/Footer rows aria-disabled and break their click targets.
+      {...(canDrag ? attributes : {})}
+      {...(canDrag ? listeners : {})}
+    >
+      <button
+        type="button"
+        onClick={select}
+        aria-current={isSelected ? "true" : undefined}
+        className={cn(
+          "flex w-full cursor-pointer items-center gap-2 rounded-lg py-1.5 pr-1 pl-2 text-left text-[13px] transition-colors",
+          isSelected
+            ? "bg-indigo-50 font-medium text-indigo-900"
+            : cn("text-slate-700 hover:bg-slate-100", isInView && "bg-slate-100"),
+          section.isHidden && "opacity-50",
+        )}
+      >
+        <Icon
+          className={cn("size-4 shrink-0", isSelected ? "text-indigo-600" : "text-slate-400")}
+          strokeWidth={1.75}
+          aria-hidden
+        />
+        <span className="min-w-0 flex-1 truncate">
+          {variation?.name ?? SECTION_TYPE_LABELS[section.sectionType]}
+        </span>
+        {locked && <Lock className="size-3 shrink-0 text-slate-400" aria-label="Locked" />}
+        {section.isHidden && (
+          <EyeOff className="size-3.5 shrink-0 text-slate-400" aria-label="Hidden" />
+        )}
+      </button>
+      {!readOnly && !locked && (
+        <span className="absolute top-1/2 right-1 hidden -translate-y-1/2 items-center gap-0 rounded-md bg-white shadow-[var(--shadow-subtle)] ring-1 ring-slate-200 group-focus-within/row:flex group-hover/row:flex">
+          <RowAction
+            label="Move up"
+            disabled={index === 0}
+            onClick={() => actions.onMoveUp(section.id)}
+          >
+            <ChevronUp className="size-3.5" aria-hidden />
+          </RowAction>
+          <RowAction
+            label="Move down"
+            disabled={index === count - 1}
+            onClick={() => actions.onMoveDown(section.id)}
+          >
+            <ChevronDown className="size-3.5" aria-hidden />
+          </RowAction>
+          <RowAction
+            label={section.isHidden ? "Show section" : "Hide section"}
+            onClick={() => actions.onToggleHidden(section.id)}
+          >
+            {section.isHidden ? (
+              <Eye className="size-3.5" aria-hidden />
+            ) : (
+              <EyeOff className="size-3.5" aria-hidden />
+            )}
+          </RowAction>
+        </span>
+      )}
+    </li>
   );
 }
 
@@ -180,13 +278,11 @@ function RowAction({
   label,
   onClick,
   disabled,
-  destructive,
   children,
 }: {
   label: string;
   onClick: () => void;
   disabled?: boolean;
-  destructive?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -199,12 +295,7 @@ function RowAction({
         e.stopPropagation();
         onClick();
       }}
-      className={cn(
-        "flex size-6 cursor-pointer items-center justify-center first:rounded-l-md last:rounded-r-md disabled:cursor-not-allowed disabled:opacity-30",
-        destructive
-          ? "text-rose-600 hover:bg-rose-50"
-          : "text-slate-500 hover:bg-slate-100 hover:text-slate-900",
-      )}
+      className="flex size-6 cursor-pointer items-center justify-center text-slate-500 first:rounded-l-md last:rounded-r-md hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-30"
     >
       {children}
     </button>

@@ -17,8 +17,10 @@ import {
   MessageSquare,
   Trash2,
 } from "lucide-react";
+import { useMemo } from "react";
 import type { CommentPriority, PageSection } from "@/types";
 import { cn } from "@/utils/cn";
+import { InlineEditProvider, type InlineEditContextValue } from "../wireframes/primitives";
 import { SectionRenderer } from "../wireframes/section-renderer";
 
 export interface CanvasSectionActions {
@@ -30,6 +32,8 @@ export interface CanvasSectionActions {
   onToggleLocked: (id: string) => void;
   onToggleCollapsed: (id: string) => void;
   onDelete: (id: string) => void;
+  /** Inline canvas text edit: set content at a dot-path. */
+  onInlineEdit: (id: string, path: string, value: string) => void;
 }
 
 export type DropEdge = "top" | "bottom" | null;
@@ -78,6 +82,17 @@ export function CanvasSection({
   onMarkerSelect?: (sectionId: string) => void;
 }) {
   const approvalLocked = Boolean(section.approvalLocked);
+
+  // Inline text editing is available exactly when the section itself is
+  // editable; locked/approved sections and comment mode stay hands-off.
+  const inlineEdit = useMemo<InlineEditContextValue | null>(
+    () =>
+      readOnly || commentMode || section.isLocked || approvalLocked
+        ? null
+        : { onEdit: (path, value) => actions.onInlineEdit(section.id, path, value) },
+    [readOnly, commentMode, section.isLocked, approvalLocked, section.id, actions],
+  );
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
     data: { type: "section" },
@@ -227,7 +242,9 @@ export function CanvasSection({
               </span>
             </div>
           ) : (
-            <SectionRenderer section={section} />
+            <InlineEditProvider value={inlineEdit}>
+              <SectionRenderer section={section} />
+            </InlineEditProvider>
           )}
         </div>
       </div>

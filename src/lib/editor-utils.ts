@@ -22,6 +22,27 @@ export function bool(content: Record<string, unknown>, key: string): boolean {
   return content[key] === true;
 }
 
+/**
+ * Immutably set a string at a dot-path ("heading", "items.0.title") inside
+ * section content. Unknown intermediate paths leave the content untouched.
+ */
+export function setContentValue(
+  content: Record<string, unknown>,
+  path: string,
+  value: string,
+): Record<string, unknown> {
+  const keys = path.split(".");
+  const clone = structuredClone(content);
+  let node: unknown = clone;
+  for (let i = 0; i < keys.length - 1; i++) {
+    if (typeof node !== "object" || node === null) return content;
+    node = (node as Record<string, unknown>)[keys[i]];
+  }
+  if (typeof node !== "object" || node === null) return content;
+  (node as Record<string, unknown>)[keys[keys.length - 1]] = value;
+  return clone;
+}
+
 export function itemsOf(
   content: Record<string, unknown>,
   key: string,

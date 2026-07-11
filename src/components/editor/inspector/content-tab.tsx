@@ -208,7 +208,8 @@ function ImageField({
         </div>
       ) : (
         <p className="mb-2.5 rounded-md bg-slate-50 px-2.5 py-2 text-[11px] text-slate-500">
-          Using a placeholder. Uploads are for preview only in this prototype.
+          Using a placeholder — that&apos;s expected. Your agency adds final imagery
+          during the design phase; anything you set here is a preview to convey intent.
         </p>
       )}
       <div className="space-y-2">

@@ -194,7 +194,7 @@ export function TestiReviewSummary({ section }: SectionComponentProps) {
           ))}
         </div>
         <p className="text-xs opacity-60">{str(c, "ratingLabel")}</p>
-        <Heading text={str(c, "heading")} size="md" className="mt-2" />
+        <Heading text={str(c, "heading")} path="heading" size="md" className="mt-2" />
       </div>
       <Grid columns={cols} className="w-full">
         {quotes.map((q, i) => (
