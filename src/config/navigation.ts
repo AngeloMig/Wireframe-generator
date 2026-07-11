@@ -7,9 +7,7 @@ import {
   Settings,
   ShieldCheck,
   Users,
-  Bell,
   CheckSquare,
-  MessageSquareText,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/types";
@@ -21,14 +19,19 @@ export interface NavItem {
   roles: UserRole[];
 }
 
+const AGENCY_AND_ADMIN: UserRole[] = [
+  "agency-designer",
+  "agency-developer",
+  "agency-pm",
+  "admin",
+];
+
 export const MAIN_NAV: NavItem[] = [
-  { label: "Home", href: "/dashboard", icon: LayoutDashboard, roles: ["customer"] },
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["agency-designer", "agency-developer", "agency-pm", "admin"] },
-  { label: "Projects", href: "/projects", icon: FolderKanban, roles: ["customer", "agency-designer", "agency-developer", "agency-pm", "admin"] },
-  { label: "Templates", href: "/templates", icon: LayoutTemplate, roles: ["customer", "agency-designer", "agency-developer", "agency-pm", "admin"] },
-  { label: "Tasks", href: "/activity", icon: CheckSquare, roles: ["customer", "agency-designer", "agency-developer", "agency-pm"] },
-  { label: "Notifications", href: "/activity", icon: Bell, roles: ["customer"] },
-  { label: "Reviews", href: "/activity", icon: MessageSquareText, roles: ["agency-designer", "agency-developer", "agency-pm"] },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: AGENCY_AND_ADMIN },
+  { label: "Projects", href: "/projects", icon: FolderKanban, roles: AGENCY_AND_ADMIN },
+  { label: "Templates", href: "/templates", icon: LayoutTemplate, roles: AGENCY_AND_ADMIN },
+  { label: "Tasks", href: "/tasks", icon: CheckSquare, roles: AGENCY_AND_ADMIN },
+  { label: "Activity", href: "/activity", icon: Activity, roles: AGENCY_AND_ADMIN },
   { label: "Customers", href: "/admin/users", icon: Users, roles: ["agency-pm"] },
 ];
 

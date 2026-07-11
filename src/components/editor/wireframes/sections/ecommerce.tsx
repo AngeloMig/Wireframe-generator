@@ -10,6 +10,7 @@ import {
   Heading,
   HeadingBlock,
   ImagePh,
+  InlineText,
   useWire,
   WireButton,
 } from "../primitives";
@@ -58,8 +59,8 @@ function ProductGrid({
               </span>
             )}
           </div>
-          <p className="text-sm font-medium">{String(item.title ?? "")}</p>
-          <p className="text-sm opacity-70">{String(item.price ?? "")}</p>
+          <InlineText text={String(item.title ?? "")} path={`items.${i}.title`} className="text-sm font-medium" />
+          <InlineText text={String(item.price ?? "")} path={`items.${i}.price`} className="text-sm opacity-70" />
         </div>
       ))}
     </Grid>
@@ -149,8 +150,8 @@ export function EcomBenefits({ section }: SectionComponentProps) {
                 style={styled ? { backgroundColor: theme.accent } : undefined}
               />
             </span>
-            <p className="text-sm font-semibold">{String(item.title ?? "")}</p>
-            <p className="text-xs opacity-70">{String(item.description ?? "")}</p>
+            <InlineText text={String(item.title ?? "")} path={`items.${i}.title`} className="text-sm font-semibold" />
+            <InlineText text={String(item.description ?? "")} path={`items.${i}.description`} className="text-xs opacity-70" />
           </div>
         ))}
       </Grid>

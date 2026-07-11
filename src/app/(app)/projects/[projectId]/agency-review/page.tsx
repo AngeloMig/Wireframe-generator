@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  ArrowRight,
   BadgeCheck,
+  ChevronDown,
   ClipboardCheck,
   Lightbulb,
   MessageSquarePlus,
@@ -48,10 +50,16 @@ import { Badge, PageStatusBadge, ProjectStatusBadge } from "@/components/ui/badg
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
+import {
+  DropdownItem,
+  DropdownLabel,
+  DropdownMenu,
+} from "@/components/ui/dropdown-menu";
 import { Label, Textarea } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CollaborationPanel } from "@/components/collab/collaboration-panel";
 import { RevisionRequestDialog } from "@/components/collab/revision-request-dialog";
+import { ScaledPreview } from "@/components/collab/scaled-preview";
 import { SuggestVariationDialog } from "@/components/collab/suggest-variation-dialog";
 import { WireProvider } from "@/components/editor/wireframes/primitives";
 import { SectionRenderer } from "@/components/editor/wireframes/section-renderer";
@@ -286,47 +294,62 @@ export default function AgencyReviewPage() {
                       {section.notes.customerNote && (
                         <span className="text-xs text-slate-500">Customer note ↓</span>
                       )}
-                      <div className="ml-auto flex flex-wrap gap-1.5">
+                      <div className="ml-auto flex flex-wrap items-center gap-1.5">
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon-sm"
+                          aria-label={`Add feedback on ${name}`}
+                          title="Add feedback"
                           onClick={() =>
                             openComposer({ pageId: page.id, sectionId: section.id })
                           }
                         >
-                          <MessageSquarePlus className="size-3.5" aria-hidden />
-                          Feedback
+                          <MessageSquarePlus className="size-4" aria-hidden />
                         </Button>
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon-sm"
+                          aria-label={`Suggest a different design for ${name}`}
+                          title="Suggest a different design"
                           onClick={() => setSuggestTarget(section)}
                         >
-                          <Lightbulb className="size-3.5" aria-hidden />
-                          Suggest design
+                          <Lightbulb className="size-4" aria-hidden />
                         </Button>
-                        {transitions.map((t) => (
-                          <Button
-                            key={t.to}
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              if (t.requiresMessage) {
-                                setStatusPrompt({ section, to: t.to, label: t.label });
-                              } else {
-                                applySectionStatus(section, t.to);
-                              }
-                            }}
+                        {transitions.length > 0 && (
+                          <DropdownMenu
+                            align="end"
+                            className="w-64"
+                            trigger={(props) => (
+                              <Button variant="outline" size="sm" {...props}>
+                                Set status
+                                <ChevronDown className="size-3.5" aria-hidden />
+                              </Button>
+                            )}
                           >
-                            {t.to === "technically-reviewed" && (
-                              <Wrench className="size-3.5" aria-hidden />
-                            )}
-                            {t.to === "approved" && (
-                              <BadgeCheck className="size-3.5" aria-hidden />
-                            )}
-                            {t.label}
-                          </Button>
-                        ))}
+                            <DropdownLabel>Move to</DropdownLabel>
+                            {transitions.map((t) => (
+                              <DropdownItem
+                                key={t.to}
+                                onSelect={() => {
+                                  if (t.requiresMessage) {
+                                    setStatusPrompt({ section, to: t.to, label: t.label });
+                                  } else {
+                                    applySectionStatus(section, t.to);
+                                  }
+                                }}
+                              >
+                                {t.to === "technically-reviewed" ? (
+                                  <Wrench className="size-4 text-slate-400" aria-hidden />
+                                ) : t.to === "approved" ? (
+                                  <BadgeCheck className="size-4 text-emerald-500" aria-hidden />
+                                ) : (
+                                  <ArrowRight className="size-4 text-slate-400" aria-hidden />
+                                )}
+                                <span className="flex-1">{t.label}</span>
+                              </DropdownItem>
+                            ))}
+                          </DropdownMenu>
+                        )}
                       </div>
                     </div>
 
@@ -337,13 +360,11 @@ export default function AgencyReviewPage() {
                       </p>
                     )}
 
-                    <div className="max-h-72 overflow-hidden">
+                    <ScaledPreview scale={0.65} className="pointer-events-none max-h-80">
                       <WireProvider value={{ styled: false, theme, device: "desktop" }}>
-                        <div className="pointer-events-none origin-top-left scale-[0.65]" style={{ width: "154%" }}>
-                          <SectionRenderer section={section} />
-                        </div>
+                        <SectionRenderer section={section} />
                       </WireProvider>
-                    </div>
+                    </ScaledPreview>
                   </div>
                 );
               })}

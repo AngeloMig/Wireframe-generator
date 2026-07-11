@@ -55,12 +55,15 @@ export function StructurePanel({
   actions,
   readOnly,
   onAddSection,
+  attentionIds,
 }: {
   sections: PageSection[];
   selectedId: string | null;
   actions: CanvasSectionActions;
   readOnly: boolean;
   onAddSection: () => void;
+  /** Sections with open feedback/tasks/content flags — shown as amber dots. */
+  attentionIds?: Set<string>;
 }) {
   const ordered = useMemo(
     () => [...sections].sort((a, b) => a.order - b.order),
@@ -128,6 +131,7 @@ export function StructurePanel({
             count={group.items.length}
             isSelected={section.id === selectedId}
             isInView={section.id === inViewId}
+            needsAttention={attentionIds?.has(section.id) ?? false}
             readOnly={readOnly}
             sortable={group.sortable && !readOnly}
             actions={actions}
@@ -176,6 +180,7 @@ function StructureRow({
   count,
   isSelected,
   isInView,
+  needsAttention,
   readOnly,
   sortable,
   actions,
@@ -185,6 +190,7 @@ function StructureRow({
   count: number;
   isSelected: boolean;
   isInView: boolean;
+  needsAttention: boolean;
   readOnly: boolean;
   sortable: boolean;
   actions: CanvasSectionActions;
@@ -237,6 +243,14 @@ function StructureRow({
         <span className="min-w-0 flex-1 truncate">
           {variation?.name ?? SECTION_TYPE_LABELS[section.sectionType]}
         </span>
+        {needsAttention && (
+          <span
+            className="size-1.5 shrink-0 rounded-full bg-amber-500"
+            role="img"
+            aria-label="Needs your input"
+            title="Needs your input"
+          />
+        )}
         {locked && <Lock className="size-3 shrink-0 text-slate-400" aria-label="Locked" />}
         {section.isHidden && (
           <EyeOff className="size-3.5 shrink-0 text-slate-400" aria-label="Hidden" />

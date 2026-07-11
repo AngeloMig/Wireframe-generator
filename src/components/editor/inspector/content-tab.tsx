@@ -1,9 +1,11 @@
 "use client";
 
-import { useId, useRef } from "react";
-import { ArrowDown, ArrowUp, Copy, ImagePlus, Plus, Trash2, X } from "lucide-react";
+import { useId, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, Copy, FolderOpen, ImagePlus, Plus, Trash2, X } from "lucide-react";
 import { effectiveContentSchema } from "@/data/section-schemas";
+import { suggestCopy } from "@/lib/copy-suggestions";
 import { imageOf } from "@/lib/editor-utils";
+import { useProject } from "@/hooks/use-project";
 import { toast } from "@/stores/ui-store";
 import type {
   PageSection,
@@ -13,6 +15,7 @@ import type {
 } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
+import { AssetPickerDialog } from "./asset-picker-dialog";
 import { FaqContentPanel } from "./faq-content-panel";
 import type { SectionMutator } from "./inspector-types";
 
@@ -77,13 +80,58 @@ export function ContentTab({
             onSet={(value) => setValue(field.key, value)}
           />
         ) : (
-          <ScalarField
+          <ScalarFieldWithSuggestions
             key={field.key}
             field={field}
+            section={section}
             value={section.content[field.key]}
             onSet={(value) => setValue(field.key, value)}
           />
         ),
+      )}
+    </div>
+  );
+}
+
+/** Scalar field plus brief-derived copy suggestions when it's still empty. */
+function ScalarFieldWithSuggestions({
+  field,
+  section,
+  value,
+  onSet,
+}: {
+  field: SectionFieldDefinition;
+  section: PageSection;
+  value: unknown;
+  onSet: (value: unknown) => void;
+}) {
+  const { project } = useProject();
+  const isEmpty = typeof value !== "string" || value.trim() === "";
+  const suggestions =
+    project && isEmpty && (field.type === "text" || field.type === "textarea")
+      ? suggestCopy(project, section.sectionType, field.key)
+      : [];
+
+  return (
+    <div>
+      <ScalarField field={field} value={value} onSet={onSet} />
+      {suggestions.length > 0 && (
+        <div className="mt-1.5">
+          <p className="mb-1 text-[11px] text-slate-400">From your project brief:</p>
+          <div className="flex flex-wrap gap-1">
+            {suggestions.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => onSet(suggestion)}
+                className="max-w-full cursor-pointer truncate rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-left text-[11px] text-indigo-800 transition-colors hover:bg-indigo-100"
+                title={suggestion}
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -182,6 +230,11 @@ function ImageField({
   const id = useId();
   const fileRef = useRef<HTMLInputElement>(null);
   const image = imageOf(section.content, field.key);
+  const { project } = useProject();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const hasAssets = (project?.assets ?? []).some(
+    (a) => a.kind === "image" || a.kind === "logo",
+  );
 
   const handleFile = (file: File | undefined) => {
     if (!file) return;
@@ -231,7 +284,7 @@ function ImageField({
           disabled={!image}
           className="h-8 text-xs"
         />
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           <input
             ref={fileRef}
             id={id}
@@ -244,6 +297,12 @@ function ImageField({
             <ImagePlus className="size-3.5" aria-hidden />
             Upload
           </Button>
+          {hasAssets && (
+            <Button variant="outline" size="sm" onClick={() => setPickerOpen(true)}>
+              <FolderOpen className="size-3.5" aria-hidden />
+              Choose
+            </Button>
+          )}
           {image && (
             <Button variant="ghost" size="sm" onClick={() => onSet(null)}>
               <X className="size-3.5" aria-hidden />
@@ -252,6 +311,12 @@ function ImageField({
           )}
         </div>
       </div>
+      <AssetPickerDialog
+        assets={project?.assets ?? []}
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onPick={(asset) => onSet({ url: asset.url, alt: image?.alt || asset.name })}
+      />
     </fieldset>
   );
 }

@@ -22,6 +22,7 @@ import type { CommentPriority, PageSection } from "@/types";
 import { cn } from "@/utils/cn";
 import { InlineEditProvider, type InlineEditContextValue } from "../wireframes/primitives";
 import { SectionRenderer } from "../wireframes/section-renderer";
+import { DesignSwapButton } from "./design-swap-button";
 
 export interface CanvasSectionActions {
   onSelect: (id: string) => void;
@@ -34,6 +35,8 @@ export interface CanvasSectionActions {
   onDelete: (id: string) => void;
   /** Inline canvas text edit: set content at a dot-path. */
   onInlineEdit: (id: string, path: string, value: string) => void;
+  /** Swap to another design variation, keeping content. */
+  onSwapDesign: (id: string, variationId: string) => void;
 }
 
 export type DropEdge = "top" | "bottom" | null;
@@ -291,6 +294,11 @@ export function CanvasSection({
               >
                 <Copy className="size-3.5" aria-hidden />
               </button>
+              <DesignSwapButton
+                section={section}
+                onSwap={(variationId) => actions.onSwapDesign(section.id, variationId)}
+                buttonClass={toolbarButton}
+              />
               <button
                 type="button"
                 className={toolbarButton}

@@ -11,6 +11,7 @@ import {
   useWire,
   WireButton,
   WireCard,
+  InlineText,
 } from "../primitives";
 import type { SectionComponentProps } from "../registry-types";
 
@@ -93,10 +94,10 @@ export function SvcCards({ section, variation }: SectionComponentProps) {
         {items.map((item, i) => (
           <WireCard key={i} className="flex flex-col gap-2.5">
             {withImages ? <ImagePh ratio="aspect-[3/2]" /> : <IconDot />}
-            <p className="text-sm font-semibold">{item.title}</p>
-            <p className="text-xs opacity-70">{item.description}</p>
+            <InlineText text={item.title} path={`items.${i}.title`} className="text-sm font-semibold" />
+            <InlineText text={item.description} path={`items.${i}.description`} className="text-xs opacity-70" />
             {item.linkLabel && (
-              <p className="text-xs font-medium underline underline-offset-2">{item.linkLabel}</p>
+              <InlineText text={item.linkLabel} path={`items.${i}.linkLabel`} className="text-xs font-medium underline underline-offset-2" />
             )}
           </WireCard>
         ))}
@@ -127,10 +128,10 @@ export function SvcAlternating({ section }: SectionComponentProps) {
             >
               <ImagePh ratio="aspect-[4/3]" className={device === "mobile" ? "w-full" : "w-1/2"} />
               <div className={cn("flex flex-col gap-2", device === "mobile" ? "w-full" : "w-1/2")}>
-                <p className="text-lg font-semibold">{item.title}</p>
-                <p className="text-sm opacity-70">{item.description}</p>
+                <InlineText text={item.title} path={`items.${i}.title`} className="text-lg font-semibold" />
+                <InlineText text={item.description} path={`items.${i}.description`} className="text-sm opacity-70" />
                 {item.linkLabel && (
-                  <p className="text-xs font-medium underline underline-offset-2">{item.linkLabel}</p>
+                  <InlineText text={item.linkLabel} path={`items.${i}.linkLabel`} className="text-xs font-medium underline underline-offset-2" />
                 )}
               </div>
             </div>
@@ -153,7 +154,7 @@ export function SvcList({ section }: SectionComponentProps) {
         {items.map((item, i) => (
           <div key={i} className="flex items-center gap-2.5 border-b border-current/10 pb-2.5">
             <IconDot small />
-            <p className="text-sm">{item.title}</p>
+            <InlineText text={item.title} path={`items.${i}.title`} className="text-sm" />
           </div>
         ))}
       </Grid>
@@ -173,8 +174,8 @@ export function SvcProcess({ section }: SectionComponentProps) {
         {items.map((item, i) => (
           <div key={i} className={cn("flex flex-col gap-2", alignClass(section.layout.alignment))}>
             <NumberDot n={i + 1} />
-            <p className="text-sm font-semibold">{item.title}</p>
-            <p className="text-xs opacity-70">{item.description}</p>
+            <InlineText text={item.title} path={`items.${i}.title`} className="text-sm font-semibold" />
+            <InlineText text={item.description} path={`items.${i}.description`} className="text-xs opacity-70" />
           </div>
         ))}
       </Grid>
@@ -194,8 +195,8 @@ export function SvcTimeline({ section }: SectionComponentProps) {
             <span className="absolute top-0 -left-[3.05rem]">
               <NumberDot n={i + 1} />
             </span>
-            <p className="text-sm font-semibold">{item.title}</p>
-            <p className="mt-1 text-xs opacity-70">{item.description}</p>
+            <InlineText text={item.title} path={`items.${i}.title`} className="text-sm font-semibold" />
+            <InlineText text={item.description} path={`items.${i}.description`} className="mt-1 text-xs opacity-70" />
           </li>
         ))}
       </ol>
@@ -226,8 +227,8 @@ export function SvcFeatured({ section }: SectionComponentProps) {
             <div key={i} className="flex items-start gap-3 border-b border-current/10 pb-4">
               <IconDot small />
               <div>
-                <p className="text-sm font-semibold">{item.title}</p>
-                <p className="text-xs opacity-70">{item.description}</p>
+                <InlineText text={item.title} path={`items.${i}.title`} className="text-sm font-semibold" />
+                <InlineText text={item.description} path={`items.${i}.description`} className="text-xs opacity-70" />
               </div>
             </div>
           ))}
@@ -248,9 +249,9 @@ export function SvcPricing({ section }: SectionComponentProps) {
       <Grid columns={cols}>
         {items.map((item, i) => (
           <WireCard key={i} className={cn("flex flex-col gap-2.5", i === 1 && "border-2")}>
-            <p className="text-sm font-semibold">{item.title}</p>
-            <p className="text-2xl font-bold">{item.price}</p>
-            <p className="text-xs opacity-70">{item.description}</p>
+            <InlineText text={item.title} path={`items.${i}.title`} className="text-sm font-semibold" />
+            <InlineText text={item.price} path={`items.${i}.price`} className="text-2xl font-bold" />
+            <InlineText text={item.description} path={`items.${i}.description`} className="text-xs opacity-70" />
             {item.linkLabel && (
               <div className="mt-auto pt-2">
                 <WireButton label={item.linkLabel} kind={i === 1 ? "primary" : "secondary"} />

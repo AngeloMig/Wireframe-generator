@@ -14,6 +14,7 @@ export interface SectionComparison {
 }
 
 export interface PageComparison {
+  pageId?: string;
   pageName: string;
   kind: "added" | "removed" | "changed" | "reordered" | "unchanged";
   notes: string[];
@@ -150,6 +151,7 @@ function comparePage(before: ProjectPage, after: ProjectPage): PageComparison {
 
   const changed = sections.length > 0 || notes.length > 0;
   return {
+    pageId: after.id,
     pageName: after.name,
     kind: changed ? "changed" : "unchanged",
     notes,
@@ -202,6 +204,7 @@ export function compareSnapshots(
 
   for (const page of added) {
     pages.push({
+      pageId: page.id,
       pageName: page.name,
       kind: "added",
       notes: [`New page with ${page.sections.length} section${page.sections.length === 1 ? "" : "s"}`],
@@ -209,7 +212,13 @@ export function compareSnapshots(
     });
   }
   for (const page of removed) {
-    pages.push({ pageName: page.name, kind: "removed", notes: ["Page removed"], sections: [] });
+    pages.push({
+      pageId: page.id,
+      pageName: page.name,
+      kind: "removed",
+      notes: ["Page removed"],
+      sections: [],
+    });
   }
   for (const page of after.pages) {
     const prior = beforeById.get(page.id);

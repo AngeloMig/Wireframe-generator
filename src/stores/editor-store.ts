@@ -48,6 +48,8 @@ interface EditorState {
   zoom: number;
   /** Zoom that fits the device width into the canvas, measured by the canvas. */
   fitZoom: number;
+  /** True once the user zooms by hand — stops auto-following fitZoom. */
+  hasManualZoom: boolean;
   inspectorTab: InspectorTab;
   isPreview: boolean;
   past: PageSection[][];
@@ -118,6 +120,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   mode: "wireframe",
   zoom: 1,
   fitZoom: 1,
+  hasManualZoom: false,
   inspectorTab: "content",
   isPreview: false,
   past: [],
@@ -153,8 +156,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setDevice: (device) => set({ device }),
   setMode: (mode) => set({ mode }),
-  setZoom: (zoom) => set({ zoom: Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom)) }),
-  setFitZoom: (fitZoom) => set({ fitZoom }),
+  setZoom: (zoom) =>
+    set((s) => ({
+      zoom: Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom)),
+      // Using the "fit" button re-enables auto-fit; hand zooming disables it.
+      hasManualZoom: Math.abs(zoom - s.fitZoom) > 0.001,
+    })),
+  setFitZoom: (fitZoom) =>
+    set((s) => ({
+      fitZoom,
+      // Follow the fitted width until the user picks a zoom themselves.
+      ...(s.hasManualZoom ? {} : { zoom: Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, fitZoom)) }),
+    })),
   setInspectorTab: (inspectorTab) => set({ inspectorTab }),
   setPreview: (isPreview) => set({ isPreview, ...(isPreview ? { selectedSectionId: null } : {}) }),
 

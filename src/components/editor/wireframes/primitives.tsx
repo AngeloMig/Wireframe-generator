@@ -184,6 +184,60 @@ export function Bar({ width, className }: { width: number | string; className?: 
   );
 }
 
+/**
+ * Click-to-fill affordance for empty text: an editable ghost showing a hint
+ * via ::before so nothing phantom ever lands in the committed value. Only
+ * rendered when inline editing is active — read-only views keep skeletons.
+ */
+export function GhostText({
+  path,
+  hint,
+  className,
+}: {
+  path: string;
+  hint: string;
+  className?: string;
+}) {
+  const editable = useEditableText(path, "");
+  if (!editable) return null;
+  return (
+    <span
+      {...editable}
+      data-placeholder={hint}
+      className={cn(
+        EDITABLE_TEXT_CLASS,
+        "block min-w-24 empty:before:opacity-40 empty:before:content-[attr(data-placeholder)]",
+        className,
+      )}
+    />
+  );
+}
+
+/**
+ * Free-form editable text for repeated items (card titles, quotes, FAQ
+ * answers…) that don't fit the Heading/Para primitives. Renders nothing when
+ * empty — item-level ghosts would make card grids noisy.
+ */
+export function InlineText({
+  text,
+  path,
+  className,
+  as: Tag = "p",
+}: {
+  text: string;
+  path?: string;
+  className?: string;
+  as?: "p" | "span";
+}) {
+  const editable = useEditableText(path, text);
+  if (!text) return null;
+  return (
+    <Tag {...editable} className={cn(className, editable && EDITABLE_TEXT_CLASS)}>
+      {text}
+    </Tag>
+  );
+}
+
 export function Eyebrow({ text, path }: { text: string; path?: string }) {
   const { styled, theme } = useWire();
   const editable = useEditableText(path, text);
@@ -221,7 +275,18 @@ export function Heading({
     lg: "text-3xl",
     xl: "text-4xl",
   }[size];
-  if (!text) return <Bar width="55%" className="h-5" />;
+  if (!text) {
+    if (path && editable) {
+      return (
+        <GhostText
+          path={path}
+          hint="Add a heading…"
+          className={cn(sizeClass, "leading-tight font-semibold", theme.headingFont, className)}
+        />
+      );
+    }
+    return <Bar width="55%" className="h-5" />;
+  }
   return (
     <h3
       {...editable}
@@ -251,6 +316,15 @@ export function Para({
 }) {
   const editable = useEditableText(path, text);
   if (!text) {
+    if (path && editable) {
+      return (
+        <GhostText
+          path={path}
+          hint="Add a short description…"
+          className={cn("text-sm leading-relaxed", muted && "opacity-70", className)}
+        />
+      );
+    }
     return (
       <div className={cn("w-full space-y-1.5", className)}>
         <Bar width="90%" />
@@ -363,16 +437,40 @@ export function ImagePh({
   return (
     <div
       className={cn(
-        "flex items-center justify-center",
+        "relative flex items-center justify-center overflow-hidden",
         ratio,
         theme.cardRadius,
-        !styled && "bg-slate-200",
+        !styled && "bg-slate-100",
         className,
       )}
       style={styled ? { backgroundColor: tint(theme.primary, 0.12) } : undefined}
     >
-      <div className="flex flex-col items-center gap-1 opacity-40">
-        <ImageIcon className="size-6" aria-hidden />
+      {/* Classic wireframe cross-hatch so placeholders read as intentional. */}
+      {!styled && (
+        <svg
+          aria-hidden
+          className="absolute inset-0 h-full w-full text-slate-300"
+          preserveAspectRatio="none"
+          viewBox="0 0 100 100"
+        >
+          <rect
+            x="0.5"
+            y="0.5"
+            width="99"
+            height="99"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+            vectorEffect="non-scaling-stroke"
+          />
+          <line x1="0" y1="0" x2="100" y2="100" stroke="currentColor" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+          <line x1="100" y1="0" x2="0" y2="100" stroke="currentColor" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+        </svg>
+      )}
+      <div className="relative flex flex-col items-center gap-1 opacity-50">
+        <span className={cn("rounded-full p-1.5", !styled && "bg-slate-100")}>
+          <ImageIcon className="size-5" aria-hidden />
+        </span>
         {label && <span className="text-[10px] font-medium">{label}</span>}
       </div>
     </div>

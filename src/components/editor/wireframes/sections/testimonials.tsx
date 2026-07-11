@@ -13,6 +13,7 @@ import {
   HeadingBlock,
   useWire,
   WireCard,
+  InlineText,
 } from "../primitives";
 import type { SectionComponentProps } from "../registry-types";
 
@@ -32,15 +33,15 @@ function quotesOf(content: Record<string, unknown>): TestimonialQuote[] {
   }));
 }
 
-function AuthorRow({ quote }: { quote: TestimonialQuote }) {
+function AuthorRow({ quote, path }: { quote: TestimonialQuote; path?: string }) {
   return (
     <div className="mt-auto flex items-center gap-2 pt-1">
       <span className="flex size-7 items-center justify-center rounded-full bg-slate-200">
         <UserRound className="size-3.5 opacity-50" aria-hidden />
       </span>
       <div>
-        <p className="text-xs font-semibold">{quote.author}</p>
-        <p className="text-[11px] opacity-60">{quote.role}</p>
+        <InlineText text={quote.author} path={path && `${path}.author`} className="text-xs font-semibold" />
+        <InlineText text={quote.role} path={path && `${path}.role`} className="text-[11px] opacity-60" />
       </div>
     </div>
   );
@@ -70,8 +71,8 @@ export function TestiCards({ section }: SectionComponentProps) {
         {quotes.map((q, i) => (
           <WireCard key={i} className="flex flex-col gap-3">
             <Quote className="size-4 opacity-30" aria-hidden />
-            <p className="text-sm leading-relaxed">{q.quote}</p>
-            <AuthorRow quote={q} />
+            <InlineText text={q.quote} path={`quotes.${i}.quote`} className="text-sm leading-relaxed" />
+            <AuthorRow quote={q} path={`quotes.${i}`} />
           </WireCard>
         ))}
       </Grid>
@@ -86,12 +87,18 @@ export function TestiFeatured({ section }: SectionComponentProps) {
   return (
     <div className={cn("flex flex-col gap-4", alignClass(section.layout.alignment))}>
       <Quote className="size-6 opacity-30" aria-hidden />
-      <p className="text-xl leading-snug font-medium">
-        {featured?.quote || <Bar width="70%" className="h-5" />}
-      </p>
+      {featured?.quote ? (
+        <InlineText
+          text={featured.quote}
+          path="quotes.0.quote"
+          className="text-xl leading-snug font-medium"
+        />
+      ) : (
+        <Bar width="70%" className="h-5" />
+      )}
       <div>
-        <p className="text-sm font-semibold">{featured?.author}</p>
-        <p className="text-xs opacity-60">{featured?.role}</p>
+        <InlineText text={featured?.author ?? ""} path="quotes.0.author" className="text-sm font-semibold" />
+        <InlineText text={featured?.role ?? ""} path="quotes.0.role" className="text-xs opacity-60" />
       </div>
     </div>
   );
@@ -199,8 +206,8 @@ export function TestiReviewSummary({ section }: SectionComponentProps) {
       <Grid columns={cols} className="w-full">
         {quotes.map((q, i) => (
           <WireCard key={i} className="flex flex-col gap-2">
-            <p className="text-sm">{q.quote}</p>
-            <p className="text-xs font-medium opacity-60">{q.author}</p>
+            <InlineText text={q.quote} path={`quotes.${i}.quote`} className="text-sm" />
+            <InlineText text={q.author} path={`quotes.${i}.author`} className="text-xs font-medium opacity-60" />
           </WireCard>
         ))}
       </Grid>
@@ -225,8 +232,8 @@ export function TestiCaseStudies({ section }: SectionComponentProps) {
             >
               <ImageIcon className="size-6 opacity-40" aria-hidden />
             </div>
-            <p className="text-sm font-semibold">{String(item.title ?? "")}</p>
-            <p className="text-xs opacity-70">{String(item.description ?? "")}</p>
+            <InlineText text={String(item.title ?? "")} path={`caseStudies.${i}.title`} className="text-sm font-semibold" />
+            <InlineText text={String(item.description ?? "")} path={`caseStudies.${i}.description`} className="text-xs opacity-70" />
             {item.result ? (
               <span className="w-fit rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
                 {String(item.result)}

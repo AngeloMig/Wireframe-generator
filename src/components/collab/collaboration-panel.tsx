@@ -219,7 +219,7 @@ export function CollaborationPanel({
       </div>
 
       <div
-        className="flex gap-1 overflow-x-auto pb-2"
+        className="flex flex-wrap gap-1 pb-2"
         role="tablist"
         aria-label="Comment filters"
       >

@@ -27,6 +27,7 @@ import { useProject } from "@/hooks/use-project";
 import { useCollabUiStore } from "@/stores/collab-ui-store";
 import { selectProjectComments, useCommentsStore } from "@/stores/comments-store";
 import { useSessionStore } from "@/stores/session-store";
+import { CollabDrawer } from "@/components/collab/collab-drawer";
 import { CollaborationPanel } from "@/components/collab/collaboration-panel";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { cn } from "@/utils/cn";
@@ -215,12 +216,13 @@ function ProjectOverview() {
             </CardBody>
           </Card>
 
-          {/* Collaboration */}
-          <Card>
+          {/* Collaboration: inline on desktop, full-screen drawer on mobile */}
+          <Card className="hidden lg:block">
             <CardBody>
               <CollaborationPanel project={project} defaultScope="project" />
             </CardBody>
           </Card>
+          <CollabDrawer project={project} />
         </div>
 
         <div className="space-y-6">

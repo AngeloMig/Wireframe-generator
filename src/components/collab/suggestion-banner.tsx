@@ -17,6 +17,7 @@ import type { Project, ProjectPage, SectionVariationSuggestion } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Label, Textarea } from "@/components/ui/input";
+import { ScaledPreview } from "@/components/collab/scaled-preview";
 import { WireProvider } from "@/components/editor/wireframes/primitives";
 import { SectionRenderer } from "@/components/editor/wireframes/section-renderer";
 
@@ -163,29 +164,25 @@ function SuggestionDialog({
             <figcaption className="mb-1.5 text-xs font-semibold tracking-wide text-slate-500 uppercase">
               Current — {current?.name ?? "your design"}
             </figcaption>
-            <div className="overflow-hidden rounded-lg border border-slate-200">
-              <div className="origin-top-left scale-[0.55]" style={{ width: "182%" }}>
-                {section && (
-                  <WireProvider value={{ styled: false, theme, device: "desktop" }}>
-                    <SectionRenderer section={section} />
-                  </WireProvider>
-                )}
-              </div>
-            </div>
+            <ScaledPreview className="rounded-lg border border-slate-200">
+              {section && (
+                <WireProvider value={{ styled: false, theme, device: "desktop" }}>
+                  <SectionRenderer section={section} />
+                </WireProvider>
+              )}
+            </ScaledPreview>
           </figure>
           <figure>
             <figcaption className="mb-1.5 text-xs font-semibold tracking-wide text-violet-600 uppercase">
               Suggested — {suggested?.name ?? "new design"}
             </figcaption>
-            <div className="overflow-hidden rounded-lg border-2 border-violet-300">
-              <div className="origin-top-left scale-[0.55]" style={{ width: "182%" }}>
-                {previewSection && (
-                  <WireProvider value={{ styled: false, theme, device: "desktop" }}>
-                    <SectionRenderer section={previewSection} />
-                  </WireProvider>
-                )}
-              </div>
-            </div>
+            <ScaledPreview className="rounded-lg border-2 border-violet-300">
+              {previewSection && (
+                <WireProvider value={{ styled: false, theme, device: "desktop" }}>
+                  <SectionRenderer section={previewSection} />
+                </WireProvider>
+              )}
+            </ScaledPreview>
           </figure>
         </div>
 

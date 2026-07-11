@@ -20,8 +20,13 @@ import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { X } from "lucide-react";
 import { getVariation } from "@/data/section-variations";
 import { brandTheme, setContentValue } from "@/lib/editor-utils";
+import {
+  readThemeOverrides,
+  writeThemeOverrides,
+  type ThemeOverrides,
+} from "@/lib/theme-overrides";
 import { canEditProjectContent, editRestrictionReason } from "@/lib/permissions";
-import { createSectionFromVariation } from "@/lib/sections";
+import { createSectionFromVariation, switchSectionVariation } from "@/lib/sections";
 import { useCollabUiStore } from "@/stores/collab-ui-store";
 import { selectProjectComments, useCommentsStore } from "@/stores/comments-store";
 import { useEditorStore } from "@/stores/editor-store";
@@ -36,6 +41,7 @@ import type {
 } from "@/types";
 import { createId } from "@/utils/id";
 import { CollaborationPanel } from "@/components/collab/collaboration-panel";
+import { EditorTour } from "@/components/customer/editor-tour";
 import { SuggestionBanner } from "@/components/collab/suggestion-banner";
 import { CANVAS_APPEND_ID, EditorCanvas, type DropTarget } from "./canvas/editor-canvas";
 import { EditorToolbar } from "./editor-toolbar";
@@ -114,7 +120,27 @@ export function Editor({
   // Leaving the editor exits comment mode so other pages start clean.
   useEffect(() => () => setCommentMode(false), [setCommentMode]);
 
-  const theme = useMemo(() => brandTheme(project), [project]);
+  // Styled-mode theme = wizard-derived brand + local Theme-panel tweaks.
+  const [themeOverrides, setThemeOverrides] = useState<ThemeOverrides>(() =>
+    readThemeOverrides(project.id),
+  );
+  const theme = useMemo(
+    () => ({ ...brandTheme(project), ...themeOverrides }),
+    [project, themeOverrides],
+  );
+  const changeTheme = useCallback(
+    (patch: ThemeOverrides) =>
+      setThemeOverrides((prev) => {
+        const next = { ...prev, ...patch };
+        writeThemeOverrides(project.id, next);
+        return next;
+      }),
+    [project.id],
+  );
+  const resetTheme = useCallback(() => {
+    writeThemeOverrides(project.id, {});
+    setThemeOverrides({});
+  }, [project.id]);
   const ordered = useMemo(
     () => [...page.sections].sort((a, b) => a.order - b.order),
     [page.sections],
@@ -154,6 +180,30 @@ export function Editor({
     return map;
   }, [comments, ordered, page.id, user.role]);
 
+  // Sections still waiting on someone: open feedback threads, incomplete
+  // action items, or content flags on the section itself. Shown as amber
+  // dots in the structure rail.
+  const attentionIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const section of ordered) {
+      if (
+        section.reviewStatus === "content-needed" ||
+        section.reviewStatus === "image-needed" ||
+        section.reviewStatus === "revisions-requested"
+      ) {
+        ids.add(section.id);
+      }
+    }
+    for (const comment of comments) {
+      if (!comment.sectionId || comment.pageId !== page.id) continue;
+      if (user.role === "customer" && comment.visibility !== "customer") continue;
+      const openThread = comment.status === "open" || comment.status === "reopened";
+      const openTask = comment.isActionItem && !comment.completedAt;
+      if (openThread || openTask) ids.add(comment.sectionId);
+    }
+    return ids;
+  }, [ordered, comments, page.id, user.role]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -181,6 +231,31 @@ export function Editor({
       );
     },
     [applySections, ordered, project.id, selectedSectionId],
+  );
+
+  const insertStarter = useCallback(
+    (variationIds: string[]) => {
+      const sections = variationIds
+        .map((id) => {
+          const variation = getVariation(id);
+          return variation ? createSectionFromVariation(variation) : null;
+        })
+        .filter((s): s is PageSection => s !== null);
+      if (sections.length === 0) return;
+      applySections(
+        project.id,
+        () => sections,
+        {
+          activity: {
+            type: "section-added",
+            message: `Page started from a layout bundle (${sections.length} sections)`,
+          },
+        },
+      );
+      select(sections[0].id, "content");
+      toast("Layout added", "success", "Every section is a starting point — make it yours.");
+    },
+    [applySections, project.id, select],
   );
 
   const insertVariation = useCallback(
@@ -262,6 +337,14 @@ export function Editor({
             s.id === id ? { ...s, content: setContentValue(s.content, path, value) } : s,
           ),
         ),
+      onSwapDesign: (id, variationId) => {
+        const target = getVariation(variationId);
+        if (!target) return;
+        applySections(project.id, (sections) =>
+          sections.map((s) => (s.id === id ? switchSectionVariation(s, target) : s)),
+        );
+        toast("Design changed", "success", `Now using “${target.name}”. Your content was kept.`);
+      },
       onDelete: (id) => {
         const section = ordered.find((s) => s.id === id);
         if (section?.approvalLocked) {
@@ -455,6 +538,10 @@ export function Editor({
         selectedSectionId={selectedSectionId}
         libraryOpen={libraryOpen}
         onToggleLibrary={() => setLibraryOpen((open) => !open)}
+        theme={theme}
+        themeHasOverrides={Object.keys(themeOverrides).length > 0}
+        onThemeChange={changeTheme}
+        onThemeReset={resetTheme}
       />
 
       {mode === "styled" && (
@@ -504,6 +591,7 @@ export function Editor({
             <aside
               className="hidden w-60 shrink-0 bg-white lg:block"
               aria-label="Page structure"
+              data-tour="structure"
             >
               <StructurePanel
                 sections={page.sections}
@@ -511,6 +599,7 @@ export function Editor({
                 actions={canvasActions}
                 readOnly={!contentEditable}
                 onAddSection={() => setLibraryOpen(true)}
+                attentionIds={attentionIds}
               />
             </aside>
           )}
@@ -565,6 +654,7 @@ export function Editor({
               select(sectionId);
               if (first) selectComment(first.id);
             }}
+            onInsertStarter={contentEditable ? insertStarter : undefined}
           />
 
           {!isPreview && commentMode && (
@@ -586,6 +676,7 @@ export function Editor({
             <aside
               className="hidden w-80 shrink-0 bg-white xl:block"
               aria-label="Section inspector"
+              data-tour="inspector"
             >
               <SectionInspector section={selectedSection} onChange={updateSelectedSection} />
             </aside>
@@ -603,6 +694,8 @@ export function Editor({
           )}
         </DragOverlay>
       </DndContext>
+
+      {isCustomer && contentEditable && <EditorTour />}
 
       <VariationPreview
         variation={previewVariation}

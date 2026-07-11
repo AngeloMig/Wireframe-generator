@@ -12,6 +12,7 @@ import {
   useWire,
   WireButton,
   WireCard,
+  InlineText,
 } from "../primitives";
 import type { SectionComponentProps } from "../registry-types";
 
@@ -285,8 +286,8 @@ export function FaqCards({ section }: SectionComponentProps) {
       <Grid columns={cols}>
         {questions.map((q, i) => (
           <WireCard key={i} className="flex flex-col gap-2">
-            <p className="text-sm font-semibold">{q.question}</p>
-            <p className="text-xs opacity-70">{q.answer}</p>
+            <InlineText text={q.question} path={`questions.${i}.question`} className="text-sm font-semibold" />
+            <InlineText text={q.answer} path={`questions.${i}.answer`} className="text-xs opacity-70" />
           </WireCard>
         ))}
       </Grid>
@@ -418,8 +419,8 @@ export function FaqNumbered({ section }: SectionComponentProps) {
               {String(i + 1).padStart(2, "0")}
             </span>
             <div className="flex-1 border-b border-current/10 pb-6">
-              <p className={cn("mb-2 text-lg font-semibold", theme.headingFont)}>{q.question}</p>
-              <p className="text-sm leading-relaxed opacity-70">{q.answer}</p>
+              <InlineText text={q.question} path={`questions.${i}.question`} className={cn("mb-2 text-lg font-semibold", theme.headingFont)} />
+              <InlineText text={q.answer} path={`questions.${i}.answer`} className="text-sm leading-relaxed opacity-70" />
             </div>
           </li>
         ))}

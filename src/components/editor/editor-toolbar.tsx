@@ -21,7 +21,9 @@ import {
   ZoomOut,
   Paintbrush,
 } from "lucide-react";
+import type { BrandTheme } from "@/lib/editor-utils";
 import { canEditProjectContent } from "@/lib/permissions";
+import type { ThemeOverrides } from "@/lib/theme-overrides";
 import { useCollabUiStore } from "@/stores/collab-ui-store";
 import {
   useEditorStore,
@@ -37,7 +39,8 @@ import { AskAgencyDialog } from "@/components/customer/ask-agency-dialog";
 import { SubmissionDialog } from "@/components/collab/submission-dialog";
 import { PageStatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/input";
+import { PageSelector } from "./page-selector";
+import { ThemePanelButton } from "./theme-panel";
 import { UserMenu } from "@/components/layout/user-menu";
 import { SaveIndicator } from "@/components/project/save-indicator";
 
@@ -58,6 +61,10 @@ export function EditorToolbar({
   selectedSectionId,
   libraryOpen,
   onToggleLibrary,
+  theme,
+  themeHasOverrides,
+  onThemeChange,
+  onThemeReset,
 }: {
   project: Project;
   page: ProjectPage;
@@ -69,6 +76,10 @@ export function EditorToolbar({
   selectedSectionId?: string | null;
   libraryOpen?: boolean;
   onToggleLibrary?: () => void;
+  theme?: BrandTheme;
+  themeHasOverrides?: boolean;
+  onThemeChange?: (patch: ThemeOverrides) => void;
+  onThemeReset?: () => void;
 }) {
   const router = useRouter();
   const user = useSessionStore((s) => s.user);
@@ -112,20 +123,7 @@ export function EditorToolbar({
         <span className="hidden max-w-36 truncate text-sm font-semibold text-slate-900 xl:block">
           {project.name}
         </span>
-        <Select
-          value={page.id}
-          onChange={(e) => onSelectPage(e.target.value)}
-          aria-label="Current page"
-          className="h-8 w-40 text-xs"
-        >
-          {[...project.pages]
-            .sort((a, b) => Number(b.isHomepage) - Number(a.isHomepage) || a.order - b.order)
-            .map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-        </Select>
+        <PageSelector project={project} page={page} onSelectPage={onSelectPage} />
         <div className="hidden lg:block">
           <PageStatusBadge status={page.status} />
         </div>
@@ -203,7 +201,8 @@ export function EditorToolbar({
             )}
           >
             <PencilRuler className="size-3.5" aria-hidden />
-            Wireframe
+            <span className="hidden xl:inline">Wireframe</span>
+            <span className="sr-only xl:hidden">Wireframe</span>
           </button>
           <button
             type="button"
@@ -215,9 +214,20 @@ export function EditorToolbar({
             )}
           >
             <Paintbrush className="size-3.5" aria-hidden />
-            Styled
+            <span className="hidden xl:inline">Styled</span>
+            <span className="sr-only xl:hidden">Styled</span>
           </button>
         </div>
+
+        {mode === "styled" && theme && onThemeChange && onThemeReset && (
+          <ThemePanelButton
+            theme={theme}
+            hasOverrides={themeHasOverrides ?? false}
+            onChange={onThemeChange}
+            onReset={onThemeReset}
+            buttonClass={iconButton()}
+          />
+        )}
 
         <Divider />
 
@@ -264,7 +274,8 @@ export function EditorToolbar({
           aria-pressed={commentMode}
         >
           <MessageSquare className="size-3.5" aria-hidden />
-          <span className="hidden sm:inline">{commentMode ? "Exit comments" : "Comment"}</span>
+          <span className="hidden xl:inline">{commentMode ? "Exit comments" : "Comment"}</span>
+          <span className="sr-only xl:hidden">{commentMode ? "Exit comments" : "Comment"}</span>
         </Button>
         <Button
           variant={isPreview ? "secondary" : "outline"}
@@ -273,17 +284,18 @@ export function EditorToolbar({
           aria-pressed={isPreview}
         >
           <Eye className="size-3.5" aria-hidden />
-          <span className="hidden sm:inline">{isPreview ? "Exit preview" : "Preview"}</span>
+          <span className="hidden xl:inline">{isPreview ? "Exit preview" : "Preview"}</span>
+          <span className="sr-only xl:hidden">{isPreview ? "Exit preview" : "Preview"}</span>
         </Button>
         {isCustomer ? (
           <>
             {customerCanEdit && (
-              <Button size="sm" onClick={() => setSubmitOpen(true)}>
+              <Button size="sm" data-tour="submit" onClick={() => setSubmitOpen(true)}>
                 <Send className="size-3.5" aria-hidden />
-                <span className="hidden sm:inline">
+                <span className="hidden xl:inline">
                   {submissionMode === "revisions" ? "Submit changes" : "Submit for review"}
                 </span>
-                <span className="sm:hidden">Submit</span>
+                <span className="xl:hidden">Submit</span>
               </Button>
             )}
             <Button

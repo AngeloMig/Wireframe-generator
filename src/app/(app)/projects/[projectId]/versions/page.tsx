@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { restoreVersion } from "@/lib/collab-service";
 import { snapshotOf } from "@/lib/collab-service";
+import { brandTheme, type BrandTheme } from "@/lib/editor-utils";
 import { canCreateManualVersion, canRestoreVersion } from "@/lib/permissions";
 import { compareSnapshots } from "@/lib/version-compare";
 import { useProject } from "@/hooks/use-project";
@@ -30,6 +31,9 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input, Label, Textarea } from "@/components/ui/input";
+import { ScaledPreview } from "@/components/collab/scaled-preview";
+import { WireProvider } from "@/components/editor/wireframes/primitives";
+import { SectionRenderer } from "@/components/editor/wireframes/section-renderer";
 
 const TRIGGER_LABELS: Record<VersionTrigger, string> = {
   manual: "Manual save",
@@ -241,6 +245,9 @@ export default function VersionsPage() {
             )}
             <ChangedPagesList
               pages={comparison.result.pages}
+              older={comparison.older}
+              newer={comparison.newer}
+              theme={brandTheme(project)}
             />
           </CardBody>
         </Card>
@@ -345,8 +352,19 @@ export default function VersionsPage() {
   );
 }
 
-function ChangedPagesList({ pages }: { pages: ReturnType<typeof compareSnapshots>["pages"] }) {
+function ChangedPagesList({
+  pages,
+  older,
+  newer,
+  theme,
+}: {
+  pages: ReturnType<typeof compareSnapshots>["pages"];
+  older: ProjectVersion;
+  newer: ProjectVersion;
+  theme: BrandTheme;
+}) {
   const [changedOnly, setChangedOnly] = useState(true);
+  const [previewPageId, setPreviewPageId] = useState<string | null>(null);
   const visible = changedOnly ? pages.filter((p) => p.kind !== "unchanged") : pages;
   return (
     <div className="space-y-3">
@@ -362,44 +380,125 @@ function ChangedPagesList({ pages }: { pages: ReturnType<typeof compareSnapshots
       {visible.length === 0 && (
         <p className="text-sm text-slate-500">No page-level changes.</p>
       )}
-      {visible.map((page) => (
-        <div key={page.pageName + page.kind} className="rounded-lg border border-slate-200">
-          <p className="flex items-center gap-2 border-b border-slate-100 px-4 py-2 text-sm font-semibold text-slate-800">
-            {page.pageName}
-            {page.kind === "added" && (
-              <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">Added</Badge>
-            )}
-            {page.kind === "removed" && (
-              <Badge className="border-rose-200 bg-rose-50 text-rose-700">Removed</Badge>
-            )}
-            {page.kind === "unchanged" && (
-              <Badge className="border-slate-200 bg-slate-50 text-slate-500">Unchanged</Badge>
-            )}
-          </p>
-          {(page.notes.length > 0 || page.sections.length > 0) && (
-            <div className="space-y-2 px-4 py-3">
-              {page.notes.map((note) => (
-                <p key={note} className="text-sm text-slate-600">
-                  • {note}
-                </p>
-              ))}
-              {page.sections.map((section) => (
-                <div key={section.sectionName + section.kind}>
-                  <p className="text-sm font-medium text-slate-700">
-                    {section.sectionName}
+      {visible.map((page) => {
+        const olderPage = older.snapshot.pages.find((p) => p.id === page.pageId);
+        const newerPage = newer.snapshot.pages.find((p) => p.id === page.pageId);
+        const canPreview = Boolean(olderPage || newerPage);
+        const previewing = previewPageId === page.pageId;
+        return (
+          <div key={(page.pageId ?? page.pageName) + page.kind} className="rounded-lg border border-slate-200">
+            <p className="flex items-center gap-2 border-b border-slate-100 px-4 py-2 text-sm font-semibold text-slate-800">
+              {page.pageName}
+              {page.kind === "added" && (
+                <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">Added</Badge>
+              )}
+              {page.kind === "removed" && (
+                <Badge className="border-rose-200 bg-rose-50 text-rose-700">Removed</Badge>
+              )}
+              {page.kind === "unchanged" && (
+                <Badge className="border-slate-200 bg-slate-50 text-slate-500">Unchanged</Badge>
+              )}
+              {canPreview && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto"
+                  aria-expanded={previewing}
+                  onClick={() =>
+                    setPreviewPageId(previewing ? null : (page.pageId ?? null))
+                  }
+                >
+                  <Eye className="size-3.5" aria-hidden />
+                  {previewing ? "Hide preview" : "Preview side by side"}
+                </Button>
+              )}
+            </p>
+            {(page.notes.length > 0 || page.sections.length > 0) && (
+              <div className="space-y-2 px-4 py-3">
+                {page.notes.map((note) => (
+                  <p key={note} className="text-sm text-slate-600">
+                    • {note}
                   </p>
-                  <ul className="mt-0.5 space-y-0.5 pl-4 text-sm text-slate-600">
-                    {section.details.map((detail) => (
-                      <li key={detail}>– {detail}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+                ))}
+                {page.sections.map((section) => (
+                  <div key={section.sectionName + section.kind}>
+                    <p className="text-sm font-medium text-slate-700">
+                      {section.sectionName}
+                    </p>
+                    <ul className="mt-0.5 space-y-0.5 pl-4 text-sm text-slate-600">
+                      {section.details.map((detail) => (
+                        <li key={detail}>– {detail}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+            {previewing && (
+              <div className="grid gap-3 border-t border-slate-100 p-4 lg:grid-cols-2">
+                <SnapshotPagePreview
+                  label={`v${older.versionNumber}`}
+                  page={olderPage}
+                  theme={theme}
+                />
+                <SnapshotPagePreview
+                  label={`v${newer.versionNumber}`}
+                  page={newerPage}
+                  theme={theme}
+                  highlight
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
+  );
+}
+
+function SnapshotPagePreview({
+  label,
+  page,
+  theme,
+  highlight,
+}: {
+  label: string;
+  page: ProjectVersion["snapshot"]["pages"][number] | undefined;
+  theme: BrandTheme;
+  highlight?: boolean;
+}) {
+  return (
+    <figure className="min-w-0">
+      <figcaption
+        className={cn(
+          "mb-1.5 text-xs font-semibold tracking-wide uppercase",
+          highlight ? "text-indigo-600" : "text-slate-500",
+        )}
+      >
+        {label}
+        {!page && " — page not in this version"}
+      </figcaption>
+      {page ? (
+        <ScaledPreview
+          scale={0.3}
+          className="pointer-events-none max-h-96 rounded-lg border border-slate-200"
+        >
+          <WireProvider value={{ styled: false, theme, device: "desktop" }}>
+            <div style={{ width: 1200 }}>
+              {[...page.sections]
+                .sort((a, b) => a.order - b.order)
+                .map((section) => (
+                  <SectionRenderer key={section.id} section={section} />
+                ))}
+            </div>
+          </WireProvider>
+        </ScaledPreview>
+      ) : (
+        <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-slate-300 text-xs text-slate-400">
+          Not present
+        </div>
+      )}
+    </figure>
   );
 }
 
