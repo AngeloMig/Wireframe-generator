@@ -1,44 +1,65 @@
 "use client";
 
 import { useId } from "react";
-import type { PageSection, SectionLayoutSettings, SectionTemplate } from "@/types";
+import { getVariation, variationsOfType } from "@/data/section-variations";
+import { switchSectionVariation } from "@/lib/sections";
+import { toast } from "@/stores/ui-store";
+import type { PageSection, SectionLayoutSettings } from "@/types";
 import { cn } from "@/utils/cn";
 import { Label, Select } from "@/components/ui/input";
 import type { SectionMutator } from "./inspector-types";
 
-/** Variation, alignment, columns, widths, visibility, mobile behaviour. */
+/** Design variation, alignment, columns, widths, visibility, mobile behaviour. */
 export function LayoutTab({
   section,
-  template,
   onChange,
 }: {
   section: PageSection;
-  template: SectionTemplate;
   onChange: SectionMutator;
 }) {
   const variationId = useId();
+  const designs = variationsOfType(section.sectionType).filter(
+    (v) => v.isActive || v.id === section.variationId,
+  );
+  const current = getVariation(section.variationId);
+
   const setLayout = (patch: Partial<SectionLayoutSettings>) =>
     onChange((s) => ({ ...s, layout: { ...s.layout, ...patch } }));
 
+  const handleSwitch = (targetId: string) => {
+    const target = designs.find((v) => v.id === targetId);
+    if (!target || target.id === section.variationId) return;
+    // Content is preserved whole (shared schema per type); the new design's
+    // default layout applies and customised style settings carry over. Runs
+    // through applySections, so it lands in undo history and autosaves.
+    onChange((s) => switchSectionVariation(s, target));
+    toast("Design changed", "success", `Now using “${target.name}”. Your content was kept.`);
+  };
+
   return (
     <div className="space-y-4 p-4">
-      {template.variations.length > 1 && (
+      {designs.length > 1 && (
         <div>
           <Label htmlFor={variationId} className="mb-1.5 text-xs">
-            Variation
+            Design variation
           </Label>
           <Select
             id={variationId}
             value={section.variationId}
-            onChange={(e) => onChange((s) => ({ ...s, variationId: e.target.value }))}
+            onChange={(e) => handleSwitch(e.target.value)}
             className="h-8 text-xs"
           >
-            {template.variations.map((variation) => (
+            {designs.map((variation) => (
               <option key={variation.id} value={variation.id}>
                 {variation.name}
               </option>
             ))}
           </Select>
+          {current && (
+            <p className="mt-1 text-[11px] text-slate-400">
+              Switching designs keeps your content — only the layout changes.
+            </p>
+          )}
         </div>
       )}
 

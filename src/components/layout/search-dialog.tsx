@@ -1,43 +1,98 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FolderKanban, LayoutTemplate, Search, SearchX } from "lucide-react";
-import { SECTION_TEMPLATES } from "@/data/section-templates";
-import { SECTION_CATEGORY_LABELS } from "@/config/labels";
+import {
+  Activity,
+  CheckSquare,
+  FolderKanban,
+  History,
+  LayoutTemplate,
+  MessageSquare,
+  Search,
+  SearchX,
+  ShieldCheck,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react";
+import {
+  globalSearch,
+  SEARCH_KIND_LABELS,
+  type SearchResult,
+  type SearchResultKind,
+} from "@/lib/global-search";
+import { canViewInternalNotes } from "@/lib/permissions";
 import { useProjectsStore } from "@/stores/projects-store";
+import { useSessionStore } from "@/stores/session-store";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
+const KIND_ICONS: Record<SearchResultKind, LucideIcon> = {
+  project: FolderKanban,
+  "section-design": LayoutTemplate,
+  comment: MessageSquare,
+  "action-item": CheckSquare,
+  version: History,
+  approval: ShieldCheck,
+  member: UserRound,
+  activity: Activity,
+};
+
+const KIND_ORDER: SearchResultKind[] = [
+  "project",
+  "comment",
+  "action-item",
+  "member",
+  "version",
+  "approval",
+  "section-design",
+  "activity",
+];
+
 export function SearchButton() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
   const router = useRouter();
   const projects = useProjectsStore((s) => s.projects);
+  const user = useSessionStore((s) => s.user);
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return { projects: [], templates: [] };
-    return {
-      projects: projects
-        .filter(
-          (p) =>
-            p.name.toLowerCase().includes(q) || p.companyName.toLowerCase().includes(q),
-        )
-        .slice(0, 5),
-      templates: SECTION_TEMPLATES.filter(
-        (t) => t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q),
-      ).slice(0, 5),
-    };
-  }, [query, projects]);
+  // Debounced global search across all collaboration records.
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setResults([]);
+      return;
+    }
+    setSearching(true);
+    const timer = setTimeout(() => {
+      void globalSearch(q, projects, {
+        includeInternal: canViewInternalNotes(user.role),
+      })
+        .then(setResults)
+        .finally(() => setSearching(false));
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [query, projects, user.role]);
+
+  const grouped = useMemo(() => {
+    const groups = new Map<SearchResultKind, SearchResult[]>();
+    for (const kind of KIND_ORDER) {
+      const forKind = results.filter((r) => r.kind === kind);
+      if (forKind.length > 0) groups.set(kind, forKind);
+    }
+    return groups;
+  }, [results]);
 
   const hasQuery = query.trim().length > 0;
-  const hasResults = results.projects.length > 0 || results.templates.length > 0;
+  const hasResults = results.length > 0;
 
   const close = () => {
     setOpen(false);
     setQuery("");
+    setResults([]);
   };
 
   return (
@@ -52,82 +107,61 @@ export function SearchButton() {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search projects and sections…"
+            placeholder="Search projects, comments, versions, people…"
             className="pl-9"
-            aria-label="Search projects and sections"
+            aria-label="Search everything"
           />
         </div>
-        <div className="mt-4 min-h-40">
+        <div className="mt-4 max-h-96 min-h-40 overflow-y-auto">
           {!hasQuery && (
             <p className="py-8 text-center text-sm text-slate-500">
-              Start typing to search your projects and the section library.
+              Search your projects, section designs, comments, action items, versions,
+              approvals, members, and activity.
             </p>
           )}
-          {hasQuery && !hasResults && (
+          {hasQuery && !hasResults && !searching && (
             <div className="flex flex-col items-center py-8 text-center">
               <SearchX className="size-6 text-slate-300" aria-hidden />
-              <p className="mt-2 text-sm font-medium text-slate-700">No results for “{query}”</p>
-              <p className="mt-0.5 text-sm text-slate-500">
-                Try a different term, or browse the template library.
+              <p className="mt-2 text-sm font-medium text-slate-700">
+                No results for “{query}”
               </p>
+              <p className="mt-0.5 text-sm text-slate-500">Try a different term.</p>
             </div>
           )}
-          {results.projects.length > 0 && (
-            <div className="mb-4">
-              <h3 className="mb-1 text-xs font-semibold tracking-wide text-slate-400 uppercase">
-                Projects
-              </h3>
-              {results.projects.map((project) => (
-                <button
-                  key={project.id}
-                  type="button"
-                  className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-slate-50"
-                  onClick={() => {
-                    close();
-                    router.push(`/projects/${project.id}/overview`);
-                  }}
-                >
-                  <FolderKanban className="size-4 text-slate-400" aria-hidden />
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-slate-900">
-                      {project.name}
-                    </span>
-                    <span className="block truncate text-xs text-slate-500">
-                      {project.companyName}
-                    </span>
-                  </span>
-                </button>
-              ))}
-            </div>
+          {hasQuery && searching && !hasResults && (
+            <p className="py-8 text-center text-sm text-slate-400">Searching…</p>
           )}
-          {results.templates.length > 0 && (
-            <div>
-              <h3 className="mb-1 text-xs font-semibold tracking-wide text-slate-400 uppercase">
-                Section templates
-              </h3>
-              {results.templates.map((template) => (
-                <button
-                  key={template.id}
-                  type="button"
-                  className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-slate-50"
-                  onClick={() => {
-                    close();
-                    router.push("/templates");
-                  }}
-                >
-                  <LayoutTemplate className="size-4 text-slate-400" aria-hidden />
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-slate-900">
-                      {template.name}
+          {[...grouped.entries()].map(([kind, kindResults]) => {
+            const Icon = KIND_ICONS[kind];
+            return (
+              <div key={kind} className="mb-4">
+                <h3 className="mb-1 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                  {SEARCH_KIND_LABELS[kind]}
+                </h3>
+                {kindResults.map((result) => (
+                  <button
+                    key={result.id}
+                    type="button"
+                    className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-[var(--surface-secondary)]"
+                    onClick={() => {
+                      close();
+                      router.push(result.href);
+                    }}
+                  >
+                    <Icon className="size-4 shrink-0 text-slate-400" aria-hidden />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-slate-900">
+                        {result.title}
+                      </span>
+                      <span className="block truncate text-xs text-slate-500">
+                        {result.subtitle}
+                      </span>
                     </span>
-                    <span className="block truncate text-xs text-slate-500">
-                      {SECTION_CATEGORY_LABELS[template.category]}
-                    </span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
+                  </button>
+                ))}
+              </div>
+            );
+          })}
         </div>
       </Dialog>
     </>

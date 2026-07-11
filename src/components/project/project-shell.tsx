@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FolderX } from "lucide-react";
+import { ChevronDown, FolderX } from "lucide-react";
 import { projectCompletion } from "@/lib/project-utils";
 import { useProject } from "@/hooks/use-project";
+import { useSessionStore } from "@/stores/session-store";
+import { isAgencyUser, type UserRole } from "@/types";
 import { cn } from "@/utils/cn";
 import { ProjectStatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,15 +15,30 @@ import { ProgressBar } from "@/components/ui/progress";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { SaveIndicator } from "./save-indicator";
 
-const PROJECT_TABS = [
+interface ProjectTab {
+  segment: string;
+  label: string;
+  /** Restrict a tab to a role group; omit = everyone. */
+  show?: (role: UserRole) => boolean;
+}
+
+const PROJECT_TABS: ProjectTab[] = [
   { segment: "overview", label: "Overview" },
-  { segment: "questionnaire", label: "Questionnaire" },
-  { segment: "sitemap", label: "Pages & Sitemap" },
+  { segment: "sitemap", label: "Pages" },
   { segment: "editor", label: "Editor" },
-  { segment: "assets", label: "Assets" },
-  { segment: "activity", label: "Activity" },
+  { segment: "assets", label: "Content" },
+  { segment: "activity", label: "Feedback" },
   { segment: "review", label: "Review" },
-] as const;
+];
+
+const MORE_TABS: ProjectTab[] = [
+  { segment: "questionnaire", label: "Project brief" },
+  { segment: "members", label: "People & access" },
+  { segment: "versions", label: "Version history" },
+  { segment: "revisions", label: "Revision requests", show: (role) => role === "customer" || role === "admin" },
+  { segment: "agency-review", label: "Agency review", show: isAgencyUser },
+  { segment: "handoff", label: "Export handoff", show: isAgencyUser },
+];
 
 /**
  * Shared frame for all /projects/[projectId]/* routes: project header,
@@ -30,20 +47,31 @@ const PROJECT_TABS = [
 export function ProjectShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { project, projectId, hydrated } = useProject();
+  const user = useSessionStore((s) => s.user);
 
   if (!hydrated) return <PageSkeleton />;
 
-  if (!project) {
+  const isCustomer = user.role === "customer";
+
+  // Customers only ever see projects assigned to them.
+  const accessible = project && (!isCustomer || project.ownerId === user.id);
+
+  if (!project || !accessible) {
     return (
       <EmptyState
         icon={FolderX}
         title="Project not found"
-        description="This project doesn't exist in your browser — it may have been deleted or the link is incorrect."
+        description={
+          isCustomer
+            ? "This project isn't shared with you. If you think it should be, get in touch with your agency."
+            : "This project doesn't exist in your browser — it may have been deleted or the link is incorrect."
+        }
         action={
-          <Link href="/projects">
-            <Button>Back to projects</Button>
+          <Link href={isCustomer ? "/dashboard" : "/projects"}>
+            <Button>{isCustomer ? "Back to your projects" : "Back to projects"}</Button>
           </Link>
         }
+        className="mt-10"
       />
     );
   }
@@ -56,12 +84,34 @@ export function ProjectShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  // Customers see review/revisions as simple status screens hanging off the
+  // editor — a slim header instead of the full project-management frame.
+  if (isCustomer) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <h1 className="truncate text-lg font-semibold text-[var(--text-primary)]">
+              {project.name}
+            </h1>
+            <ProjectStatusBadge status={project.status} />
+          </div>
+          <Link href={`/projects/${projectId}/editor`}>
+            <Button variant="outline" size="sm">Back to the editor</Button>
+          </Link>
+        </div>
+        <div>{children}</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
+      <div className="rounded-[var(--radius-panel)] border border-[var(--border-default)] bg-white px-5 py-5 shadow-[var(--shadow-card)] sm:px-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="truncate text-2xl font-semibold tracking-tight text-slate-900">
+            <h1 className="truncate text-2xl font-bold tracking-[-0.025em] text-[var(--text-primary)]">
               {project.name}
             </h1>
             <ProjectStatusBadge status={project.status} />
@@ -79,10 +129,11 @@ export function ProjectShell({ children }: { children: React.ReactNode }) {
           <ProgressBar value={completion} label={`${project.name} completion`} />
         </div>
       </div>
+      </div>
 
-      <nav aria-label="Project sections" className="-mx-1 overflow-x-auto">
-        <ul className="flex min-w-max items-center gap-1 border-b border-slate-200 px-1">
-          {PROJECT_TABS.map((tab) => {
+      <nav aria-label="Project sections" className="-mx-1 flex items-end gap-2 overflow-x-auto border-b border-[var(--border-default)] px-1">
+        <ul className="flex min-w-max flex-1 items-center gap-1">
+          {PROJECT_TABS.filter((tab) => !tab.show || tab.show(user.role)).map((tab) => {
             const isActive = activeSegment === tab.segment;
             return (
               <li key={tab.segment}>
@@ -90,10 +141,10 @@ export function ProjectShell({ children }: { children: React.ReactNode }) {
                   href={`/projects/${projectId}/${tab.segment}`}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "inline-block border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
+                    "inline-block border-b-2 px-3 py-3 text-sm font-semibold transition-colors",
                     isActive
-                      ? "border-indigo-600 text-indigo-700"
-                      : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-900",
+                      ? "border-[var(--primary)] text-[var(--primary)]"
+                      : "border-transparent text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]",
                   )}
                 >
                   {tab.label}
@@ -102,6 +153,18 @@ export function ProjectShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </ul>
+        <details className="group relative shrink-0 pb-1">
+          <summary className="flex cursor-pointer list-none items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-[var(--text-secondary)] hover:bg-white hover:text-[var(--text-primary)]">
+            More <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
+          </summary>
+          <div className="absolute right-0 z-20 mt-1 w-52 rounded-xl border border-[var(--border-default)] bg-white p-1.5 shadow-[var(--shadow-panel)]">
+            {MORE_TABS.filter((tab) => !tab.show || tab.show(user.role)).map((tab) => (
+              <Link key={tab.segment} href={`/projects/${projectId}/${tab.segment}`} className="block rounded-lg px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary)]">
+                {tab.label}
+              </Link>
+            ))}
+          </div>
+        </details>
       </nav>
 
       <div>{children}</div>

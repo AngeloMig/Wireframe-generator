@@ -16,7 +16,7 @@ import {
   DropdownSeparator,
 } from "@/components/ui/dropdown-menu";
 
-const ROLES: UserRole[] = ["customer", "agency", "admin"];
+const ROLES: UserRole[] = ["customer", "agency-designer", "agency-developer", "agency-pm", "admin"];
 
 export function UserMenu() {
   const router = useRouter();

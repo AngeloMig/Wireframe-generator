@@ -44,7 +44,6 @@ export class LocalProjectRepository implements ProjectRepository {
         createdAt: now,
         updatedAt: now,
       })),
-      comments: [],
       activity: [],
       assets: [],
       createdAt: now,

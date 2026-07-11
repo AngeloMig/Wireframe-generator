@@ -2,20 +2,135 @@
 
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* Shopify-admin neutral scale. slate-* is the app's workhorse neutral, so the
+     whole scale is remapped to Polaris grays rather than sweeping every usage. */
+  --color-slate-50: #fafafa;
+  --color-slate-100: #f1f1f1;
+  --color-slate-200: #e3e3e3;
+  --color-slate-300: #d4d4d4;
+  --color-slate-400: #8a8a8a;
+  --color-slate-500: #616161;
+  --color-slate-600: #4a4a4a;
+  --color-slate-700: #303030;
+  --color-slate-800: #212121;
+  --color-slate-900: #1a1a1a;
+  --color-slate-950: #0f0f0f;
+
+  /* Accent: Polaris blue — focus rings, selection, interactive emphasis. */
+  --color-indigo-50: #eff6fe;
+  --color-indigo-100: #e0f0ff;
+  --color-indigo-200: #c1dcf9;
+  --color-indigo-300: #91c2f2;
+  --color-indigo-400: #4694e6;
+  --color-indigo-500: #0070e0;
+  --color-indigo-600: #005bd3;
+  --color-indigo-700: #0048ab;
+  --color-indigo-800: #003a87;
+  --color-indigo-900: #002e6b;
+  --color-blue-50: #eff6fe;
+  --color-blue-100: #e0f0ff;
+  --color-blue-200: #c1dcf9;
+  --color-blue-300: #91c2f2;
+  --color-blue-400: #4694e6;
+  --color-blue-500: #0070e0;
+  --color-blue-600: #005bd3;
+  --color-blue-700: #0048ab;
+  --color-blue-800: #003a87;
+  --color-blue-900: #002e6b;
+
+  /* Success: Polaris green — status only, never decoration. */
+  --color-emerald-50: #ebf9f1;
+  --color-emerald-100: #cdfee1;
+  --color-emerald-200: #a6e9c5;
+  --color-emerald-300: #7adaa8;
+  --color-emerald-400: #47c188;
+  --color-emerald-500: #2f9e6a;
+  --color-emerald-600: #29845a;
+  --color-emerald-700: #12603e;
+  --color-emerald-800: #0c5132;
+  --color-emerald-900: #0a3d27;
+
+  /* Warning: Polaris caution yellows. */
+  --color-amber-50: #fff8db;
+  --color-amber-100: #ffef9d;
+  --color-amber-200: #ffe993;
+  --color-amber-300: #f5d76b;
+  --color-amber-400: #d9a514;
+  --color-amber-500: #b28400;
+  --color-amber-600: #916c00;
+  --color-amber-700: #4f4700;
+  --color-amber-800: #413b00;
+  --color-amber-900: #332e00;
+
+  /* Danger: Polaris critical reds. */
+  --color-rose-50: #fdf2f1;
+  --color-rose-100: #fedad9;
+  --color-rose-200: #fbc7c5;
+  --color-rose-300: #f1a8a2;
+  --color-rose-400: #e5766a;
+  --color-rose-500: #d93a1f;
+  --color-rose-600: #c5280c;
+  --color-rose-700: #a52209;
+  --color-rose-800: #8e1f0b;
+  --color-rose-900: #71180a;
 }
 
 :root {
   color-scheme: light;
+  --app-background: #f1f1f1;
+  --surface-primary: #ffffff;
+  --surface-secondary: #f7f7f7;
+  --surface-elevated: #ffffff;
+  --surface-pressed: #f1f1f1;
+  --text-primary: #1a1a1a;
+  --text-secondary: #616161;
+  --text-muted: #8a8a8a;
+  --text-on-dark: #ffffff;
+  --border-default: #e3e3e3;
+  --border-strong: #d4d4d4;
+  --border-input: #8a8a8a;
+  --primary: #1a1a1a;
+  --primary-hover: #303030;
+  --primary-active: #454545;
+  --primary-soft: #f1f1f1;
+  --focus-ring: #005bd3;
+  --supporting: #616161;
+  --success: #29845a;
+  --success-soft: #cdfee1;
+  --success-text: #0c5132;
+  --warning: #b28400;
+  --warning-soft: #ffef9d;
+  --warning-text: #4f4700;
+  --danger: #c5280c;
+  --danger-soft: #fedad9;
+  --danger-text: #8e1f0b;
+  --info: #0068a8;
+  --info-soft: #e0f0ff;
+  --info-text: #003a5a;
+  --radius-small: 0.375rem;
+  --radius-medium: 0.5rem;
+  --radius-large: 0.75rem;
+  --radius-panel: 0.75rem;
+  --shadow-subtle: 0 1px 0 rgb(26 26 26 / 0.07);
+  --shadow-card: 0 1px 2px rgb(26 26 26 / 0.05);
+  --shadow-panel: 0 4px 12px rgb(26 26 26 / 0.1);
+  --shadow-overlay: 0 8px 32px rgb(26 26 26 / 0.16);
+  --shadow-bevel: inset 0 1px 0 rgb(255 255 255 / 0.12), inset 0 -1px 0 rgb(0 0 0 / 0.2);
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  background: var(--app-background);
+  color: var(--text-primary);
+  @apply antialiased;
 }
+
+::selection { background: #e0f0ff; color: var(--text-primary); }
 
 /* Visible, consistent focus for keyboard users */
 :focus-visible {
-  outline: 2px solid theme(--color-indigo-500);
-  outline-offset: 2px;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
   border-radius: 4px;
 }
 
@@ -36,16 +151,42 @@ body {
   to { opacity: 1; }
 }
 
-@keyframes slide-up {
-  from { opacity: 0; transform: translateY(8px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
 }
 
-@keyframes slide-in-right {
-  from { opacity: 0; transform: translateX(16px); }
-  to { opacity: 1; transform: translateX(0); }
+/* Entrance motion is quiet fades only; slide-up/slide-in-right are kept as
+   aliases so existing call sites stay valid, but no longer translate. */
+.animate-fade-in { animation: fade-in 120ms ease-out; }
+.animate-slide-up { animation: fade-in 120ms ease-out; }
+.animate-slide-in-right { animation: fade-in 120ms ease-out; }
+.animate-scale-in { animation: scale-in 150ms ease-out; }
+
+/* Wireframe marquee sections. The track holds the item set twice; sliding
+   by -50% then looping reads as an endless scroll. */
+@keyframes wf-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
-.animate-fade-in { animation: fade-in 150ms ease-out; }
-.animate-slide-up { animation: slide-up 180ms ease-out; }
-.animate-slide-in-right { animation: slide-in-right 200ms ease-out; }
+.wf-marquee-track {
+  animation: wf-marquee var(--wf-marquee-duration, 32s) linear infinite;
+  will-change: transform;
+}
+
+.wf-marquee-track[data-direction="right"] {
+  animation-direction: reverse;
+}
+
+.wf-marquee-pausable:hover .wf-marquee-track,
+.wf-marquee-pausable:focus-within .wf-marquee-track,
+.wf-marquee-paused .wf-marquee-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wf-marquee-track {
+    animation: none !important;
+  }
+}

@@ -1,18 +1,18 @@
 import type { AppNotification } from "@/types";
 import { createId, nowIso } from "@/utils/id";
-import { readJson, STORAGE_KEYS, writeJson } from "../storage/local-storage";
-import { ensureSeeded } from "../storage/seed";
+import { STORAGE_KEYS, writeJson } from "../storage/local-storage";
+import { readCollection } from "./local-collection";
 import type { NotificationRepository } from "./types";
 
 export class LocalNotificationRepository implements NotificationRepository {
   private read(): AppNotification[] {
-    ensureSeeded();
-    const items = readJson<AppNotification[]>(STORAGE_KEYS.notifications, []);
-    return Array.isArray(items) ? items : [];
+    return readCollection<AppNotification>(STORAGE_KEYS.notifications);
   }
 
-  async getNotifications(): Promise<AppNotification[]> {
-    return this.read().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  async getNotifications(userId: string): Promise<AppNotification[]> {
+    return this.read()
+      .filter((n) => n.userId === userId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
   async addNotification(
@@ -35,9 +35,18 @@ export class LocalNotificationRepository implements NotificationRepository {
     writeJson(STORAGE_KEYS.notifications, items);
   }
 
-  async markAllRead(): Promise<void> {
-    const items = this.read().map((n) => ({ ...n, isRead: true }));
+  async markAllRead(userId: string): Promise<void> {
+    const items = this.read().map((n) =>
+      n.userId === userId ? { ...n, isRead: true } : n,
+    );
     writeJson(STORAGE_KEYS.notifications, items);
+  }
+
+  async clearNotification(id: string): Promise<void> {
+    writeJson(
+      STORAGE_KEYS.notifications,
+      this.read().filter((n) => n.id !== id),
+    );
   }
 }
 

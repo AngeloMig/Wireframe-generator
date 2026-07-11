@@ -1,13 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Eye,
+  LifeBuoy,
   Maximize,
+  MessageSquare,
   Monitor,
   PencilRuler,
+  Plus,
   Redo2,
   Send,
   Smartphone,
@@ -17,6 +21,8 @@ import {
   ZoomOut,
   Paintbrush,
 } from "lucide-react";
+import { canEditProjectContent } from "@/lib/permissions";
+import { useCollabUiStore } from "@/stores/collab-ui-store";
 import {
   useEditorStore,
   ZOOM_MAX,
@@ -24,11 +30,15 @@ import {
   ZOOM_STEP,
   type DeviceKind,
 } from "@/stores/editor-store";
+import { useSessionStore } from "@/stores/session-store";
 import type { Project, ProjectPage } from "@/types";
 import { cn } from "@/utils/cn";
+import { AskAgencyDialog } from "@/components/customer/ask-agency-dialog";
+import { SubmissionDialog } from "@/components/collab/submission-dialog";
 import { PageStatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/input";
+import { UserMenu } from "@/components/layout/user-menu";
 import { SaveIndicator } from "@/components/project/save-indicator";
 
 const DEVICES: { id: DeviceKind; label: string; icon: typeof Monitor }[] = [
@@ -45,6 +55,9 @@ export function EditorToolbar({
   canRedo,
   onUndo,
   onRedo,
+  selectedSectionId,
+  libraryOpen,
+  onToggleLibrary,
 }: {
   project: Project;
   page: ProjectPage;
@@ -53,8 +66,20 @@ export function EditorToolbar({
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  selectedSectionId?: string | null;
+  libraryOpen?: boolean;
+  onToggleLibrary?: () => void;
 }) {
   const router = useRouter();
+  const user = useSessionStore((s) => s.user);
+  const isCustomer = user.role === "customer";
+  const customerCanEdit = canEditProjectContent(user.role, project.status);
+  const submissionMode =
+    project.status === "revisions-requested" || project.status === "customer-revising"
+      ? ("revisions" as const)
+      : ("review" as const);
+  const [submitOpen, setSubmitOpen] = useState(false);
+  const [askOpen, setAskOpen] = useState(false);
   const device = useEditorStore((s) => s.device);
   const setDevice = useEditorStore((s) => s.setDevice);
   const mode = useEditorStore((s) => s.mode);
@@ -64,21 +89,23 @@ export function EditorToolbar({
   const fitZoom = useEditorStore((s) => s.fitZoom);
   const isPreview = useEditorStore((s) => s.isPreview);
   const setPreview = useEditorStore((s) => s.setPreview);
+  const commentMode = useCollabUiStore((s) => s.commentMode);
+  const setCommentMode = useCollabUiStore((s) => s.setCommentMode);
 
   const iconButton = (active?: boolean) =>
     cn(
       "flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-30",
-      active ? "bg-indigo-50 text-indigo-700" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800",
+      active ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)] hover:text-[var(--text-primary)]",
     );
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-slate-200 bg-white px-3 py-2">
+    <div className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--border-default)] bg-white px-3 py-2 shadow-[var(--shadow-subtle)]">
       {/* Left: project / page context */}
       <div className="flex min-w-0 items-center gap-2">
         <Link
-          href={`/projects/${project.id}/overview`}
-          className="flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-          aria-label="Back to project overview"
+          href={isCustomer ? "/dashboard" : `/projects/${project.id}/overview`}
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)] hover:text-[var(--text-primary)]"
+          aria-label={isCustomer ? "Back to your projects" : "Back to project overview"}
         >
           <ArrowLeft className="size-4" aria-hidden />
         </Link>
@@ -103,9 +130,21 @@ export function EditorToolbar({
           <PageStatusBadge status={page.status} />
         </div>
         <SaveIndicator />
+        {isCustomer && onToggleLibrary && customerCanEdit && (
+          <Button
+            variant={libraryOpen ? "secondary" : "outline"}
+            size="sm"
+            onClick={onToggleLibrary}
+            aria-pressed={libraryOpen}
+            aria-label={libraryOpen ? "Close the section list" : "Add a section to this page"}
+          >
+            <Plus className="size-3.5" aria-hidden />
+            <span className="hidden sm:inline">Add section</span>
+          </Button>
+        )}
       </div>
 
-      <div className="mx-auto flex items-center gap-3">
+      <div className="order-3 mx-auto flex w-full items-center justify-center gap-2 border-t border-[var(--border-default)] pt-2 lg:order-none lg:w-auto lg:border-0 lg:pt-0">
         {/* Undo / redo */}
         <div className="flex items-center gap-0.5">
           <button
@@ -150,7 +189,7 @@ export function EditorToolbar({
 
         {/* Mode toggle */}
         <div
-          className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5"
+          className="flex rounded-lg border border-[var(--border-default)] bg-[var(--surface-secondary)] p-0.5"
           role="group"
           aria-label="Display mode"
         >
@@ -160,7 +199,7 @@ export function EditorToolbar({
             onClick={() => setMode("wireframe")}
             className={cn(
               "flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-              mode === "wireframe" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500",
+              mode === "wireframe" ? "bg-white text-[var(--primary)] shadow-sm" : "text-[var(--text-secondary)]",
             )}
           >
             <PencilRuler className="size-3.5" aria-hidden />
@@ -172,7 +211,7 @@ export function EditorToolbar({
             onClick={() => setMode("styled")}
             className={cn(
               "flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-              mode === "styled" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500",
+              mode === "styled" ? "bg-white text-[var(--primary)] shadow-sm" : "text-[var(--text-secondary)]",
             )}
           >
             <Paintbrush className="size-3.5" aria-hidden />
@@ -183,7 +222,7 @@ export function EditorToolbar({
         <Divider />
 
         {/* Zoom */}
-        <div className="flex items-center gap-0.5">
+        <div className="hidden items-center gap-0.5 xl:flex">
           <button
             type="button"
             className={iconButton()}
@@ -216,8 +255,17 @@ export function EditorToolbar({
         </div>
       </div>
 
-      {/* Right: preview + submit */}
-      <div className="flex items-center gap-2">
+      {/* Right: comment mode + preview + submit */}
+      <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+        <Button
+          variant={commentMode ? "secondary" : "outline"}
+          size="sm"
+          onClick={() => setCommentMode(!commentMode)}
+          aria-pressed={commentMode}
+        >
+          <MessageSquare className="size-3.5" aria-hidden />
+          <span className="hidden sm:inline">{commentMode ? "Exit comments" : "Comment"}</span>
+        </Button>
         <Button
           variant={isPreview ? "secondary" : "outline"}
           size="sm"
@@ -225,13 +273,55 @@ export function EditorToolbar({
           aria-pressed={isPreview}
         >
           <Eye className="size-3.5" aria-hidden />
-          {isPreview ? "Exit preview" : "Preview"}
+          <span className="hidden sm:inline">{isPreview ? "Exit preview" : "Preview"}</span>
         </Button>
-        <Button size="sm" onClick={() => router.push(`/projects/${project.id}/review`)}>
-          <Send className="size-3.5" aria-hidden />
-          Submit
-        </Button>
+        {isCustomer ? (
+          <>
+            {customerCanEdit && (
+              <Button size="sm" onClick={() => setSubmitOpen(true)}>
+                <Send className="size-3.5" aria-hidden />
+                <span className="hidden sm:inline">
+                  {submissionMode === "revisions" ? "Submit changes" : "Submit for review"}
+                </span>
+                <span className="sm:hidden">Submit</span>
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAskOpen(true)}
+              aria-label="Ask the agency for help"
+            >
+              <LifeBuoy className="size-4" aria-hidden />
+              <span className="hidden xl:inline">Ask the agency</span>
+            </Button>
+            <UserMenu />
+          </>
+        ) : (
+          <Button size="sm" onClick={() => router.push(`/projects/${project.id}/review`)}>
+            <Send className="size-3.5" aria-hidden />
+            Submit
+          </Button>
+        )}
       </div>
+
+      {isCustomer && (
+        <>
+          <SubmissionDialog
+            project={project}
+            open={submitOpen}
+            onClose={() => setSubmitOpen(false)}
+            mode={submissionMode}
+          />
+          <AskAgencyDialog
+            project={project}
+            page={page}
+            sectionId={selectedSectionId}
+            open={askOpen}
+            onClose={() => setAskOpen(false)}
+          />
+        </>
+      )}
     </div>
   );
 }

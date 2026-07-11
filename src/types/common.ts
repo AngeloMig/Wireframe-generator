@@ -5,7 +5,25 @@ export interface Timestamps {
   updatedAt: string;
 }
 
-export type UserRole = "customer" | "agency" | "admin";
+export type UserRole =
+  | "customer"
+  | "agency-designer"
+  | "agency-developer"
+  | "agency-pm"
+  | "admin";
+
+export const AGENCY_ROLES: UserRole[] = [
+  "agency-designer",
+  "agency-developer",
+  "agency-pm",
+];
+
+export const ALL_ROLES: UserRole[] = ["customer", ...AGENCY_ROLES, "admin"];
+
+/** Agency staff or platform admin — sees internal notes and agency tools. */
+export function isAgencyUser(role: UserRole): boolean {
+  return role !== "customer";
+}
 
 export interface AppUser {
   id: string;
@@ -16,4 +34,5 @@ export interface AppUser {
   /** Tailwind-safe accent used for the avatar chip. */
   avatarColor: string;
   title: string;
+  organization: string;
 }

@@ -8,8 +8,9 @@ export const APP_CONFIG = {
   shortName: "Blueprint",
   tagline: "Plan your website, section by section",
   agencyName: "Northshore Web Studio",
+  agencyEmail: "hello@northshoreweb.studio",
   /** Bumped when the shape of locally stored data changes. */
-  storageSchemaVersion: 1,
+  storageSchemaVersion: 3,
   storageKeyPrefix: "wbb",
   autosaveDebounceMs: 900,
 } as const;

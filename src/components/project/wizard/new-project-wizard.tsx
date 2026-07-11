@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, Save } from "lucide-react";
 import { getPageTemplate } from "@/data/page-templates";
 import { bestTemplateFor } from "@/lib/recommendations";
-import { createSectionByTemplateId } from "@/lib/sections";
+import { createSectionByVariationId } from "@/lib/sections";
 import { withActivity } from "@/lib/project-utils";
 import { clearWizardDraft, readWizardDraft, writeWizardDraft } from "@/lib/wizard-draft";
 import { useProjectsStore } from "@/stores/projects-store";
@@ -40,12 +40,16 @@ function buildHomepageSections(data: WizardData): PageSection[] {
   if (!template) return [];
   const sections: PageSection[] = [];
   template.sections.forEach((entry, index) => {
-    const section = createSectionByTemplateId(entry.templateId, {
-      variationId: entry.variationId,
+    const section = createSectionByVariationId(entry.variationId, {
       contentOverrides: entry.contentOverrides,
       order: index,
     });
-    if (section) sections.push(section);
+    if (!section) return;
+    sections.push({
+      ...section,
+      layout: { ...section.layout, ...entry.layoutOverrides },
+      style: { ...section.style, ...entry.styleOverrides },
+    });
   });
   return sections;
 }
@@ -135,7 +139,7 @@ export function NewProjectWizard() {
             name: "Homepage",
             navLabel: "Home",
             type: "homepage",
-            status: sections.length > 0 ? "in-progress" : "draft",
+            status: sections.length > 0 ? "content-needed" : "draft",
             isHomepage: true,
             inMainNav: true,
             footerOnly: false,
@@ -178,7 +182,12 @@ export function NewProjectWizard() {
   const isLast = data.step === WIZARD_STEPS.length - 1;
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-4xl">
+      <div className="mb-7 text-center">
+        <p className="text-xs font-bold tracking-[0.12em] text-[var(--primary)] uppercase">New website plan</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-[-0.035em] text-[var(--text-primary)]">Let’s shape the right starting point</h1>
+        <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[var(--text-secondary)]">A few simple choices help us recommend pages and sections that fit your business. You can change everything later.</p>
+      </div>
       {/* Progress indicator */}
       <ol className="mb-8 flex items-center gap-1.5 sm:gap-2" aria-label="Wizard progress">
         {WIZARD_STEPS.map((step, index) => {
@@ -193,8 +202,8 @@ export function NewProjectWizard() {
                 aria-current={isCurrent ? "step" : undefined}
                 className={cn(
                   "h-1.5 w-full rounded-full transition-colors",
-                  isComplete && "cursor-pointer bg-indigo-500 hover:bg-indigo-600",
-                  isCurrent && "bg-indigo-500",
+                  isComplete && "cursor-pointer bg-[var(--primary)] hover:bg-[var(--primary-hover)]",
+                  isCurrent && "bg-[var(--primary)]",
                   !isComplete && !isCurrent && "bg-slate-200",
                 )}
                 aria-label={`Step ${index + 1}: ${step.label}${isComplete ? " (completed)" : ""}`}
@@ -202,7 +211,7 @@ export function NewProjectWizard() {
               <span
                 className={cn(
                   "hidden text-[11px] font-medium sm:block",
-                  isCurrent ? "text-indigo-700" : isComplete ? "text-slate-600" : "text-slate-400",
+                  isCurrent ? "text-[var(--primary)]" : isComplete ? "text-[var(--text-secondary)]" : "text-[var(--text-muted)]",
                 )}
               >
                 {step.label}
@@ -212,12 +221,12 @@ export function NewProjectWizard() {
         })}
       </ol>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+      <div className="rounded-[1.5rem] border border-[var(--border-default)] bg-white p-6 shadow-[var(--shadow-panel)] sm:p-9">
         <div className="mb-6">
-          <p className="text-xs font-medium tracking-wide text-indigo-600 uppercase">
+          <p className="text-xs font-bold tracking-[0.1em] text-[var(--primary)] uppercase">
             Step {data.step + 1} of {WIZARD_STEPS.length}
           </p>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
+          <h2 className="mt-2 text-2xl font-bold tracking-[-0.025em] text-[var(--text-primary)]">
             {
               [
                 "Tell us about your project",
@@ -228,7 +237,7 @@ export function NewProjectWizard() {
                 "Choose your starting point",
               ][data.step]
             }
-          </h1>
+          </h2>
         </div>
 
         {data.step === 0 && (

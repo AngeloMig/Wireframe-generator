@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { getUserForRole, MOCK_USERS } from "@/data/users";
+import { getUserForRole, MOCK_USERS, normalizeLegacyRole } from "@/data/users";
 import { readJson, STORAGE_KEYS, writeJson } from "@/lib/storage/local-storage";
 import type { AppUser, UserRole } from "@/types";
 
@@ -31,9 +31,11 @@ export const useSessionStore = create<SessionState>((set) => ({
   isLoggedIn: false,
   hydrate: () => {
     const stored = readJson<StoredSession | null>(STORAGE_KEYS.session, null);
-    if (stored && MOCK_USERS.some((u) => u.role === stored.role)) {
+    if (stored) {
+      // Pre-v3 sessions stored the legacy "agency" role.
+      const role = normalizeLegacyRole(stored.role);
       set({
-        user: getUserForRole(stored.role),
+        user: getUserForRole(role),
         isLoggedIn: stored.isLoggedIn,
         hydrated: true,
       });

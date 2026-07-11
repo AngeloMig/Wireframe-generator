@@ -91,7 +91,7 @@ export function Dialog({
         type="button"
         aria-label="Close dialog"
         tabIndex={-1}
-        className="absolute inset-0 animate-fade-in cursor-default bg-slate-900/40"
+        className="absolute inset-0 animate-fade-in cursor-default bg-slate-900/50"
         onClick={onClose}
       />
       <div
@@ -102,11 +102,11 @@ export function Dialog({
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
         className={cn(
-          "relative flex max-h-[85vh] w-full animate-slide-up flex-col rounded-xl bg-white shadow-xl",
+          "relative flex max-h-[85vh] w-full animate-scale-in flex-col rounded-xl bg-white shadow-[var(--shadow-overlay)]",
           sizeClass,
         )}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-4 py-3">
           <div>
             <h2 id={titleId} className="text-base font-semibold text-slate-900">
               {title}
@@ -121,9 +121,9 @@ export function Dialog({
             <X className="size-4" aria-hidden />
           </Button>
         </div>
-        <div className="overflow-y-auto px-5 py-4">{children}</div>
+        <div className="overflow-y-auto px-4 py-4">{children}</div>
         {footer && (
-          <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-4">
+          <div className="flex justify-end gap-2 border-t border-slate-200 px-4 py-3">
             {footer}
           </div>
         )}

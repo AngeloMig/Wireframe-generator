@@ -1,7 +1,7 @@
 import type { PageTemplate } from "@/types";
 
 /**
- * Full homepage templates. Each references section templates by id;
+ * Full homepage templates. Each references section design variations by id;
  * sections are instantiated when the template is applied to a page.
  */
 
@@ -21,15 +21,15 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
     createdAt: T0,
     updatedAt: T0,
     sections: [
-      { templateId: "announcement-bar" },
-      { templateId: "header-ecommerce" },
-      { templateId: "hero-split" },
-      { templateId: "collection-cards" },
-      { templateId: "featured-products" },
-      { templateId: "product-benefits" },
-      { templateId: "testimonial-cards" },
-      { templateId: "newsletter-signup" },
-      { templateId: "footer-standard" },
+      { variationId: "nav-announcement-bar" },
+      { variationId: "nav-ecommerce" },
+      { variationId: "hero-split" },
+      { variationId: "ecom-collections" },
+      { variationId: "ecom-featured" },
+      { variationId: "ecom-benefits" },
+      { variationId: "testi-cards" },
+      { variationId: "cta-newsletter" },
+      { variationId: "footer-columns" },
     ],
   },
   {
@@ -45,15 +45,15 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
     createdAt: T0,
     updatedAt: T0,
     sections: [
-      { templateId: "header-standard", variationId: "with-cta" },
-      { templateId: "hero-stats" },
-      { templateId: "logo-row" },
-      { templateId: "services-cards" },
-      { templateId: "services-process" },
-      { templateId: "testimonial-featured" },
-      { templateId: "case-study-cards" },
-      { templateId: "consultation-cta" },
-      { templateId: "footer-standard" },
+      { variationId: "nav-standard" },
+      { variationId: "hero-stats" },
+      { variationId: "marquee-logo-static" },
+      { variationId: "svc-icon-cards" },
+      { variationId: "svc-process" },
+      { variationId: "testi-featured" },
+      { variationId: "testi-case-studies" },
+      { variationId: "cta-centered" },
+      { variationId: "footer-columns" },
     ],
   },
   {
@@ -69,16 +69,22 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
     createdAt: T0,
     updatedAt: T0,
     sections: [
-      { templateId: "header-standard", variationId: "with-cta" },
-      { templateId: "hero-centered", variationId: "with-image" },
-      { templateId: "logo-row" },
-      { templateId: "image-text" },
-      { templateId: "company-values", contentOverrides: { eyebrow: "Features", heading: "Everything your team needs" } },
-      { templateId: "stats-section" },
-      { templateId: "testimonial-cards" },
-      { templateId: "faq-accordion" },
-      { templateId: "consultation-cta", contentOverrides: { heading: "Start your free trial", buttonLabel: "Try it free" } },
-      { templateId: "footer-standard" },
+      { variationId: "nav-cta" },
+      { variationId: "hero-centered" },
+      { variationId: "marquee-logos" },
+      { variationId: "content-image-text" },
+      {
+        variationId: "content-values",
+        contentOverrides: { eyebrow: "Features", heading: "Everything your team needs" },
+      },
+      { variationId: "content-stats" },
+      { variationId: "testi-cards" },
+      { variationId: "faq-accordion" },
+      {
+        variationId: "cta-centered",
+        contentOverrides: { heading: "Start your free trial", buttonLabel: "Try it free" },
+      },
+      { variationId: "footer-columns" },
     ],
   },
   {
@@ -94,14 +100,14 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
     createdAt: T0,
     updatedAt: T0,
     sections: [
-      { templateId: "header-standard" },
-      { templateId: "hero-split", variationId: "image-left" },
-      { templateId: "services-cards" },
-      { templateId: "brand-intro" },
-      { templateId: "review-summary" },
-      { templateId: "faq-accordion" },
-      { templateId: "contact-form" },
-      { templateId: "footer-standard" },
+      { variationId: "nav-utility" },
+      { variationId: "hero-split", layoutOverrides: { imagePosition: "left" } },
+      { variationId: "svc-icon-cards" },
+      { variationId: "content-intro" },
+      { variationId: "testi-review-summary" },
+      { variationId: "faq-accordion" },
+      { variationId: "cta-contact-form" },
+      { variationId: "footer-contact" },
     ],
   },
   {
@@ -117,14 +123,20 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
     createdAt: T0,
     updatedAt: T0,
     sections: [
-      { templateId: "header-centered" },
-      { templateId: "hero-fullwidth" },
-      { templateId: "case-study-cards", contentOverrides: { eyebrow: "Selected work", heading: "Recent projects" } },
-      { templateId: "mission-statement" },
-      { templateId: "services-list" },
-      { templateId: "logo-row" },
-      { templateId: "consultation-cta", contentOverrides: { heading: "Have a project in mind?", buttonLabel: "Start a conversation" } },
-      { templateId: "footer-standard", variationId: "simple" },
+      { variationId: "nav-editorial" },
+      { variationId: "hero-fullbg" },
+      {
+        variationId: "testi-case-studies",
+        contentOverrides: { eyebrow: "Selected work", heading: "Recent projects" },
+      },
+      { variationId: "content-statement" },
+      { variationId: "svc-list" },
+      { variationId: "marquee-logo-static" },
+      {
+        variationId: "cta-centered",
+        contentOverrides: { heading: "Have a project in mind?", buttonLabel: "Start a conversation" },
+      },
+      { variationId: "footer-editorial" },
     ],
   },
 ];

@@ -17,10 +17,16 @@ lucide-react. Scripts: `npm run dev` / `npm run build` / `npm run lint` (eslint 
   page management, review/submit, assets, activity, templates browser, settings
   (reset demo data), admin stubs (template toggle table, users, orgs).
 - **Phase 3 (wireframe editor)** ✅ COMPLETE — build + lint clean, routes smoke-tested.
-- **Phase 3.5 (Prebuilt Wireframe Section Library)** ⬜ **NEXT — full spec in the
-  "NEXT PHASE" section near the bottom of this file.**
-- **Phase 4 (collaboration: comments, approvals, notifications-on-review)** ⬜ not started.
-- **Phase 5 (admin polish, a11y sweep, refactors)** ⬜ not started.
+- **Phase 3.5 (Prebuilt Wireframe Section Library)** ✅ COMPLETE — 86 variations across
+  10 section types (`src/data/section-variations.ts`), shared content schemas per type
+  (`src/data/section-schemas.ts`), component registry
+  (`editor/wireframes/registry.ts` + `sections/*.tsx`), library rework with favorites,
+  preview modal, FAQ inspector panel, storage schema v2 migration.
+- **Phase 4 (collaboration, review, versions, approvals)** ✅ COMPLETE — see the
+  "PHASE 4" section below. Build + lint clean, primary workflow browser-tested
+  end-to-end (submit → agency review → revisions → resubmit → approvals → export).
+- **Phase 5 (Supabase backend)** ⬜ NOT STARTED — do not begin until the Phase 4
+  work has been reviewed and approved by the user.
 
 ## Phase 3 editor — architecture (files under `src/components/editor/` unless noted)
 - `src/stores/editor-store.ts` ✅ UI state: page, selection, device (desktop 1200 /
@@ -100,155 +106,106 @@ process was serving while a rebuild ran. Kill whatever listens on port 3000
   and `npm run lint` clean before finishing any stage.
 
 ## Verification flow
-Login page → enter as Customer → dashboard → open "Aurora Living" demo project
+Login page → enter as Customer → dashboard → open the "Nordhaus" demo project
 (furniture ecommerce, has a seeded homepage) → editor: drag section in, reorder,
 edit heading, change variation, add note, switch device + styled mode, refresh
 (edits persist), submit for review from the Review tab.
 
 ---
 
-# NEXT PHASE — Prebuilt Wireframe Section Library (Phase 3.5)
+# PHASE 4 — Collaboration, Review, Versions, Approvals (COMPLETE)
 
-Goal: a professional library of prebuilt section **design variations** per category
-that customers preview, drag onto the canvas, and customize — never designing from
-scratch. Still NO Supabase / auth / billing.
+Frontend-only; all persistence via repository interfaces over localStorage so
+Supabase can swap in later. Roles expanded to customer / agency-designer /
+agency-developer / agency-pm / admin (`UserRole` in src/types/common.ts,
+legacy "agency" migrates to agency-designer).
 
-## Architecture refactor (do this first)
-Move from "template + cosmetic variations" to **sectionType + shared content schema
-+ variation registry**:
+## Data layer
+- `src/types/collaboration.ts` — ProjectMember, ProjectComment (scope,
+  visibility, priority, mentions, replies, attachments, action-item fields,
+  deletedSection context), PageReviewStatus/SectionReviewStatus,
+  SectionVariationSuggestion, ApprovalRecord, ProjectVersion (+snapshot),
+  RevisionRequest.
+- Repository interfaces in `src/lib/repositories/types.ts`; Local*
+  implementations: comment / member / version / approval / suggestion /
+  revision repositories (+ per-user notification repo). Supabase-ready:
+  SupabaseCommentRepository, SupabaseProjectMemberRepository,
+  SupabaseVersionRepository, SupabaseApprovalRepository,
+  SupabaseSuggestionRepository, SupabaseRevisionRequestRepository,
+  SupabaseNotificationRepository (activity stays embedded in Project and
+  flows through ProjectRepository).
+- Zustand stores per collection (`src/stores/*-store.ts`, keyed by projectId)
+  + `collab-ui-store` for transient UI (panel, comment mode, filters, compare
+  picks). IMPORTANT: selectors return a stable EMPTY constant, and after
+  `await store.load()` you must RE-READ `getState()` (see comments in
+  src/lib/collab-service.ts — pre-load snapshots are stale).
+- `src/lib/collab-service.ts` — ALL multi-step workflows (submit/review/
+  revisions/approve/unlock/restore/suggestions + notification fan-out).
+- `src/lib/permissions.ts` — reusable role checks (not UI-only).
+- `src/lib/review-transitions.ts` — central status transition tables
+  (project/page/section) with allowedRoles/requiresMessage/createsVersion;
+  admins may perform any listed transition; invalid moves get explanations.
+- Storage schema v3 (`migrateV2toV3` in src/lib/storage/seed.ts): embedded
+  project.comments → standalone collection, "in-progress" page status →
+  "content-needed", sections gain reviewStatus, notifications become
+  per-user (actionUrl), roles normalized. Browser-tested with a simulated
+  v2 payload — nothing destroyed.
 
-```ts
-type SectionType = "navigation" | "hero" | "faq" | "marquee" | "testimonials"
-  | "services" | "cta" | "footer";
+## UI
+- Collaboration panel (`components/collab/collaboration-panel.tsx`) on
+  overview, editor comment mode, agency review: quick filters (all/open/
+  assigned/mentions/action items/resolved/internal), detail filters, 5 sorts.
+- Composer with @mention dropdown (ids stored separately), visibility
+  selector (agency only), priority, assignee, action item + due date,
+  object-URL attachments. Comment cards: reply/edit/delete(confirm)/resolve/
+  reopen/assign/priority/copy link/jump to section/mark complete; internal
+  notes amber-tinted; deleted-section comments keep a snapshot + Restore.
+- Editor Comment Mode: toolbar toggle, numbered markers (color by state/
+  priority, reply counts), click-to-target composer, editing paused; section
+  delete preserves comments via deletedSection.
+- Review submission (`submission-dialog.tsx`): included/excluded pages,
+  blocking (no homepage / empty homepage / missing details) vs warnings;
+  creates version, locks editing (status-driven via canEditProjectContent).
+- Agency Review Mode (`/agency-review`): per-section wireframes + transition
+  buttons, feedback/internal notes, suggest-design dialog, request-revisions
+  dialog (pages, sections, action items, priority, due date), send for
+  approval (PM), explicit Edit Wireframe.
+- Customer Revision Mode (`/revisions`): request summary, progress, required
+  pages/sections jump links, action items, pre-submit warnings.
+- Approvals on `/review`: page approve (locks page + sections) → blueprint
+  approve (acknowledgement checkbox, stores approvedVersionId); PM/admin
+  Unlock with required reason (revokes approval, creates version, notifies).
+- Versions (`/versions`): list with triggers/approval badges, view, rename
+  manual, restore (backup version created first), compare — customer-friendly
+  diff (`src/lib/version-compare.ts`).
+- `/members`: add mock member, role/access changes, primary contact (PM/admin).
+- `/handoff`: internal vs customer-facing JSON export + print view + copy
+  summary; customer exports exclude agency-only comments and internal notes.
+- Dashboards: customer signal tiles + priority actions; agency work queues +
+  urgent/overdue; notification panel with unread filter + clear; global
+  search covers comments/action items/versions/approvals/members/activity.
 
-interface SectionVariation {
-  id: string; sectionType: SectionType; name: string; description: string;
-  previewImage?: string; tags: string[]; supportedPageTypes: PageType[];
-  componentKey: string;
-  defaultLayout: Record<string, unknown>; defaultStyle: Record<string, unknown>;
-  responsiveSettings: Record<string, unknown>;
-}
-// PageSection gains sectionType + variationId (replaces templateId semantics).
-```
+## Verification flow (browser-tested end to end)
+Reset demo data → customer: comment w/ mention in editor comment mode, accept
+product-grid suggestion (content preserved), submit for review (v3 snapshot,
+agency notified) → designer: start review, request revisions (v4, action
+items assigned) → customer: revision mode, complete action item, submit (v5)
+→ PM: start review, send for approval, compare v1→v5 → customer: approve
+homepage (v6, locked) + blueprint (v7, approvedVersionId) → PM: handoff
+export, internal/customer privacy verified. Zero console errors.
 
-- **One shared content schema per sectionType** (don't duplicate content structures
-  across variations of the same type). Content is separate from design: switching
-  variation preserves compatible content (FAQ heading/description/questions/answers/
-  CTA; nav links; marquee items) — only layout/visual presentation changes.
-- **Component registry**, not a giant switch in the editor:
-  `sectionComponentRegistry[sectionType][componentKey] → React component`.
-  Missing variation id → helpful error card, never a crash.
-- Existing code to refactor: `src/data/section-templates.ts` (36 templates),
-  `wireframes/section-wireframe.tsx` (current big switch — split into per-type
-  variation components consumed via the registry), `PageSection.templateId` usage
-  across editor/canvas/inspector/sitemap/demo data.
-- **localStorage migration required**: bump `APP_CONFIG.storageSchemaVersion` and add
-  a migration in `src/lib/storage/seed.ts` mapping old `templateId`/`variationId`
-  records onto the new sectionType/variation ids (or reseed demo data if mapping is
-  impractical — but don't silently corrupt existing saves).
+## Known gotchas (Phase 4 additions)
+- A stray `~/package-lock.json` once made Next infer the HOME dir as the
+  workspace root → builds appeared to hang for 10+ min. Fixed permanently via
+  `outputFileTracingRoot` in next.config.ts.
+- Zustand: never return fresh `[]` from a selector (infinite getSnapshot
+  loop) and never read a pre-`await` getState() snapshot after a load.
 
-## Library panel (rework `library/section-library.tsx`)
-Categories first (Navigation, Hero, FAQ, Marquee & Ticker, Testimonials, Services,
-Calls to Action, Footer) → selecting a category shows its variation cards:
-wireframe thumbnail (code-generated, NO external image URLs), name, short
-description, tags, Preview button, Add button, drag handle. Keep search, category
-filter, page-type filter, recently used; ADD **favorites** (persist locally) and
-recommended.
-
-## Preview modal
-Modal/drawer per variation: desktop/tablet/mobile preview + wireframe/styled toggle,
-name, description, example content, "Add to Page" button. Reuse `WireProvider` +
-device widths from `src/stores/editor-store.ts`. Accessible dialog (reuse ui/dialog).
-
-## Required variations
-**Navigation — 10, all fully functional wireframes:**
-01 Standard left logo (links center/right, CTA, mobile hamburger) · 02 Centered logo
-(links split both sides, optional announcement bar) · 03 Minimal (3–5 links, simple
-CTA, spacious) · 04 Ecommerce (categories, search, account, cart, optional
-announcement) · 05 Mega menu (large dropdown preview: columns + featured promo area —
-wireframe representation is enough) · 06 Transparent overlay (overlaps hero,
-light/dark modes, sticky-state preview) · 07 Sidebar nav (fixed left vertical,
-portfolio/editorial) · 08 Utility bar (contact/language bar above main nav) ·
-09 CTA-focused (minimal links, prominent CTA, optional login) · 10 Editorial
-(oversized/centered logo, spacious, premium).
-Shared nav content: logo, links[], ctaLabel, ctaUrl, announcementText, showSearch,
-showAccount, showCart.
-
-**FAQ — 10, all functional:** 01 Standard accordion · 02 Two-column accordion
-(1 col mobile) · 03 Sidebar categories (left categories, right questions; becomes a
-dropdown on mobile) · 04 Tabbed categories (tabs must switch) · 05 FAQ cards grid ·
-06 Featured question + list · 07 Searchable (search input filters questions locally)
-· 08 With contact/support CTA card · 09 Numbered editorial list · 10 Dark
-high-contrast. Shared FAQ content: eyebrow, heading, description, categories[],
-questions[] {question, answer, categoryId}, ctaHeading, ctaDescription, ctaButton,
-searchPlaceholder. **Accordion interactions must work** (aria-expanded, keyboard).
-
-**Marquee — 8:** 01 Logo marquee · 02 Text statement · 03 Category · 04 Review ·
-05 Image cards · 06 Announcement ticker · 07 Dual-direction (two rows opposite ways)
-· 08 Static-to-motion (static if items fit, animates on overflow).
-Settings: animation on/off, direction, speed slow/medium/fast, pause on hover,
-manual drag/scroll on mobile, item spacing, 1–2 rows, static fallback, fade edges,
-show item labels. **Respect prefers-reduced-motion**: no auto-animation, fall back
-to horizontally scrollable/wrapped static layout. Pause on hover AND keyboard focus.
-
-**Foundation records + at least 3 fully polished wireframes each** (rest simpler but
-NOT empty placeholders): Hero ×12 (centered, split image, full-bg image, with form,
-product-focused, with statistics, with logo row, video, editorial text, with cards,
-ecommerce promotion, minimal headline) · Testimonials ×8 · Services ×8 · CTA ×8 ·
-Footer ×8.
-
-## Inspector integration
-Fields load per sectionType. FAQ: heading/description edits, add/edit/remove/
-duplicate/reorder questions, create categories + assign questions, edit CTA.
-Navigation: logo, add/remove/reorder links, CTA, toggles for announcement/search/
-account/cart, transparent-vs-solid where supported. Marquee: add/remove/duplicate/
-reorder items, change item type, speed, direction, pause-on-hover, fade edges,
-animation toggle. (Current schema-driven `inspector/content-tab.tsx` covers most of
-this — extend for category assignment + per-type settings panels.)
-
-## Variation switching (rules)
-1. Preserve section content. 2. Apply new variation's default layout. 3. Preserve
-compatible custom style settings. 4. Keep the same PageSection id. 5. Push to undo
-history. 6. Autosave. 7. Success toast. Confirmation dialog ONLY when switching
-would drop incompatible content.
-
-## DnD, thumbnails, responsive, a11y
-- Drag variation directly onto page / between sections, Add button, reorder,
-  duplicate, delete, undo — clear drop indicator (Phase 3 editor already does most;
-  keep it working through the refactor).
-- Thumbnails: lightweight React/CSS components (extend
-  `library/section-thumbnail.tsx` pattern), representing columns/hierarchy/images/
-  cards/accordions/buttons.
-- Deliberate desktop/tablet/mobile behavior per variation (nav → mobile menu,
-  FAQ columns stack, sidebar FAQ → dropdown, marquee → manual scroll, CTA/footer
-  columns stack/wrap) — not just shrinking.
-- A11y: keyboard Add buttons + reordering, accessible accordions (aria-expanded),
-  focus-visible, marquee pause controls, reduced motion, semantic nav elements,
-  accessible dialogs.
-
-## Development order
-1 refactor data architecture → 2 shared content schemas → 3 variation registry →
-4 variation browser → 5 preview modal → 6 Navigation ×10 → 7 FAQ ×10 → 8 Marquee ×8
-→ 9 remaining categories → 10 inspector integration → 11 variation switching →
-12 dnd integration → 13 responsive → 14 accessibility → 15 test autosave + undo.
-
-## Testing checklist
-All 10 nav / 10 FAQ / 8 marquee variations addable · drag into empty page · insert
-between two sections · reorder · FAQ content survives design switch · nav links
-survive switch · marquee items survive switch · refresh preserves variations · undo
-restores previous variation · mobile preview correct · reduced motion disables
-marquee animation · zero TS errors · zero console errors.
-
-## Final output expected
-Run build + lint, fix everything; summarize every variation created; flag which are
-fully polished vs simplified; list the registry files; explain how to add a new
-variation; explain how content is preserved across design switches.
-
----
-
-## Phase 4 pointers (after the section library)
-Comment system types already exist (`ProjectComment`, replies, status) and demo data
-contains comments. Build: comment panel (project/page/section targets), agency role
-actions (request revisions, mark ready), approval flow, notifications on submit/
-comment (notifications store exists). The review page already flips status to
-`ready-for-review` and pushes a notification.
+## Phase 5 pointers (Supabase — DO NOT START until Phase 4 is approved)
+Swap Local* repositories for Supabase* implementations behind the same
+interfaces; enforce `src/lib/permissions.ts` + `review-transitions.ts` rules
+in RLS/server functions; all ids are UUID-compatible; organization/project
+ids on every record. Non-critical leftovers: comment attachments are
+object-URLs (lost on reload by design), editor comment markers are
+desktop-first, notification panel has no pagination, action-item due-soon
+notifications are not scheduled (no cron in the prototype).

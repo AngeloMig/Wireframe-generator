@@ -29,10 +29,10 @@ export function SelectableCard({
       disabled={disabled}
       onClick={onToggle}
       className={cn(
-        "relative flex cursor-pointer flex-col rounded-xl border bg-white p-4 text-left shadow-sm transition-all",
+        "relative flex cursor-pointer flex-col rounded-xl border bg-white p-4 text-left shadow-[var(--shadow-card)] transition-colors",
         selected
-          ? "border-indigo-500 ring-2 ring-indigo-100"
-          : "border-slate-200 hover:border-slate-300 hover:shadow-md",
+          ? "border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600"
+          : "border-slate-200 hover:border-slate-300",
         disabled && "cursor-not-allowed opacity-50",
         className,
       )}
@@ -41,7 +41,7 @@ export function SelectableCard({
         aria-hidden
         className={cn(
           "absolute top-3 right-3 flex size-5 items-center justify-center rounded-full border transition-colors",
-          selected ? "border-indigo-500 bg-indigo-500 text-white" : "border-slate-300 bg-white",
+          selected ? "border-indigo-600 bg-indigo-600 text-white" : "border-slate-300 bg-white",
         )}
       >
         {selected && <Check className="size-3" strokeWidth={3} />}

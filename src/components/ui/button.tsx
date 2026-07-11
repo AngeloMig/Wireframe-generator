@@ -15,22 +15,22 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    "bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 active:bg-indigo-800 disabled:bg-indigo-300",
+    "bg-[var(--primary)] text-white shadow-[var(--shadow-bevel)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none",
   secondary:
-    "bg-slate-900 text-white shadow-sm hover:bg-slate-800 active:bg-slate-950 disabled:bg-slate-400",
+    "border border-[var(--border-default)] bg-white text-[var(--text-primary)] shadow-[var(--shadow-subtle)] hover:bg-[var(--surface-secondary)] active:bg-[var(--surface-pressed)] disabled:text-slate-400 disabled:shadow-none",
   outline:
-    "border border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900 disabled:text-slate-400",
-  ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:text-slate-400",
+    "border border-[var(--border-default)] bg-white text-[var(--text-primary)] shadow-[var(--shadow-subtle)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-secondary)] disabled:text-slate-400",
+  ghost: "text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)] hover:text-[var(--text-primary)] disabled:text-slate-400",
   danger:
-    "bg-rose-600 text-white shadow-sm hover:bg-rose-700 active:bg-rose-800 disabled:bg-rose-300",
+    "bg-rose-600 text-white shadow-[var(--shadow-bevel)] hover:bg-rose-700 active:bg-rose-800 disabled:bg-rose-300 disabled:shadow-none",
 };
 
 const sizeClasses: Record<Size, string> = {
-  sm: "h-8 gap-1.5 rounded-lg px-3 text-sm",
-  md: "h-9.5 gap-2 rounded-lg px-4 text-sm",
-  lg: "h-11 gap-2 rounded-xl px-5 text-base",
-  icon: "h-9.5 w-9.5 rounded-lg",
-  "icon-sm": "h-8 w-8 rounded-lg",
+  sm: "h-7 gap-1.5 rounded-lg px-2.5 text-[13px]",
+  md: "h-8 gap-2 rounded-lg px-3 text-[13px]",
+  lg: "h-9 gap-2 rounded-lg px-4 text-sm",
+  icon: "h-8 w-8 rounded-lg",
+  "icon-sm": "h-7 w-7 rounded-lg",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -40,7 +40,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       type={type ?? "button"}
       disabled={disabled || isLoading}
       className={cn(
-        "inline-flex shrink-0 cursor-pointer items-center justify-center font-medium transition-colors disabled:cursor-not-allowed",
+        "inline-flex shrink-0 cursor-pointer items-center justify-center font-medium transition-[background-color,color,border-color,box-shadow] duration-100 disabled:cursor-not-allowed",
         variantClasses[variant],
         sizeClasses[size],
         className,

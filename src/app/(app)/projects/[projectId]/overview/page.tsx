@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowRight,
   Check,
@@ -22,7 +24,11 @@ import {
   projectCompletion,
 } from "@/lib/project-utils";
 import { useProject } from "@/hooks/use-project";
-import { formatRelative } from "@/utils/dates";
+import { useCollabUiStore } from "@/stores/collab-ui-store";
+import { selectProjectComments, useCommentsStore } from "@/stores/comments-store";
+import { useSessionStore } from "@/stores/session-store";
+import { CollaborationPanel } from "@/components/collab/collaboration-panel";
+import { PageSkeleton } from "@/components/ui/skeleton";
 import { cn } from "@/utils/cn";
 import { PageStatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,7 +36,31 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { ProgressBar } from "@/components/ui/progress";
 
 export default function ProjectOverviewPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <ProjectOverview />
+    </Suspense>
+  );
+}
+
+function ProjectOverview() {
   const { project, projectId } = useProject();
+  const user = useSessionStore((s) => s.user);
+  const loadComments = useCommentsStore((s) => s.load);
+  const allComments = useCommentsStore((s) => selectProjectComments(s, projectId));
+  const selectComment = useCollabUiStore((s) => s.selectComment);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (projectId) void loadComments(projectId);
+  }, [projectId, loadComments]);
+
+  // Deep links from copied comment URLs and search results.
+  const commentParam = searchParams.get("comment");
+  useEffect(() => {
+    if (commentParam) selectComment(commentParam);
+  }, [commentParam, selectComment]);
+
   if (!project) return null; // ProjectShell handles loading and not-found.
 
   const base = `/projects/${projectId}`;
@@ -42,10 +72,11 @@ export default function ProjectOverviewPage() {
   const q = project.questionnaire;
   const platformLabel =
     PLATFORM_OPTIONS.find((p) => p.value === q.platform)?.label ?? "Not sure yet";
-  const openComments = project.comments.filter((c) => c.status === "open");
-  const recentComments = [...project.comments]
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 3);
+  const visibleComments = allComments.filter(
+    (c) => user.role !== "customer" || c.visibility === "customer",
+  );
+  const openActionItems = visibleComments.filter((c) => c.isActionItem && !c.completedAt);
+  const myActionItems = openActionItems.filter((c) => c.assignedToId === user.id);
   const pages = [...project.pages].sort(
     (a, b) => Number(b.isHomepage) - Number(a.isHomepage) || a.order - b.order,
   );
@@ -70,6 +101,23 @@ export default function ProjectOverviewPage() {
           </Link>
         </CardBody>
       </Card>
+
+      {/* Open action items */}
+      {openActionItems.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <MessageSquare className="size-4 shrink-0 text-amber-600" aria-hidden />
+          <p className="min-w-0 flex-1 text-sm text-amber-900">
+            {openActionItems.length} open action item
+            {openActionItems.length === 1 ? "" : "s"}
+            {myActionItems.length > 0 && (
+              <span className="font-semibold"> — {myActionItems.length} assigned to you</span>
+            )}
+          </p>
+          <span className="text-xs text-amber-700">
+            See the collaboration panel below
+          </span>
+        </div>
+      )}
 
       {/* Primary actions */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -167,45 +215,10 @@ export default function ProjectOverviewPage() {
             </CardBody>
           </Card>
 
-          {/* Recent comments */}
+          {/* Collaboration */}
           <Card>
-            <CardHeader
-              title={
-                <span className="inline-flex items-center gap-2">
-                  <MessageSquare className="size-4 text-slate-400" aria-hidden />
-                  Recent comments
-                </span>
-              }
-              description={
-                openComments.length > 0
-                  ? `${openComments.length} unresolved`
-                  : "Nothing unresolved"
-              }
-            />
-            <CardBody className="divide-y divide-slate-100 p-0">
-              {recentComments.length === 0 ? (
-                <p className="px-5 py-6 text-sm text-slate-500">
-                  No comments yet. The agency will leave feedback here after you submit
-                  your blueprint for review.
-                </p>
-              ) : (
-                recentComments.map((comment) => (
-                  <div key={comment.id} className="px-5 py-3.5">
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <span className="font-medium text-slate-700">{comment.authorName}</span>
-                      <span>·</span>
-                      <span>{formatRelative(comment.createdAt)}</span>
-                      {comment.status === "resolved" && (
-                        <span className="ml-auto inline-flex items-center gap-1 text-emerald-600">
-                          <Check className="size-3" aria-hidden />
-                          Resolved
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 line-clamp-2 text-sm text-slate-700">{comment.message}</p>
-                  </div>
-                ))
-              )}
+            <CardBody>
+              <CollaborationPanel project={project} defaultScope="project" />
             </CardBody>
           </Card>
         </div>

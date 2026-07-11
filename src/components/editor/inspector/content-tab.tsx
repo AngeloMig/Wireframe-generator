@@ -2,26 +2,50 @@
 
 import { useId, useRef } from "react";
 import { ArrowDown, ArrowUp, Copy, ImagePlus, Plus, Trash2, X } from "lucide-react";
+import { effectiveContentSchema } from "@/data/section-schemas";
 import { imageOf } from "@/lib/editor-utils";
 import { toast } from "@/stores/ui-store";
-import type { PageSection, SectionFieldDefinition, SectionTemplate } from "@/types";
+import type {
+  PageSection,
+  SectionFieldDefinition,
+  SectionTypeDefinition,
+  SectionVariation,
+} from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
+import { FaqContentPanel } from "./faq-content-panel";
 import type { SectionMutator } from "./inspector-types";
 
 const MAX_IMAGE_BYTES = 800_000; // Keep data URLs small enough for localStorage.
 
-/** Schema-driven editing of the section's actual content fields. */
+/**
+ * Content editing for the selected section. Fields load from the section
+ * type's shared schema, filtered to the keys the current design displays.
+ * FAQ gets a bespoke panel for category management and question assignment.
+ */
 export function ContentTab({
   section,
-  template,
+  definition,
+  variation,
   onChange,
 }: {
   section: PageSection;
-  template: SectionTemplate;
+  definition: SectionTypeDefinition;
+  variation: SectionVariation | null;
   onChange: SectionMutator;
 }) {
-  if (template.contentSchema.length === 0) {
+  if (section.sectionType === "faq") {
+    return (
+      <FaqContentPanel
+        section={section}
+        contentKeys={variation?.contentKeys}
+        onChange={onChange}
+      />
+    );
+  }
+
+  const schema = effectiveContentSchema(definition, variation?.contentKeys);
+  if (schema.length === 0) {
     return (
       <p className="p-4 text-xs text-slate-500">
         This section has no editable content fields.
@@ -37,7 +61,7 @@ export function ContentTab({
 
   return (
     <div className="space-y-4 p-4">
-      {template.contentSchema.map((field) =>
+      {schema.map((field) =>
         field.type === "repeater" ? (
           <RepeaterField
             key={field.key}
@@ -65,7 +89,7 @@ export function ContentTab({
   );
 }
 
-function ScalarField({
+export function ScalarField({
   field,
   value,
   onSet,
@@ -80,6 +104,19 @@ function ScalarField({
   const stringValue = typeof value === "string" || typeof value === "number" ? String(value) : "";
   const labelClass = compact ? "mb-1 text-xs" : "mb-1.5 text-xs";
 
+  if (field.type === "toggle") {
+    return (
+      <label className="flex items-center gap-2.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700">
+        <input
+          type="checkbox"
+          checked={value === true}
+          onChange={(e) => onSet(e.target.checked)}
+          className="size-4 rounded border-slate-300 accent-indigo-600"
+        />
+        {field.label}
+      </label>
+    );
+  }
   if (field.type === "textarea") {
     return (
       <div>
@@ -237,7 +274,12 @@ function RepeaterField({
     onChange((s) => ({ ...s, content: { ...s.content, [field.key]: next } }), editKey);
 
   const emptyItem = () =>
-    Object.fromEntries((field.itemFields ?? []).map((f) => [f.key, ""]));
+    Object.fromEntries(
+      (field.itemFields ?? []).map((f) => [
+        f.key,
+        f.type === "select" ? (f.options?.[0]?.value ?? "") : "",
+      ]),
+    );
 
   const move = (index: number, direction: -1 | 1) => {
     const target = index + direction;
@@ -327,7 +369,7 @@ function RepeaterField({
   );
 }
 
-function RepeaterButton({
+export function RepeaterButton({
   label,
   onClick,
   disabled,

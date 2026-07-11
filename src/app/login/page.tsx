@@ -2,7 +2,15 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, PencilRuler, ShieldCheck, UserRound, Users } from "lucide-react";
+import {
+  ArrowRight,
+  ClipboardList,
+  Code2,
+  PencilRuler,
+  ShieldCheck,
+  UserRound,
+  Users,
+} from "lucide-react";
 import { APP_CONFIG } from "@/config/app";
 import { ROLE_LABELS } from "@/config/labels";
 import { MOCK_USERS } from "@/data/users";
@@ -11,14 +19,18 @@ import type { UserRole } from "@/types";
 
 const ROLE_ICONS: Record<UserRole, typeof UserRound> = {
   customer: UserRound,
-  agency: Users,
+  "agency-designer": Users,
+  "agency-developer": Code2,
+  "agency-pm": ClipboardList,
   admin: ShieldCheck,
 };
 
 const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
   customer: "Plan your website, build wireframes, and submit them for review.",
-  agency: "Review customer blueprints, leave feedback, and request revisions.",
-  admin: "Manage section templates and platform settings.",
+  "agency-designer": "Review customer blueprints, leave feedback, and request revisions.",
+  "agency-developer": "Add technical notes and mark sections as technically reviewed.",
+  "agency-pm": "Assign work, manage statuses, send blueprints for approval, export handoffs.",
+  admin: "Manage section templates, users, statuses, and platform settings.",
 };
 
 export default function LoginPage() {

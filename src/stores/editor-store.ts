@@ -98,7 +98,7 @@ function writeSections(
               sections: sections.map((section, index) => ({ ...section, order: index })),
               status:
                 page.status === "draft" && sections.length > 0
-                  ? ("in-progress" as const)
+                  ? ("content-needed" as const)
                   : page.status,
               updatedAt: nowIso(),
             }

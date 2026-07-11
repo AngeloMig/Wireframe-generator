@@ -4,13 +4,19 @@ import { useEffect, useRef } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { MousePointerClick } from "lucide-react";
-import { getSectionTemplate } from "@/data/section-templates";
+import { getVariation } from "@/data/section-variations";
+import { getSectionTypeDefinition } from "@/data/section-schemas";
 import type { BrandTheme } from "@/lib/editor-utils";
 import { DEVICE_WIDTHS, useEditorStore } from "@/stores/editor-store";
 import type { PageSection } from "@/types";
 import { cn } from "@/utils/cn";
 import { WireProvider } from "../wireframes/primitives";
-import { CanvasSection, type CanvasSectionActions, type DropEdge } from "./canvas-section";
+import {
+  CanvasSection,
+  type CanvasSectionActions,
+  type DropEdge,
+  type SectionCommentMarker,
+} from "./canvas-section";
 
 export const CANVAS_APPEND_ID = "canvas-append";
 
@@ -26,12 +32,23 @@ export function EditorCanvas({
   dropTarget,
   isLibraryDragging,
   actions,
+  readOnly = false,
+  commentMode = false,
+  markers,
+  onCommentTarget,
+  onMarkerSelect,
 }: {
   sections: PageSection[];
   theme: BrandTheme;
   dropTarget: DropTarget | null;
   isLibraryDragging: boolean;
   actions: CanvasSectionActions;
+  /** Extra read-only state on top of preview mode (status restrictions). */
+  readOnly?: boolean;
+  commentMode?: boolean;
+  markers?: Map<string, SectionCommentMarker>;
+  onCommentTarget?: (sectionId: string) => void;
+  onMarkerSelect?: (sectionId: string) => void;
 }) {
   const device = useEditorStore((s) => s.device);
   const mode = useEditorStore((s) => s.mode);
@@ -86,7 +103,7 @@ export function EditorCanvas({
           <WireProvider value={{ styled: mode === "styled", theme, device }}>
             <div
               className={cn(
-                "overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-slate-200",
+                "overflow-hidden rounded-lg bg-white shadow-[var(--shadow-card)] ring-1 ring-slate-200",
                 device !== "desktop" && "rounded-xl",
               )}
             >
@@ -98,13 +115,14 @@ export function EditorCanvas({
                   strategy={verticalListSortingStrategy}
                 >
                   {ordered.map((section, index) => {
-                    const template = getSectionTemplate(section.templateId);
-                    if (!template) return null;
+                    const variation = getVariation(section.variationId);
+                    const name =
+                      variation?.name ?? getSectionTypeDefinition(section.sectionType).label;
                     return (
                       <CanvasSection
                         key={section.id}
                         section={section}
-                        template={template}
+                        name={name}
                         index={index}
                         total={ordered.length}
                         isSelected={!isPreview && selectedSectionId === section.id}
@@ -112,8 +130,12 @@ export function EditorCanvas({
                         dropEdge={
                           dropTarget?.sectionId === section.id ? dropTarget.edge : null
                         }
-                        readOnly={isPreview}
+                        readOnly={isPreview || readOnly}
                         actions={actions}
+                        commentMode={commentMode}
+                        marker={markers?.get(section.id) ?? null}
+                        onCommentTarget={onCommentTarget}
+                        onMarkerSelect={onMarkerSelect}
                       />
                     );
                   })}
@@ -121,7 +143,7 @@ export function EditorCanvas({
               )}
 
               {/* Append zone: drop here to add a section at the end. */}
-              {!isPreview && ordered.length > 0 && (
+              {!isPreview && !readOnly && !commentMode && ordered.length > 0 && (
                 <div
                   ref={setAppendRef}
                   className={cn(

@@ -5,11 +5,11 @@ import { ChevronDown } from "lucide-react";
 import { cn } from "@/utils/cn";
 
 const baseFieldClasses =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-400 disabled:bg-slate-50 disabled:text-slate-400";
+  "w-full rounded-[var(--radius-medium)] border border-[var(--border-input)] bg-white px-3 text-sm text-[var(--text-primary)] shadow-[inset_0_1px_0_rgb(0_0_0/0.04)] placeholder:text-[var(--text-muted)] focus:border-[var(--text-primary)] disabled:border-[var(--border-default)] disabled:bg-slate-50 disabled:text-slate-400";
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   ({ className, ...props }, ref) => (
-    <input ref={ref} className={cn(baseFieldClasses, "h-9.5", className)} {...props} />
+    <input ref={ref} className={cn(baseFieldClasses, "h-8", className)} {...props} />
   ),
 );
 Input.displayName = "Input";
@@ -26,7 +26,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
     <div className="relative">
       <select
         ref={ref}
-        className={cn(baseFieldClasses, "h-9.5 appearance-none pr-8", className)}
+        className={cn(baseFieldClasses, "h-8 appearance-none pr-8", className)}
         {...props}
       >
         {children}
@@ -52,7 +52,7 @@ export function Label({
   optional?: boolean;
 }) {
   return (
-    <label htmlFor={htmlFor} className={cn("mb-1.5 block text-sm font-medium text-slate-700", className)}>
+    <label htmlFor={htmlFor} className={cn("mb-1 block text-[13px] font-medium text-slate-600", className)}>
       {children}
       {optional && <span className="ml-1.5 text-xs font-normal text-slate-400">Optional</span>}
     </label>

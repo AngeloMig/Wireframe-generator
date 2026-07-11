@@ -11,9 +11,9 @@ const ICONS = {
 } as const;
 
 const ICON_COLORS = {
-  success: "text-emerald-500",
-  error: "text-rose-500",
-  info: "text-indigo-500",
+  success: "text-emerald-400",
+  error: "text-rose-400",
+  info: "text-blue-300",
 } as const;
 
 export function Toaster() {
@@ -25,7 +25,7 @@ export function Toaster() {
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed right-4 bottom-4 z-[60] flex w-full max-w-sm flex-col gap-2"
+      className="pointer-events-none fixed inset-x-0 bottom-4 z-[60] mx-auto flex w-full max-w-sm flex-col items-center gap-2"
     >
       {toasts.map((toast) => {
         const Icon = ICONS[toast.variant];
@@ -33,19 +33,19 @@ export function Toaster() {
           <div
             key={toast.id}
             role="status"
-            className="pointer-events-auto flex animate-slide-in-right items-start gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-lg"
+            className="pointer-events-auto flex w-full animate-fade-in items-start gap-3 rounded-lg bg-slate-900 px-3.5 py-3 shadow-[var(--shadow-overlay)]"
           >
-            <Icon className={cn("mt-0.5 size-5 shrink-0", ICON_COLORS[toast.variant])} aria-hidden />
+            <Icon className={cn("mt-0.5 size-4 shrink-0", ICON_COLORS[toast.variant])} aria-hidden />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-slate-900">{toast.title}</p>
+              <p className="text-[13px] font-medium text-white">{toast.title}</p>
               {toast.description && (
-                <p className="mt-0.5 text-sm text-slate-500">{toast.description}</p>
+                <p className="mt-0.5 text-[13px] text-slate-300">{toast.description}</p>
               )}
             </div>
             <button
               type="button"
               aria-label="Dismiss notification"
-              className="cursor-pointer rounded p-0.5 text-slate-400 hover:text-slate-600"
+              className="cursor-pointer rounded p-0.5 text-slate-400 hover:text-white"
               onClick={() => dismissToast(toast.id)}
             >
               <X className="size-4" aria-hidden />

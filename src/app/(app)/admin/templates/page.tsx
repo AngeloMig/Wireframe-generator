@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { PencilLine, ShieldAlert } from "lucide-react";
-import { PAGE_TYPE_LABELS, SECTION_CATEGORY_LABELS } from "@/config/labels";
+import { PAGE_TYPE_LABELS, SECTION_TYPE_LABELS } from "@/config/labels";
 import { templateRepository } from "@/lib/repositories/local-template-repository";
 import { useSessionStore } from "@/stores/session-store";
 import { toast } from "@/stores/ui-store";
-import type { SectionTemplate } from "@/types";
+import type { SectionVariation } from "@/types";
 import { cn } from "@/utils/cn";
 import { formatRelative } from "@/utils/dates";
 import { Badge } from "@/components/ui/badge";
@@ -22,13 +22,13 @@ import { Skeleton } from "@/components/ui/skeleton";
  */
 export default function AdminTemplatesPage() {
   const user = useSessionStore((s) => s.user);
-  const [templates, setTemplates] = useState<SectionTemplate[] | null>(null);
-  const [editing, setEditing] = useState<SectionTemplate | null>(null);
+  const [templates, setTemplates] = useState<SectionVariation[] | null>(null);
+  const [editing, setEditing] = useState<SectionVariation | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
   useEffect(() => {
-    void templateRepository.getSectionTemplates().then(setTemplates);
+    void templateRepository.getSectionVariations().then(setTemplates);
   }, []);
 
   if (user.role !== "admin") {
@@ -50,8 +50,8 @@ export default function AdminTemplatesPage() {
     );
   }
 
-  const handleToggle = async (template: SectionTemplate) => {
-    const updated = await templateRepository.updateSectionTemplate(template.id, {
+  const handleToggle = async (template: SectionVariation) => {
+    const updated = await templateRepository.updateSectionVariation(template.id, {
       isActive: !template.isActive,
     });
     if (updated) {
@@ -66,7 +66,7 @@ export default function AdminTemplatesPage() {
     }
   };
 
-  const openEdit = (template: SectionTemplate) => {
+  const openEdit = (template: SectionVariation) => {
     setEditing(template);
     setName(template.name);
     setDescription(template.description);
@@ -74,7 +74,7 @@ export default function AdminTemplatesPage() {
 
   const handleSaveEdit = async () => {
     if (!editing || !name.trim()) return;
-    const updated = await templateRepository.updateSectionTemplate(editing.id, {
+    const updated = await templateRepository.updateSectionVariation(editing.id, {
       name: name.trim(),
       description: description.trim(),
     });
@@ -92,7 +92,7 @@ export default function AdminTemplatesPage() {
           Template Management
         </h1>
         <p className="mt-1 text-sm text-slate-500">
-          Control which section templates customers can use. Full template building comes
+          Control which section designs customers can use. Full design building comes
           in a later phase.
         </p>
       </div>
@@ -104,7 +104,7 @@ export default function AdminTemplatesPage() {
               <th scope="col" className="px-5 py-3 font-medium">Template</th>
               <th scope="col" className="px-5 py-3 font-medium">Category</th>
               <th scope="col" className="px-5 py-3 font-medium">Page types</th>
-              <th scope="col" className="px-5 py-3 font-medium">Variations</th>
+              <th scope="col" className="px-5 py-3 font-medium">Tags</th>
               <th scope="col" className="px-5 py-3 font-medium">Updated</th>
               <th scope="col" className="px-5 py-3 font-medium">Active</th>
               <th scope="col" className="px-5 py-3 font-medium">
@@ -123,7 +123,7 @@ export default function AdminTemplatesPage() {
                 </td>
                 <td className="px-5 py-3">
                   <Badge className="border-slate-200 bg-slate-50 text-slate-600">
-                    {SECTION_CATEGORY_LABELS[template.category]}
+                    {SECTION_TYPE_LABELS[template.sectionType]}
                   </Badge>
                 </td>
                 <td className="px-5 py-3 text-xs text-slate-600">
@@ -137,7 +137,7 @@ export default function AdminTemplatesPage() {
                         ? ` +${template.supportedPageTypes.length - 2}`
                         : "")}
                 </td>
-                <td className="px-5 py-3 text-slate-600">{template.variations.length}</td>
+                <td className="px-5 py-3 text-xs text-slate-600">{template.tags.slice(0, 3).join(", ")}</td>
                 <td className="px-5 py-3 text-xs text-slate-500">
                   {formatRelative(template.updatedAt)}
                 </td>

@@ -3,8 +3,7 @@ import type { VisualStyle, WebsiteGoal } from "./project";
 
 /** A section entry inside a full page template. */
 export interface PageTemplateSection {
-  templateId: string;
-  variationId?: string;
+  variationId: string;
   contentOverrides?: Record<string, unknown>;
   layoutOverrides?: Partial<SectionLayoutSettings>;
   styleOverrides?: Partial<SectionStyleSettings>;

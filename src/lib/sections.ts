@@ -1,5 +1,6 @@
-import { getSectionTemplate } from "@/data/section-templates";
-import type { PageSection, SectionNotes, SectionTemplate } from "@/types";
+import { getSectionTypeDefinition } from "@/data/section-schemas";
+import { getVariation } from "@/data/section-variations";
+import type { PageSection, SectionNotes, SectionVariation } from "@/types";
 import { createId } from "@/utils/id";
 
 export function emptySectionNotes(): SectionNotes {
@@ -13,39 +14,74 @@ export function emptySectionNotes(): SectionNotes {
 }
 
 interface CreateSectionOptions {
-  variationId?: string;
   contentOverrides?: Record<string, unknown>;
   order?: number;
 }
 
-/** Instantiate a page section from a library template. */
-export function createSectionFromTemplate(
-  template: SectionTemplate,
+/** Instantiate a page section from a library design variation. */
+export function createSectionFromVariation(
+  variation: SectionVariation,
   options: CreateSectionOptions = {},
 ): PageSection {
+  const definition = getSectionTypeDefinition(variation.sectionType);
   return {
     id: createId(),
-    templateId: template.id,
-    variationId: options.variationId ?? template.variations[0]?.id ?? "default",
+    sectionType: variation.sectionType,
+    variationId: variation.id,
     content: structuredClone({
-      ...template.defaultContent,
+      ...definition.defaultContent,
+      ...(variation.contentDefaults ?? {}),
       ...(options.contentOverrides ?? {}),
     }),
-    layout: { ...template.defaultLayout },
-    style: { ...template.defaultStyle },
+    layout: { ...variation.defaultLayout },
+    style: { ...variation.defaultStyle },
     notes: emptySectionNotes(),
     isHidden: false,
     isLocked: false,
     order: options.order ?? 0,
+    reviewStatus: "draft",
   };
 }
 
-/** Instantiate a section by template id; returns null if the id is unknown. */
-export function createSectionByTemplateId(
-  templateId: string,
+/** Instantiate a section by variation id; returns null if the id is unknown. */
+export function createSectionByVariationId(
+  variationId: string,
   options: CreateSectionOptions = {},
 ): PageSection | null {
-  const template = getSectionTemplate(templateId);
-  if (!template) return null;
-  return createSectionFromTemplate(template, options);
+  const variation = getVariation(variationId);
+  if (!variation) return null;
+  return createSectionFromVariation(variation, options);
+}
+
+/**
+ * Switch a section to a different design of the same type.
+ * - Content is preserved untouched (all variations of a type share a schema,
+ *   so nothing the customer wrote is ever dropped).
+ * - The new variation's default layout applies.
+ * - Style settings the customer customised (i.e. that differ from the current
+ *   variation's defaults) carry over on top of the new variation's defaults.
+ * - The section id is preserved.
+ */
+export function switchSectionVariation(
+  section: PageSection,
+  target: SectionVariation,
+): PageSection {
+  const current = getVariation(section.variationId);
+
+  const style = { ...target.defaultStyle };
+  if (current) {
+    for (const key of Object.keys(style) as (keyof typeof style)[]) {
+      if (section.style[key] !== current.defaultStyle[key]) {
+        // The customer changed this away from the old default — keep it.
+        (style[key] as unknown) = section.style[key];
+      }
+    }
+  }
+
+  return {
+    ...section,
+    variationId: target.id,
+    layout: { ...target.defaultLayout },
+    style,
+  };
 }

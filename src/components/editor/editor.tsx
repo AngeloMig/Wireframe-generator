@@ -17,26 +17,50 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { getSectionTemplate } from "@/data/section-templates";
+import { X } from "lucide-react";
+import { getVariation } from "@/data/section-variations";
 import { brandTheme } from "@/lib/editor-utils";
-import { createSectionFromTemplate } from "@/lib/sections";
+import { canEditProjectContent, editRestrictionReason } from "@/lib/permissions";
+import { createSectionFromVariation } from "@/lib/sections";
+import { useCollabUiStore } from "@/stores/collab-ui-store";
+import { selectProjectComments, useCommentsStore } from "@/stores/comments-store";
 import { useEditorStore } from "@/stores/editor-store";
+import { useSessionStore } from "@/stores/session-store";
 import { toast } from "@/stores/ui-store";
-import type { PageSection, Project, ProjectPage, SectionTemplate } from "@/types";
+import type {
+  CommentPriority,
+  PageSection,
+  Project,
+  ProjectPage,
+  SectionVariation,
+} from "@/types";
 import { createId } from "@/utils/id";
+import { CollaborationPanel } from "@/components/collab/collaboration-panel";
+import { SuggestionBanner } from "@/components/collab/suggestion-banner";
 import { CANVAS_APPEND_ID, EditorCanvas, type DropTarget } from "./canvas/editor-canvas";
 import { EditorToolbar } from "./editor-toolbar";
 import { LibraryDragPreview, LIBRARY_DRAG_PREFIX } from "./library/library-item";
 import { SectionLibrary } from "./library/section-library";
+import { StructurePanel } from "./structure-panel";
+import { VariationPreview } from "./library/variation-preview";
 import { SectionInspector } from "./inspector/section-inspector";
-import type { CanvasSectionActions } from "./canvas/canvas-section";
+import type { CanvasSectionActions, SectionCommentMarker } from "./canvas/canvas-section";
 
 type ActiveDrag =
-  | { type: "library"; template: SectionTemplate }
-  | { type: "section"; section: PageSection; template: SectionTemplate };
+  | { type: "library"; variation: SectionVariation }
+  | { type: "section"; section: PageSection; name: string };
 
 /** The three-panel wireframe editor. Owns the drag-and-drop context. */
-export function Editor({ project, page }: { project: Project; page: ProjectPage }) {
+export function Editor({
+  project,
+  page,
+  initialSectionId,
+}: {
+  project: Project;
+  page: ProjectPage;
+  /** Section to select on load (deep links from comments/notifications). */
+  initialSectionId?: string | null;
+}) {
   const router = useRouter();
   const openPage = useEditorStore((s) => s.openPage);
   const select = useEditorStore((s) => s.select);
@@ -52,10 +76,39 @@ export function Editor({ project, page }: { project: Project; page: ProjectPage 
 
   const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null);
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
+  const [previewVariation, setPreviewVariation] = useState<SectionVariation | null>(null);
+
+  const user = useSessionStore((s) => s.user);
+  const isCustomer = user.role === "customer";
+  // Theme-editor layout: the page structure rail is always docked; the
+  // section library opens on demand via "Add section" for everyone.
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const commentMode = useCollabUiStore((s) => s.commentMode);
+  const setCommentMode = useCollabUiStore((s) => s.setCommentMode);
+  const openComposer = useCollabUiStore((s) => s.openComposer);
+  const selectComment = useCollabUiStore((s) => s.selectComment);
+  const loadComments = useCommentsStore((s) => s.load);
+  const updateComment = useCommentsStore((s) => s.updateComment);
+  const comments = useCommentsStore((s) => selectProjectComments(s, project.id));
 
   useEffect(() => {
     openPage(page.id);
   }, [page.id, openPage]);
+
+  useEffect(() => {
+    if (initialSectionId && page.sections.some((s) => s.id === initialSectionId)) {
+      select(initialSectionId);
+    }
+    // Only on load / when the deep link changes — not on every section edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSectionId, page.id, select]);
+
+  useEffect(() => {
+    void loadComments(project.id);
+  }, [project.id, loadComments]);
+
+  // Leaving the editor exits comment mode so other pages start clean.
+  useEffect(() => () => setCommentMode(false), [setCommentMode]);
 
   const theme = useMemo(() => brandTheme(project), [project]);
   const ordered = useMemo(
@@ -63,9 +116,39 @@ export function Editor({ project, page }: { project: Project; page: ProjectPage 
     [page.sections],
   );
   const selectedSection = ordered.find((s) => s.id === selectedSectionId) ?? null;
-  const selectedTemplate = selectedSection
-    ? (getSectionTemplate(selectedSection.templateId) ?? null)
-    : null;
+
+  // Status-based editing restriction (submission locks editing for customers).
+  const contentEditable = canEditProjectContent(user.role, project.status);
+  const restrictionReason = editRestrictionReason(user.role, project.status);
+
+  // Numbered comment markers per section, in page order.
+  const markers = useMemo(() => {
+    const map = new Map<string, SectionCommentMarker>();
+    const rank: Record<CommentPriority, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
+    const visible = comments.filter(
+      (c) =>
+        c.sectionId &&
+        c.pageId === page.id &&
+        (user.role !== "customer" || c.visibility === "customer"),
+    );
+    let number = 0;
+    for (const section of ordered) {
+      const forSection = visible.filter((c) => c.sectionId === section.id);
+      if (forSection.length === 0) continue;
+      number += 1;
+      map.set(section.id, {
+        number,
+        openCount: forSection.filter((c) => c.status !== "resolved").length,
+        resolvedCount: forSection.filter((c) => c.status === "resolved").length,
+        replyCount: forSection.reduce((sum, c) => sum + c.replies.length, 0),
+        topPriority: forSection.reduce<CommentPriority>(
+          (top, c) => (rank[c.priority] < rank[top] ? c.priority : top),
+          "low",
+        ),
+      });
+    }
+    return map;
+  }, [comments, ordered, page.id, user.role]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -77,6 +160,15 @@ export function Editor({ project, page }: { project: Project; page: ProjectPage 
   const updateSelectedSection = useCallback(
     (mutate: (section: PageSection) => PageSection, editKey?: string) => {
       if (!selectedSectionId) return;
+      const current = ordered.find((s) => s.id === selectedSectionId);
+      if (current?.approvalLocked) {
+        toast(
+          "This section is approved and locked",
+          "info",
+          "Ask the agency to unlock it if something needs to change.",
+        );
+        return;
+      }
       applySections(
         project.id,
         (sections) =>
@@ -84,12 +176,12 @@ export function Editor({ project, page }: { project: Project; page: ProjectPage 
         { editKey },
       );
     },
-    [applySections, project.id, selectedSectionId],
+    [applySections, ordered, project.id, selectedSectionId],
   );
 
-  const insertTemplate = useCallback(
-    (template: SectionTemplate, index?: number) => {
-      const section = createSectionFromTemplate(template);
+  const insertVariation = useCallback(
+    (variation: SectionVariation, index?: number) => {
+      const section = createSectionFromVariation(variation);
       applySections(
         project.id,
         (sections) => {
@@ -97,7 +189,7 @@ export function Editor({ project, page }: { project: Project; page: ProjectPage 
           next.splice(index ?? next.length, 0, section);
           return next;
         },
-        { activity: { type: "section-added", message: `${template.name} section added` } },
+        { activity: { type: "section-added", message: `${variation.name} section added` } },
       );
       select(section.id, "content");
     },
@@ -147,14 +239,37 @@ export function Editor({ project, page }: { project: Project; page: ProjectPage 
       onToggleCollapsed: (id) => toggleCollapsed(id),
       onDelete: (id) => {
         const section = ordered.find((s) => s.id === id);
-        const template = section ? getSectionTemplate(section.templateId) : null;
+        if (section?.approvalLocked) {
+          toast("Approved sections can't be deleted", "info");
+          return;
+        }
+        const variation = section ? getVariation(section.variationId) : null;
+
+        // Comments on the section survive: mark them as attached to a deleted
+        // section and keep a snapshot so they can restore it.
+        if (section) {
+          const affected = comments.filter((c) => c.sectionId === id && !c.deletedSection);
+          for (const comment of affected) {
+            void updateComment(project.id, comment.id, {
+              deletedSection: {
+                sectionName: variation?.name ?? "Section",
+                variationName: variation?.name ?? section.variationId,
+                sectionSnapshot: structuredClone(section) as unknown as Record<
+                  string,
+                  unknown
+                >,
+              },
+            });
+          }
+        }
+
         applySections(
           project.id,
           (sections) => sections.filter((s) => s.id !== id),
           {
             activity: {
               type: "section-removed",
-              message: `${template?.name ?? "Section"} removed`,
+              message: `${variation?.name ?? "Section"} removed`,
             },
           },
         );
@@ -162,7 +277,7 @@ export function Editor({ project, page }: { project: Project; page: ProjectPage 
         toast("Section removed", "info", "Use undo if that was a mistake.");
       },
     }),
-    [applySections, moveSection, ordered, project.id, select, toggleCollapsed],
+    [applySections, comments, moveSection, ordered, project.id, select, toggleCollapsed, updateComment],
   );
 
   // ----- Drag and drop ------------------------------------------------------
@@ -175,12 +290,18 @@ export function Editor({ project, page }: { project: Project; page: ProjectPage 
   const handleDragStart = (event: DragStartEvent) => {
     const id = String(event.active.id);
     if (id.startsWith(LIBRARY_DRAG_PREFIX)) {
-      const template = getSectionTemplate(id.slice(LIBRARY_DRAG_PREFIX.length));
-      if (template) setActiveDrag({ type: "library", template });
+      const variation = getVariation(id.slice(LIBRARY_DRAG_PREFIX.length));
+      if (variation) setActiveDrag({ type: "library", variation });
     } else {
       const section = ordered.find((s) => s.id === id);
-      const template = section ? getSectionTemplate(section.templateId) : null;
-      if (section && template) setActiveDrag({ type: "section", section, template });
+      if (section) {
+        const variation = getVariation(section.variationId);
+        setActiveDrag({
+          type: "section",
+          section,
+          name: variation?.name ?? "Section",
+        });
+      }
     }
   };
 
@@ -223,7 +344,7 @@ export function Editor({ project, page }: { project: Project; page: ProjectPage 
         const overIndex = ordered.findIndex((s) => s.id === target.sectionId);
         if (overIndex !== -1) index = overIndex + (target.edge === "bottom" ? 1 : 0);
       }
-      insertTemplate(drag.template, index);
+      insertVariation(drag.variation, index);
       return;
     }
 
@@ -268,7 +389,10 @@ export function Editor({ project, page }: { project: Project; page: ProjectPage 
       } else if (
         (event.key === "Delete" || event.key === "Backspace") &&
         selectedSectionId &&
-        !isPreview
+        !isPreview &&
+        !previewVariation &&
+        !commentMode &&
+        contentEditable
       ) {
         event.preventDefault();
         canvasActions.onDelete(selectedSectionId);
@@ -276,12 +400,22 @@ export function Editor({ project, page }: { project: Project; page: ProjectPage 
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [undo, redo, project.id, selectedSectionId, isPreview, canvasActions]);
+  }, [
+    undo,
+    redo,
+    project.id,
+    selectedSectionId,
+    isPreview,
+    canvasActions,
+    previewVariation,
+    commentMode,
+    contentEditable,
+  ]);
 
   // ----- Render ------------------------------------------------------------------
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-white">
+    <div className="flex h-[calc(100vh-4rem)] flex-col bg-[var(--app-background)]">
       <EditorToolbar
         project={project}
         page={page}
@@ -292,6 +426,9 @@ export function Editor({ project, page }: { project: Project; page: ProjectPage 
         canRedo={canRedo}
         onUndo={() => undo(project.id)}
         onRedo={() => redo(project.id)}
+        selectedSectionId={selectedSectionId}
+        libraryOpen={libraryOpen}
+        onToggleLibrary={() => setLibraryOpen((open) => !open)}
       />
 
       {mode === "styled" && (
@@ -300,6 +437,30 @@ export function Editor({ project, page }: { project: Project; page: ProjectPage 
           design.
         </p>
       )}
+
+      {commentMode && (
+        <p
+          className="border-b border-indigo-200 bg-indigo-50 px-4 py-1.5 text-center text-xs text-indigo-800"
+          aria-live="polite"
+        >
+          Comment mode — click any section to start a conversation. Editing is paused.
+        </p>
+      )}
+
+      {!contentEditable && restrictionReason && !commentMode && (
+        <p
+          className="border-b border-slate-200 bg-slate-50 px-4 py-1.5 text-center text-xs text-slate-600"
+          aria-live="polite"
+        >
+          {restrictionReason}
+        </p>
+      )}
+
+      <SuggestionBanner project={project} page={page} />
+
+      <div className="border-b border-[var(--border-default)] bg-[#fff9ef] px-4 py-2 text-center text-xs text-[#79572f] md:hidden">
+        You can review, comment, and make simple edits here. For arranging sections, a larger screen works best.
+      </div>
 
       <DndContext
         sensors={sensors}
@@ -312,17 +473,49 @@ export function Editor({ project, page }: { project: Project; page: ProjectPage 
           setDropTarget(null);
         }}
       >
-        <div className="flex min-h-0 flex-1">
-          {!isPreview && (
+        <div className="flex min-h-0 flex-1 gap-px bg-[var(--border-default)]">
+          {!isPreview && !commentMode && (
             <aside
-              className="w-76 shrink-0 border-r border-slate-200 bg-white"
+              className="hidden w-60 shrink-0 bg-white lg:block"
+              aria-label="Page structure"
+            >
+              <StructurePanel
+                sections={page.sections}
+                selectedId={selectedSectionId}
+                actions={canvasActions}
+                readOnly={!contentEditable}
+                onAddSection={() => setLibraryOpen(true)}
+              />
+            </aside>
+          )}
+
+          {!isPreview && !commentMode && contentEditable && libraryOpen && (
+            <aside
+              className="hidden w-72 shrink-0 flex-col bg-white lg:flex xl:w-76"
               aria-label="Section library"
             >
-              <SectionLibrary
-                page={page}
-                goals={project.questionnaire.goals}
-                onAdd={(template) => insertTemplate(template)}
-              />
+              <div className="flex items-center justify-between border-b border-[var(--border-default)] px-3 py-2">
+                <p className="text-[13px] font-semibold text-[var(--text-primary)]">Add section</p>
+                <button
+                  type="button"
+                  aria-label="Close the section list"
+                  onClick={() => setLibraryOpen(false)}
+                  className="flex size-6 cursor-pointer items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                >
+                  <X className="size-4" aria-hidden />
+                </button>
+              </div>
+              <div className="min-h-0 flex-1">
+                <SectionLibrary
+                  page={page}
+                  goals={project.questionnaire.goals}
+                  onAdd={(variation) => {
+                    insertVariation(variation);
+                    if (isCustomer) setLibraryOpen(false);
+                  }}
+                  onPreview={(variation) => setPreviewVariation(variation)}
+                />
+              </div>
             </aside>
           )}
 
@@ -332,33 +525,65 @@ export function Editor({ project, page }: { project: Project; page: ProjectPage 
             dropTarget={activeDrag?.type === "library" ? dropTarget : null}
             isLibraryDragging={activeDrag?.type === "library"}
             actions={canvasActions}
+            readOnly={!contentEditable}
+            commentMode={commentMode}
+            markers={markers}
+            onCommentTarget={(sectionId) => {
+              select(sectionId);
+              openComposer({ pageId: page.id, sectionId });
+            }}
+            onMarkerSelect={(sectionId) => {
+              const first = comments.find(
+                (c) => c.sectionId === sectionId && c.status !== "resolved",
+              ) ?? comments.find((c) => c.sectionId === sectionId);
+              select(sectionId);
+              if (first) selectComment(first.id);
+            }}
           />
 
-          {!isPreview && (
+          {!isPreview && commentMode && (
             <aside
-              className="w-80 shrink-0 border-l border-slate-200 bg-white"
+              className="hidden w-96 shrink-0 flex-col bg-white px-4 pt-4 lg:flex"
+              aria-label="Comments"
+            >
+              <CollaborationPanel
+                project={project}
+                currentPageId={page.id}
+                currentSectionId={selectedSectionId ?? undefined}
+                compact
+                className="h-full"
+              />
+            </aside>
+          )}
+
+          {!isPreview && !commentMode && (
+            <aside
+              className="hidden w-80 shrink-0 bg-white xl:block"
               aria-label="Section inspector"
             >
-              <SectionInspector
-                section={selectedSection}
-                template={selectedTemplate}
-                onChange={updateSelectedSection}
-              />
+              <SectionInspector section={selectedSection} onChange={updateSelectedSection} />
             </aside>
           )}
         </div>
 
         <DragOverlay dropAnimation={null}>
           {activeDrag?.type === "library" && (
-            <LibraryDragPreview template={activeDrag.template} />
+            <LibraryDragPreview variation={activeDrag.variation} />
           )}
           {activeDrag?.type === "section" && (
-            <div className="rounded-lg border border-indigo-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-lg">
-              {activeDrag.template.name}
+            <div className="rounded-lg border border-[var(--primary)] bg-white px-4 py-2.5 text-xs font-semibold text-[var(--text-primary)] shadow-[var(--shadow-panel)]">
+              {activeDrag.name}
             </div>
           )}
         </DragOverlay>
       </DndContext>
+
+      <VariationPreview
+        variation={previewVariation}
+        theme={theme}
+        onClose={() => setPreviewVariation(null)}
+        onAdd={(variation) => insertVariation(variation)}
+      />
     </div>
   );
 }

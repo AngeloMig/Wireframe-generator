@@ -6,3 +6,6 @@ next-env.d.ts
 *.tsbuildinfo
 .DS_Store
 .env*
+
+# dev-server build output (NEXT_DIST_DIR)
+/.next-dev/

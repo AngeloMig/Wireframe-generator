@@ -1,8 +1,12 @@
 import type {
+  CommentPriority,
+  CommentStatus,
   PageStatus,
   PageType,
+  ProjectAccessLevel,
   ProjectStatus,
-  SectionCategory,
+  SectionReviewStatus,
+  SectionType,
   UserRole,
 } from "@/types";
 
@@ -16,52 +20,62 @@ interface StatusMeta {
 export const PROJECT_STATUS_META: Record<ProjectStatus, StatusMeta> = {
   draft: {
     label: "Draft",
-    badgeClass: "bg-slate-100 text-slate-700 border-slate-200",
+    badgeClass: "bg-slate-100 text-slate-700",
     description: "Setup has started but the blueprint is not underway yet.",
   },
   "customer-editing": {
     label: "Customer Editing",
-    badgeClass: "bg-blue-50 text-blue-700 border-blue-200",
+    badgeClass: "bg-blue-100 text-blue-800",
     description: "You are actively building this blueprint.",
   },
   "ready-for-review": {
     label: "Ready for Agency Review",
-    badgeClass: "bg-amber-50 text-amber-700 border-amber-200",
+    badgeClass: "bg-amber-100 text-amber-700",
     description: "Submitted and waiting for the agency to start reviewing.",
   },
   "agency-reviewing": {
     label: "Agency Reviewing",
-    badgeClass: "bg-violet-50 text-violet-700 border-violet-200",
+    badgeClass: "bg-violet-50 text-violet-700",
     description: "The agency team is reviewing your blueprint.",
   },
   "revisions-requested": {
     label: "Revisions Requested",
-    badgeClass: "bg-rose-50 text-rose-700 border-rose-200",
+    badgeClass: "bg-rose-100 text-rose-800",
     description: "The agency has asked for changes before approval.",
   },
+  "customer-revising": {
+    label: "Customer Revising",
+    badgeClass: "bg-blue-100 text-blue-800",
+    description: "You are working through the requested revisions.",
+  },
   "awaiting-approval": {
-    label: "Awaiting Customer Approval",
-    badgeClass: "bg-orange-50 text-orange-700 border-orange-200",
+    label: "Ready for Customer Approval",
+    badgeClass: "bg-orange-50 text-orange-700",
     description: "The blueprint is ready for your final approval.",
+  },
+  "partially-approved": {
+    label: "Partially Approved",
+    badgeClass: "bg-lime-50 text-lime-700",
+    description: "Some pages are approved; others still need attention.",
   },
   approved: {
     label: "Approved",
-    badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    badgeClass: "bg-emerald-100 text-emerald-800",
     description: "The blueprint has been approved.",
   },
   "in-development": {
     label: "In Development",
-    badgeClass: "bg-cyan-50 text-cyan-700 border-cyan-200",
+    badgeClass: "bg-cyan-50 text-cyan-700",
     description: "The agency is building the real website.",
   },
   completed: {
     label: "Completed",
-    badgeClass: "bg-green-50 text-green-700 border-green-200",
+    badgeClass: "bg-emerald-100 text-emerald-800",
     description: "The project is finished.",
   },
   archived: {
     label: "Archived",
-    badgeClass: "bg-slate-100 text-slate-500 border-slate-200",
+    badgeClass: "bg-slate-100 text-slate-500",
     description: "This project has been archived.",
   },
 };
@@ -69,34 +83,144 @@ export const PROJECT_STATUS_META: Record<ProjectStatus, StatusMeta> = {
 export const PAGE_STATUS_META: Record<PageStatus, StatusMeta> = {
   draft: {
     label: "Draft",
-    badgeClass: "bg-slate-100 text-slate-600 border-slate-200",
+    badgeClass: "bg-slate-100 text-slate-600",
     description: "Not started yet.",
   },
-  "in-progress": {
-    label: "In Progress",
-    badgeClass: "bg-blue-50 text-blue-700 border-blue-200",
-    description: "Being built.",
+  "content-needed": {
+    label: "Content Needed",
+    badgeClass: "bg-blue-100 text-blue-800",
+    description: "Being built — content still missing.",
   },
   "ready-for-review": {
-    label: "Ready for Review",
-    badgeClass: "bg-amber-50 text-amber-700 border-amber-200",
+    label: "Ready for Agency Review",
+    badgeClass: "bg-amber-100 text-amber-700",
     description: "Submitted for agency review.",
   },
   "in-review": {
-    label: "In Review",
-    badgeClass: "bg-violet-50 text-violet-700 border-violet-200",
+    label: "Agency Reviewing",
+    badgeClass: "bg-violet-50 text-violet-700",
     description: "Being reviewed by the agency.",
   },
   "revisions-requested": {
     label: "Revisions Requested",
-    badgeClass: "bg-rose-50 text-rose-700 border-rose-200",
+    badgeClass: "bg-rose-100 text-rose-800",
     description: "Changes requested.",
+  },
+  "customer-revising": {
+    label: "Customer Revising",
+    badgeClass: "bg-blue-100 text-blue-800",
+    description: "The customer is making the requested changes.",
+  },
+  "ready-for-approval": {
+    label: "Ready for Approval",
+    badgeClass: "bg-orange-50 text-orange-700",
+    description: "Waiting for customer approval.",
   },
   approved: {
     label: "Approved",
-    badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    badgeClass: "bg-emerald-100 text-emerald-800",
     description: "Approved by the customer.",
   },
+  locked: {
+    label: "Locked",
+    badgeClass: "bg-emerald-100 text-emerald-900",
+    description: "Approved and locked against changes.",
+  },
+};
+
+export const SECTION_REVIEW_STATUS_META: Record<SectionReviewStatus, StatusMeta> = {
+  draft: {
+    label: "Draft",
+    badgeClass: "bg-slate-100 text-slate-600",
+    description: "Not reviewed yet.",
+  },
+  "content-needed": {
+    label: "Content Needed",
+    badgeClass: "bg-blue-100 text-blue-800",
+    description: "Waiting on content.",
+  },
+  "image-needed": {
+    label: "Image Needed",
+    badgeClass: "bg-sky-50 text-sky-700",
+    description: "Waiting on imagery.",
+  },
+  "agency-review-needed": {
+    label: "Agency Review Needed",
+    badgeClass: "bg-amber-100 text-amber-700",
+    description: "Needs a design review.",
+  },
+  "revisions-requested": {
+    label: "Revisions Requested",
+    badgeClass: "bg-rose-100 text-rose-800",
+    description: "Changes requested on this section.",
+  },
+  "ready-for-approval": {
+    label: "Ready for Approval",
+    badgeClass: "bg-orange-50 text-orange-700",
+    description: "Waiting for customer approval.",
+  },
+  approved: {
+    label: "Approved",
+    badgeClass: "bg-emerald-100 text-emerald-800",
+    description: "Approved by the customer.",
+  },
+  "technically-reviewed": {
+    label: "Technically Reviewed",
+    badgeClass: "bg-cyan-50 text-cyan-700",
+    description: "Checked by a developer for feasibility.",
+  },
+};
+
+export const COMMENT_STATUS_META: Record<CommentStatus, StatusMeta> = {
+  open: {
+    label: "Open",
+    badgeClass: "bg-amber-100 text-amber-700",
+    description: "Waiting for a response.",
+  },
+  "in-progress": {
+    label: "In Progress",
+    badgeClass: "bg-blue-100 text-blue-800",
+    description: "Being worked on.",
+  },
+  resolved: {
+    label: "Resolved",
+    badgeClass: "bg-emerald-100 text-emerald-800",
+    description: "This conversation is settled.",
+  },
+  reopened: {
+    label: "Reopened",
+    badgeClass: "bg-rose-100 text-rose-800",
+    description: "Brought back for more discussion.",
+  },
+};
+
+export const COMMENT_PRIORITY_META: Record<CommentPriority, StatusMeta> = {
+  low: {
+    label: "Low",
+    badgeClass: "bg-slate-100 text-slate-600",
+    description: "Nice to have.",
+  },
+  normal: {
+    label: "Normal",
+    badgeClass: "bg-blue-100 text-blue-800",
+    description: "Standard priority.",
+  },
+  high: {
+    label: "High",
+    badgeClass: "bg-amber-100 text-amber-700",
+    description: "Needs attention soon.",
+  },
+  urgent: {
+    label: "Urgent",
+    badgeClass: "bg-rose-100 text-rose-800",
+    description: "Blocking — handle first.",
+  },
+};
+
+export const ACCESS_LEVEL_LABELS: Record<ProjectAccessLevel, string> = {
+  view: "View",
+  comment: "Comment",
+  edit: "Edit",
 };
 
 export const PAGE_TYPE_LABELS: Record<PageType, string> = {
@@ -120,19 +244,23 @@ export const PAGE_TYPE_LABELS: Record<PageType, string> = {
   custom: "Custom Page",
 };
 
-export const SECTION_CATEGORY_LABELS: Record<SectionCategory, string> = {
+export const SECTION_TYPE_LABELS: Record<SectionType, string> = {
   navigation: "Navigation",
   hero: "Hero",
-  content: "Introduction & Content",
+  faq: "FAQ",
+  marquee: "Marquee & Ticker",
+  testimonials: "Testimonials",
   services: "Services",
-  ecommerce: "Ecommerce",
-  "social-proof": "Social Proof",
-  conversion: "Conversion & Information",
+  cta: "Calls to Action",
   footer: "Footer",
+  content: "Introduction & Content",
+  ecommerce: "Ecommerce",
 };
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   customer: "Customer",
-  agency: "Agency Team",
+  "agency-designer": "Agency Designer",
+  "agency-developer": "Agency Developer",
+  "agency-pm": "Agency Project Manager",
   admin: "Administrator",
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import { FileStack, LayoutTemplate, Sparkles, SquareDashed } from "lucide-react";
-import { getSectionTemplate } from "@/data/section-templates";
+import { getVariation } from "@/data/section-variations";
 import { recommendPageTemplates } from "@/lib/recommendations";
 import type { PageTemplate, VisualStyle, WebsiteGoal } from "@/types";
 import { cn } from "@/utils/cn";
@@ -11,20 +11,17 @@ import type { StartingPointMode } from "./wizard-types";
 function TemplateSectionList({ template }: { template: PageTemplate }) {
   return (
     <ol className="mt-3 space-y-1">
-      {template.sections.map((section, index) => {
-        const sectionTemplate = getSectionTemplate(section.templateId);
-        return (
-          <li
-            key={`${section.templateId}-${index}`}
-            className="flex items-center gap-2 text-xs text-slate-500"
-          >
-            <span className="flex size-4 shrink-0 items-center justify-center rounded bg-slate-100 text-[10px] font-medium text-slate-500">
-              {index + 1}
-            </span>
-            {sectionTemplate?.name ?? section.templateId}
-          </li>
-        );
-      })}
+      {template.sections.map((section, index) => (
+        <li
+          key={`${section.variationId}-${index}`}
+          className="flex items-center gap-2 text-xs text-slate-500"
+        >
+          <span className="flex size-4 shrink-0 items-center justify-center rounded bg-slate-100 text-[10px] font-medium text-slate-500">
+            {index + 1}
+          </span>
+          {getVariation(section.variationId)?.name ?? section.variationId}
+        </li>
+      ))}
     </ol>
   );
 }

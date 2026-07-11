@@ -1,0 +1,204 @@
+import type { SectionType } from "@/types";
+import type { SectionComponent } from "./registry-types";
+import {
+  NavAnnouncementBar,
+  NavCentered,
+  NavCta,
+  NavEcommerce,
+  NavEditorial,
+  NavMega,
+  NavMinimal,
+  NavOverlay,
+  NavSidebar,
+  NavStandard,
+  NavUtility,
+} from "./sections/navigation";
+import {
+  HeroCards,
+  HeroCentered,
+  HeroEditorial,
+  HeroForm,
+  HeroFullBg,
+  HeroLogos,
+  HeroMinimal,
+  HeroProduct,
+  HeroPromo,
+  HeroSplit,
+  HeroStats,
+  HeroVideo,
+} from "./sections/hero";
+import {
+  FaqAccordion,
+  FaqCards,
+  FaqContactCta,
+  FaqFeatured,
+  FaqNumbered,
+  FaqSearch,
+  FaqSidebar,
+  FaqTabs,
+} from "./sections/faq";
+import { MarqueeAuto, MarqueeDual, MarqueeSingle } from "./sections/marquee";
+import {
+  TestiCards,
+  TestiCarousel,
+  TestiCaseStudies,
+  TestiFeatured,
+  TestiMasonry,
+  TestiReviewSummary,
+} from "./sections/testimonials";
+import {
+  SvcAlternating,
+  SvcCards,
+  SvcFeatured,
+  SvcList,
+  SvcPricing,
+  SvcProcess,
+  SvcTimeline,
+} from "./sections/services";
+import {
+  CtaCard,
+  CtaCentered,
+  CtaContactForm,
+  CtaImage,
+  CtaNewsletter,
+  CtaSplit,
+  CtaStatBanner,
+} from "./sections/cta";
+import {
+  FooterColumns,
+  FooterContact,
+  FooterDarkCta,
+  FooterEditorial,
+  FooterMega,
+  FooterMinimal,
+  FooterNewsletter,
+  FooterSimple,
+} from "./sections/footer";
+import {
+  ContentBlog,
+  ContentImageText,
+  ContentIntro,
+  ContentStatement,
+  ContentStats,
+  ContentTeam,
+  ContentValues,
+} from "./sections/content";
+import {
+  EcomBenefits,
+  EcomBestSellers,
+  EcomCollections,
+  EcomFeatured,
+  EcomGrid,
+} from "./sections/ecommerce";
+
+/**
+ * The section component registry: sectionType → componentKey → component.
+ * The renderer resolves a PageSection's variation to its componentKey and
+ * looks the component up here; several variations share one component and
+ * differ only in their default layout/style/content (e.g. two-column FAQ is
+ * the accordion component with columns: 2).
+ */
+export const sectionComponentRegistry: Record<SectionType, Record<string, SectionComponent>> = {
+  navigation: {
+    "nav-standard": NavStandard,
+    "nav-centered": NavCentered,
+    "nav-minimal": NavMinimal,
+    "nav-ecommerce": NavEcommerce,
+    "nav-mega": NavMega,
+    "nav-overlay": NavOverlay,
+    "nav-sidebar": NavSidebar,
+    "nav-utility": NavUtility,
+    "nav-cta": NavCta,
+    "nav-editorial": NavEditorial,
+    "nav-announcement-bar": NavAnnouncementBar,
+  },
+  hero: {
+    "hero-centered": HeroCentered,
+    "hero-split": HeroSplit,
+    "hero-fullbg": HeroFullBg,
+    "hero-form": HeroForm,
+    "hero-product": HeroProduct,
+    "hero-stats": HeroStats,
+    "hero-logos": HeroLogos,
+    "hero-video": HeroVideo,
+    "hero-editorial": HeroEditorial,
+    "hero-cards": HeroCards,
+    "hero-promo": HeroPromo,
+    "hero-minimal": HeroMinimal,
+  },
+  faq: {
+    "faq-accordion": FaqAccordion,
+    "faq-sidebar": FaqSidebar,
+    "faq-tabs": FaqTabs,
+    "faq-cards": FaqCards,
+    "faq-featured": FaqFeatured,
+    "faq-search": FaqSearch,
+    "faq-contact-cta": FaqContactCta,
+    "faq-numbered": FaqNumbered,
+  },
+  marquee: {
+    "marquee-row": MarqueeSingle,
+    "marquee-dual": MarqueeDual,
+    "marquee-auto": MarqueeAuto,
+  },
+  testimonials: {
+    "testi-cards": TestiCards,
+    "testi-featured": TestiFeatured,
+    "testi-masonry": TestiMasonry,
+    "testi-carousel": TestiCarousel,
+    "testi-review-summary": TestiReviewSummary,
+    "testi-case-studies": TestiCaseStudies,
+  },
+  services: {
+    "svc-icon-cards": SvcCards,
+    "svc-image-cards": SvcCards,
+    "svc-alternating": SvcAlternating,
+    "svc-list": SvcList,
+    "svc-process": SvcProcess,
+    "svc-timeline": SvcTimeline,
+    "svc-featured": SvcFeatured,
+    "svc-pricing": SvcPricing,
+  },
+  cta: {
+    "cta-centered": CtaCentered,
+    "cta-split": CtaSplit,
+    "cta-newsletter": CtaNewsletter,
+    "cta-contact-form": CtaContactForm,
+    "cta-image": CtaImage,
+    "cta-stat-banner": CtaStatBanner,
+    "cta-card": CtaCard,
+  },
+  footer: {
+    "footer-columns": FooterColumns,
+    "footer-simple": FooterSimple,
+    "footer-newsletter": FooterNewsletter,
+    "footer-mega": FooterMega,
+    "footer-dark-cta": FooterDarkCta,
+    "footer-editorial": FooterEditorial,
+    "footer-contact": FooterContact,
+    "footer-minimal": FooterMinimal,
+  },
+  content: {
+    "content-intro": ContentIntro,
+    "content-image-text": ContentImageText,
+    "content-statement": ContentStatement,
+    "content-values": ContentValues,
+    "content-stats": ContentStats,
+    "content-blog": ContentBlog,
+    "content-team": ContentTeam,
+  },
+  ecommerce: {
+    "ecom-featured": EcomFeatured,
+    "ecom-grid": EcomGrid,
+    "ecom-collections": EcomCollections,
+    "ecom-best-sellers": EcomBestSellers,
+    "ecom-benefits": EcomBenefits,
+  },
+};
+
+export function resolveSectionComponent(
+  sectionType: SectionType,
+  componentKey: string,
+): SectionComponent | null {
+  return sectionComponentRegistry[sectionType]?.[componentKey] ?? null;
+}

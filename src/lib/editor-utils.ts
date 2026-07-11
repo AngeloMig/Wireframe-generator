@@ -1,10 +1,11 @@
-import { SECTION_TEMPLATES } from "@/data/section-templates";
+import { SECTION_VARIATIONS } from "@/data/section-variations";
 import { DEFAULT_BRAND } from "@/components/project/wizard/wizard-types";
+import { readJson, STORAGE_KEYS } from "@/lib/storage/local-storage";
 import type {
   PageType,
   Project,
-  SectionCategory,
-  SectionTemplate,
+  SectionType,
+  SectionVariation,
   WebsiteGoal,
 } from "@/types";
 
@@ -15,6 +16,10 @@ import type {
 export function str(content: Record<string, unknown>, key: string): string {
   const value = content[key];
   return typeof value === "string" ? value : "";
+}
+
+export function bool(content: Record<string, unknown>, key: string): boolean {
+  return content[key] === true;
 }
 
 export function itemsOf(
@@ -47,57 +52,78 @@ export function imageOf(content: Record<string, unknown>, key: string): ImageVal
 }
 
 // ---------------------------------------------------------------------------
-// Recommendations — local logic matching goals/page type to categories.
+// Library helpers — active designs (with admin overrides) + recommendations.
 // ---------------------------------------------------------------------------
 
-const GOAL_CATEGORIES: Partial<Record<WebsiteGoal, SectionCategory[]>> = {
-  "sell-products": ["ecommerce", "social-proof"],
-  "generate-leads": ["conversion", "services"],
-  "book-appointments": ["conversion", "services"],
-  "showcase-services": ["services", "social-proof"],
-  "brand-awareness": ["content", "social-proof"],
-  "display-portfolio": ["content", "social-proof"],
-  "educational-content": ["conversion", "content"],
-  "collect-subscribers": ["conversion"],
+type VariationOverrides = Record<string, Partial<SectionVariation>>;
+
+/** All designs with admin overrides (name/description/isActive) applied. */
+export function effectiveVariations(): SectionVariation[] {
+  const overrides = readJson<VariationOverrides>(STORAGE_KEYS.sectionVariationOverrides, {});
+  return SECTION_VARIATIONS.map((variation) => ({
+    ...variation,
+    ...overrides[variation.id],
+    id: variation.id,
+    sectionType: variation.sectionType,
+    componentKey: variation.componentKey,
+  }));
+}
+
+export function activeVariations(): SectionVariation[] {
+  return effectiveVariations().filter((v) => v.isActive);
+}
+
+const GOAL_TYPES: Partial<Record<WebsiteGoal, SectionType[]>> = {
+  "sell-products": ["ecommerce", "testimonials", "marquee"],
+  "generate-leads": ["cta", "services", "faq"],
+  "book-appointments": ["cta", "services", "faq"],
+  "showcase-services": ["services", "testimonials"],
+  "brand-awareness": ["content", "marquee", "testimonials"],
+  "display-portfolio": ["content", "marquee", "testimonials"],
+  "educational-content": ["faq", "content"],
+  "collect-subscribers": ["cta"],
 };
 
-/** Templates suggested for a page, ranked by goal fit. Local logic, no AI. */
-export function recommendedTemplates(
-  templates: SectionTemplate[],
+/** Designs suggested for a page, ranked by goal fit. Local logic, no AI. */
+export function recommendedVariations(
+  variations: SectionVariation[],
   pageType: PageType,
   goals: WebsiteGoal[],
   limit = 6,
-): SectionTemplate[] {
-  const preferred = new Set(goals.flatMap((goal) => GOAL_CATEGORIES[goal] ?? []));
-  return templates
-    .filter((t) => t.isActive && t.supportedPageTypes.includes(pageType))
-    .map((template) => {
+): SectionVariation[] {
+  const preferred = new Set(goals.flatMap((goal) => GOAL_TYPES[goal] ?? []));
+  const seenTypes = new Set<SectionType>();
+  return variations
+    .filter((v) => v.isActive && v.supportedPageTypes.includes(pageType))
+    .map((variation) => {
       let score = 0;
-      if (preferred.has(template.category)) score += 2;
-      if (template.category === "hero") score += 1;
-      return { template, score };
+      if (preferred.has(variation.sectionType)) score += 2;
+      if (variation.sectionType === "hero") score += 1;
+      return { variation, score };
     })
     .sort((a, b) => b.score - a.score)
+    .filter(({ variation }) => {
+      // At most one suggestion per type keeps the group varied.
+      if (seenTypes.has(variation.sectionType)) return false;
+      seenTypes.add(variation.sectionType);
+      return true;
+    })
     .slice(0, limit)
-    .map((entry) => entry.template);
+    .map((entry) => entry.variation);
 }
 
-/** Template ids already used on the page, most recently added first. */
-export function recentlyUsedTemplateIds(sectionTemplateIds: string[], limit = 4): string[] {
+/** Variation ids already used on the page, most recently added first. */
+export function recentlyUsedVariationIds(sectionVariationIds: string[], limit = 4): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
-  for (let i = sectionTemplateIds.length - 1; i >= 0 && result.length < limit; i--) {
-    const id = sectionTemplateIds[i];
+  for (let i = sectionVariationIds.length - 1; i >= 0 && result.length < limit; i--) {
+    const id = sectionVariationIds[i];
     if (!seen.has(id)) {
       seen.add(id);
       result.push(id);
     }
   }
   return result;
-}
-
-export function activeTemplates(): SectionTemplate[] {
-  return SECTION_TEMPLATES.filter((t) => t.isActive);
 }
 
 // ---------------------------------------------------------------------------
