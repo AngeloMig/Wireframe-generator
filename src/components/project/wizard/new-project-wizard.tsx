@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, Save } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, RotateCcw, Save } from "lucide-react";
 import { getPageTemplate } from "@/data/page-templates";
 import { bestTemplateFor } from "@/lib/recommendations";
 import { createSectionByVariationId } from "@/lib/sections";
@@ -58,6 +58,9 @@ export function NewProjectWizard() {
   const router = useRouter();
   const [data, setData] = useState<WizardData>(EMPTY_WIZARD_DATA);
   const [restored, setRestored] = useState(false);
+  // An unfinished draft is offered as an explicit choice, never auto-applied —
+  // so "Start a new project" always begins fresh.
+  const [pendingDraft, setPendingDraft] = useState<WizardData | null>(null);
   const [stepError, setStepError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const createProject = useProjectsStore((s) => s.createProject);
@@ -66,12 +69,27 @@ export function NewProjectWizard() {
 
   useEffect(() => {
     const draft = readWizardDraft();
-    if (draft) {
-      setData(draft);
-      toast("Draft restored", "info", "We picked up where you left off.");
-    }
+    // Only offer to resume a draft that has real progress; otherwise start clean.
+    const hasProgress =
+      draft &&
+      (draft.step > 0 ||
+        draft.info.projectName.trim().length > 0 ||
+        draft.info.companyName.trim().length > 0);
+    if (hasProgress) setPendingDraft(draft);
     setRestored(true);
   }, []);
+
+  const resumeDraft = () => {
+    if (pendingDraft) setData(pendingDraft);
+    setPendingDraft(null);
+  };
+
+  const discardDraft = () => {
+    clearWizardDraft();
+    setData(EMPTY_WIZARD_DATA);
+    setPendingDraft(null);
+    setStepError(null);
+  };
 
   const update = (partial: Partial<WizardData>) => {
     setStepError(null);
@@ -188,6 +206,31 @@ export function NewProjectWizard() {
         <h1 className="mt-2 text-3xl font-bold tracking-[-0.035em] text-[var(--text-primary)]">Let’s shape the right starting point</h1>
         <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[var(--text-secondary)]">A few simple choices help us recommend pages and sections that fit your business. You can change everything later.</p>
       </div>
+
+      {/* Unfinished-draft choice — resume or start fresh, never auto-applied. */}
+      {pendingDraft && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-secondary)] px-4 py-3">
+          <div className="flex items-start gap-2.5">
+            <RotateCcw className="mt-0.5 size-4 shrink-0 text-[var(--text-secondary)]" aria-hidden />
+            <p className="text-sm text-[var(--text-secondary)]">
+              You have an unfinished project draft
+              {pendingDraft.info.projectName.trim()
+                ? ` for “${pendingDraft.info.projectName.trim()}”`
+                : ""}
+              . Pick up where you left off, or start a new one.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={discardDraft}>
+              Start fresh
+            </Button>
+            <Button variant="outline" size="sm" onClick={resumeDraft}>
+              Resume draft
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Progress indicator */}
       <ol className="mb-8 flex items-center gap-1.5 sm:gap-2" aria-label="Wizard progress">
         {WIZARD_STEPS.map((step, index) => {
