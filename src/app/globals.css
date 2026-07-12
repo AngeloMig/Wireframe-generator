@@ -5,20 +5,20 @@
   --font-display: var(--font-archivo), var(--font-inter), ui-sans-serif, sans-serif;
   --font-mono: var(--font-spline-mono), ui-monospace, "SF Mono", monospace;
 
-  /* Drafting-studio neutral scale: Polaris structure, warmed to paper and
-     graphite. slate-* is the app's workhorse neutral, so the whole ramp is
-     remapped here rather than sweeping every usage. */
-  --color-slate-50: #fafaf7;
-  --color-slate-100: #f1f0eb;
-  --color-slate-200: #e4e3db;
-  --color-slate-300: #d4d3c9;
-  --color-slate-400: #8b8a82;
-  --color-slate-500: #62615a;
-  --color-slate-600: #4b4a44;
-  --color-slate-700: #31302c;
-  --color-slate-800: #22211e;
-  --color-slate-900: #1b1a17;
-  --color-slate-950: #100f0d;
+  /* Cool blue-gray neutral scale — the app's workhorse neutral, tuned to match
+     the blue-gray surfaces so slate-* utilities and the surface tokens read as
+     one system (green is the only identity accent, kept separate). */
+  --color-slate-50: #f7f9fb;
+  --color-slate-100: #eef2f6;
+  --color-slate-200: #e2e7ec;
+  --color-slate-300: #cdd6df;
+  --color-slate-400: #909aa6;
+  --color-slate-500: #5f6b78;
+  --color-slate-600: #48525d;
+  --color-slate-700: #333c46;
+  --color-slate-800: #232a32;
+  --color-slate-900: #1a2028;
+  --color-slate-950: #0f1319;
 
   /* Accent: Polaris blue — focus rings, selection, interactive emphasis. */
   --color-indigo-50: #eff6fe;
@@ -81,28 +81,28 @@
 
 :root {
   color-scheme: light;
-  /* Drafting-studio surfaces: warm paper, white sheets, graphite ink. */
+  /* Cool blue-gray surfaces: pale blue-gray canvas, white cards, ink text. */
   --app-background: #edf2f6;
   --surface-primary: #ffffff;
   --surface-secondary: #f5f7fa;
   --surface-elevated: #ffffff;
   --surface-pressed: #edf2f7;
-  --text-primary: #1b1a17;
-  --text-secondary: #62615a;
-  --text-muted: #8b8a82;
+  --text-primary: #1a2028;
+  --text-secondary: #5f6b78;
+  --text-muted: #909aa6;
   --text-on-dark: #ffffff;
   --border-default: #e2e7ec;
   --border-strong: #cdd6df;
-  --border-input: #8b8a82;
-  --primary: #1b1a17;
-  --primary-hover: #31302c;
-  --primary-active: #45443f;
+  --border-input: #909aa6;
+  --primary: #1a2028;
+  --primary-hover: #333c46;
+  --primary-active: #48525d;
   --primary-soft: #edf2f7;
   --focus-ring: #005bd3;
   /* Deep drafting green — identity moments only (login panel, brand marks).
      Matched to the overview hero so the app carries one identity dark. */
   --drafting-ink: #1c3a30;
-  --supporting: #62615a;
+  --supporting: #5f6b78;
   --success: #29845a;
   --success-soft: #cdfee1;
   --success-text: #0c5132;
