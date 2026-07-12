@@ -229,3 +229,93 @@ export function buildContentSummary(project: Project): string {
   }
   return lines.join("\n");
 }
+
+/**
+ * Human-readable Markdown developer brief built from a handoff export.
+ * Developers generally want a scannable spec, not raw JSON — this renders
+ * the same structured export as a readable document.
+ */
+export function buildHandoffMarkdown(exp: ProjectHandoffExport): string {
+  const out: string[] = [];
+  const p = exp.project;
+  out.push(`# ${p.name} — Development Handoff`, "");
+  out.push(
+    `> Exported ${new Date(exp.exportedAt).toLocaleString()} · ${
+      exp.audience === "internal" ? "Internal (agency)" : "Customer"
+    } copy · Status: ${p.status}`,
+    "",
+  );
+
+  out.push("## Project", "");
+  out.push(`- **Company:** ${p.companyName}`);
+  out.push(`- **Platform:** ${p.platform}`);
+  if (exp.designSystem.mainGoal) out.push(`- **Main goal:** ${exp.designSystem.mainGoal}`);
+  if (exp.designSystem.targetAudience)
+    out.push(`- **Audience:** ${exp.designSystem.targetAudience}`);
+  if (exp.designSystem.industry) out.push(`- **Industry:** ${exp.designSystem.industry}`);
+  out.push("");
+
+  const brand = exp.designSystem.brand;
+  if (brand || exp.designSystem.visualStyles.length > 0) {
+    out.push("## Design system", "");
+    if (brand) {
+      if (brand.primaryColor) out.push(`- **Primary color:** \`${brand.primaryColor}\``);
+      if (brand.secondaryColor) out.push(`- **Secondary color:** \`${brand.secondaryColor}\``);
+      if (brand.accentColor) out.push(`- **Accent color:** \`${brand.accentColor}\``);
+      if (brand.headingStyle) out.push(`- **Headings:** ${brand.headingStyle}`);
+      if (brand.buttonStyle) out.push(`- **Buttons:** ${brand.buttonStyle}`);
+      if (brand.borderRadius) out.push(`- **Corners:** ${brand.borderRadius}`);
+    }
+    if (exp.designSystem.visualStyles.length > 0)
+      out.push(`- **Visual direction:** ${exp.designSystem.visualStyles.join(", ")}`);
+    out.push("");
+  }
+
+  out.push("## Pages", "");
+  for (const page of exp.pages) {
+    const nav = page.navigation.footerOnly
+      ? "footer only"
+      : page.navigation.inMainNav
+        ? "in main nav"
+        : "not in nav";
+    const slug = page.slug.startsWith("/") ? page.slug : `/${page.slug}`;
+    out.push(`### ${page.name} \`${slug}\``);
+    out.push(`_${page.typeLabel} · ${nav} · status: ${page.status}_`, "");
+    if (page.sections.length === 0) {
+      out.push("_No sections._", "");
+      continue;
+    }
+    page.sections.forEach((section, i) => {
+      const flags = [
+        section.responsiveNotes.hidden ? "hidden" : null,
+        section.responsiveNotes.imageRequirement
+          ? `image: ${section.responsiveNotes.imageRequirement}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(", ");
+      out.push(
+        `${i + 1}. **${section.variationName}** — ${section.sectionTypeLabel}${flags ? ` _(${flags})_` : ""}`,
+      );
+      for (const key of ["eyebrow", "heading", "description", "buttonLabel"]) {
+        const value = (section.content as Record<string, unknown>)[key];
+        if (typeof value === "string" && value.trim()) {
+          out.push(`   - ${key}: ${value.trim()}`);
+        }
+      }
+      if (section.customerNote) out.push(`   - _note:_ ${section.customerNote}`);
+      if (section.agencyQuestion) out.push(`   - ${section.agencyQuestion}`);
+    });
+    out.push("");
+  }
+
+  if (exp.openItems.length > 0) {
+    out.push("## Open items", "");
+    for (const item of exp.openItems) {
+      out.push(`- [${item.priority}] ${item.message}${item.dueDate ? ` (due ${item.dueDate})` : ""}`);
+    }
+    out.push("");
+  }
+
+  return out.join("\n");
+}

@@ -79,6 +79,15 @@ export function NewProjectWizard() {
     setRestored(true);
   }, []);
 
+  useEffect(() => {
+    const templateId = new URLSearchParams(window.location.search).get("template");
+    if (!templateId || !getPageTemplate(templateId)) return;
+    setData((current) => ({
+      ...current,
+      startingPoint: { mode: "template", templateId },
+    }));
+  }, []);
+
   const resumeDraft = () => {
     if (pendingDraft) setData(pendingDraft);
     setPendingDraft(null);

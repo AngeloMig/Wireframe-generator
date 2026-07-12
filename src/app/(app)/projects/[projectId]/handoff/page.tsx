@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   ClipboardCopy,
   FileJson,
+  FileText,
   PackageCheck,
   Printer,
 } from "lucide-react";
@@ -12,7 +13,7 @@ import {
   ROLE_LABELS,
   SECTION_REVIEW_STATUS_META,
 } from "@/config/labels";
-import { buildContentSummary, buildHandoffExport } from "@/lib/handoff-export";
+import { buildContentSummary, buildHandoffExport, buildHandoffMarkdown } from "@/lib/handoff-export";
 import { canExportHandoff } from "@/lib/permissions";
 import { useProject } from "@/hooks/use-project";
 import { selectProjectApprovals, useApprovalsStore } from "@/stores/approvals-store";
@@ -82,6 +83,20 @@ export default function HandoffPage() {
     toast("JSON export downloaded", "success");
   };
 
+  const downloadMarkdown = () => {
+    const data = buildHandoffExport(project, comments, approvals, audience);
+    const blob = new Blob([buildHandoffMarkdown(data)], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-handoff-${audience}.md`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    toast("Markdown brief downloaded", "success");
+  };
+
   const copySummary = async () => {
     try {
       await navigator.clipboard.writeText(buildContentSummary(project));
@@ -146,7 +161,11 @@ export default function HandoffPage() {
               : "Excludes internal agency notes, private developer notes, and internal assignments."}
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={downloadJson}>
+            <Button onClick={downloadMarkdown}>
+              <FileText className="size-4" aria-hidden />
+              Download brief (Markdown)
+            </Button>
+            <Button variant="outline" onClick={downloadJson}>
               <FileJson className="size-4" aria-hidden />
               Download JSON
             </Button>

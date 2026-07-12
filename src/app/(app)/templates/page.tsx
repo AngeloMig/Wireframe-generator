@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Eye, Layers, LayoutTemplate, Search, SearchX, SlidersHorizontal, Sparkles } from "lucide-react";
 import { PAGE_TEMPLATES } from "@/data/page-templates";
 import { SECTION_TYPE_ORDER, SECTION_VARIATIONS, getVariation, variationsOfType } from "@/data/section-variations";
@@ -32,6 +33,7 @@ const CATEGORY_FILTERS: (SectionType | "all")[] = ["all", ...SECTION_TYPE_ORDER]
 
 /** Read-only browser for the built-in page and section templates. */
 export default function TemplatesPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<"sections" | "pages">("sections");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<SectionType | "all">("all");
@@ -273,7 +275,11 @@ export default function TemplatesPage() {
         />
       )}
       {previewTemplate && (
-        <PageTemplatePreview template={previewTemplate} onClose={() => setPreviewTemplate(null)} />
+        <PageTemplatePreview
+          template={previewTemplate}
+          onClose={() => setPreviewTemplate(null)}
+          onUse={() => router.push(`/projects/new?template=${encodeURIComponent(previewTemplate.id)}`)}
+        />
       )}
     </div>
   );
@@ -282,9 +288,11 @@ export default function TemplatesPage() {
 function PageTemplatePreview({
   template,
   onClose,
+  onUse,
 }: {
   template: PageTemplate;
   onClose: () => void;
+  onUse: () => void;
 }) {
   const initialSections = useMemo(() => {
     return template.sections.flatMap((entry, index) => {
@@ -323,7 +331,12 @@ function PageTemplatePreview({
       title={template.name}
       description={`${template.description} Preview the complete wireframe and try alternative section designs.`}
       size="full"
-      footer={<Button onClick={onClose}>Done</Button>}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>Close</Button>
+          <Button onClick={onUse}>Use this template <ArrowRight className="size-3.5" aria-hidden /></Button>
+        </>
+      }
     >
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_260px]">
         <div className="max-h-[68vh] overflow-y-auto rounded-[14px] border border-[#dce6ee] bg-[#eef4f8] p-3 sm:p-5">
