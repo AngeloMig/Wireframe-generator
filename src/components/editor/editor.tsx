@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -221,6 +221,45 @@ export function Editor({
       ),
     [comments, page.id, user.role],
   );
+
+  // Pin positions are computed from each section's live position, so they must
+  // recompute whenever the canvas scrolls, zooms, or resizes — otherwise a
+  // screen-fixed pin drifts off the spot it was dropped on.
+  const [, recomputePins] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    if (!commentMode) return;
+    let frame = 0;
+    const onChange = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => recomputePins());
+    };
+    document.addEventListener("scroll", onChange, true);
+    window.addEventListener("resize", onChange);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("scroll", onChange, true);
+      window.removeEventListener("resize", onChange);
+    };
+  }, [commentMode]);
+
+  /** Screen position of a `point:fx:fy` anchor, from its section's live rect. */
+  const anchorScreenPosition = useCallback((comment: (typeof comments)[number]) => {
+    const parts = comment.anchorKey?.split(":") ?? [];
+    const fx = Number(parts[1]);
+    const fy = Number(parts[2]);
+    if (!Number.isFinite(fx) || !Number.isFinite(fy)) return null;
+    const el = comment.sectionId
+      ? document.querySelector(`[data-canvas-section="${comment.sectionId}"]`)
+      : null;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    // Values ≤1 are fractions of the section (current format); larger values
+    // are legacy absolute viewport coords, kept working for old pins.
+    const isFraction = Math.abs(fx) <= 1 && Math.abs(fy) <= 1;
+    const x = isFraction ? rect.left + fx * rect.width : fx;
+    const y = isFraction ? rect.top + fy * rect.height : fy;
+    return { x, y };
+  }, []);
 
   // Sections still waiting on someone: open feedback threads, incomplete
   // action items, or content flags on the section itself. Shown as amber
@@ -790,10 +829,18 @@ export function Editor({
           }}
           onCommentHere={() => {
             setCommentMode(true);
+            // Anchor the pin as a fraction of the section it was dropped on, so
+            // it tracks the design when the canvas scrolls or zooms.
+            const el = contextMenu.sectionId
+              ? document.querySelector(`[data-canvas-section="${contextMenu.sectionId}"]`)
+              : null;
+            const rect = el?.getBoundingClientRect();
+            const fx = rect ? (contextMenu.x - rect.left) / rect.width : 0.5;
+            const fy = rect ? (contextMenu.y - rect.top) / rect.height : 0.5;
             openComposer({
               pageId: page.id,
               sectionId: contextMenu.sectionId,
-              anchorKey: `point:${contextMenu.x}:${contextMenu.y}`,
+              anchorKey: `point:${fx.toFixed(4)}:${fy.toFixed(4)}`,
               anchorLabel: "Pinned canvas comment",
               position: { x: contextMenu.x, y: contextMenu.y },
             });
@@ -802,10 +849,8 @@ export function Editor({
       )}
 
       {commentMode && pointComments.map((comment, index) => {
-        const [, rawX, rawY] = comment.anchorKey?.split(":") ?? [];
-        const x = Number(rawX);
-        const y = Number(rawY);
-        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+        const pos = anchorScreenPosition(comment);
+        if (!pos) return null;
         return (
           <button
             key={comment.id}
@@ -817,11 +862,11 @@ export function Editor({
                 sectionId: comment.sectionId,
                 anchorKey: comment.anchorKey,
                 anchorLabel: comment.anchorLabel ?? "Pinned canvas comment",
-                position: { x, y },
+                position: pos,
               })
             }
             className="fixed z-[75] flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-[var(--primary)] text-white shadow-[0_4px_14px_rgb(22_107_87/0.3)] transition-transform hover:scale-110"
-            style={{ left: x, top: y }}
+            style={{ left: pos.x, top: pos.y }}
           >
             <MessageCircle className="size-3.5" aria-hidden />
           </button>
