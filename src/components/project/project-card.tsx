@@ -68,12 +68,14 @@ export function ProjectCard({ project }: { project: Project }) {
   };
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[var(--shadow-card)] transition-colors hover:border-[var(--border-strong)]">
-      {/* Decorative sheet preview; the title link below is the accessible way in. */}
+    <article className="group flex flex-col rounded-xl border border-slate-200 bg-white shadow-[var(--shadow-card)] transition-colors hover:border-[var(--border-strong)]">
+      {/* Decorative sheet preview; the title link below is the accessible way in.
+          Only the preview clips its corners — the card itself must NOT use
+          overflow-hidden, or the actions dropdown gets cut off. */}
       <div
         aria-hidden
         onClick={() => router.push(overviewHref)}
-        className="cursor-pointer border-b border-[var(--border-default)]"
+        className="cursor-pointer overflow-hidden rounded-t-xl border-b border-[var(--border-default)]"
       >
         <SheetPreview project={project} className="h-32" />
       </div>
