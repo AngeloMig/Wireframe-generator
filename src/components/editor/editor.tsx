@@ -49,6 +49,7 @@ import { EditorTour } from "@/components/customer/editor-tour";
 import { SuggestionBanner } from "@/components/collab/suggestion-banner";
 import { CANVAS_APPEND_ID, EditorCanvas, type DropTarget } from "./canvas/editor-canvas";
 import { ContextCommentMenu, type ContextMenuState } from "./canvas/context-comment-menu";
+import { CommandPalette } from "./command-palette";
 import { EditorToolbar } from "./editor-toolbar";
 import { LibraryDragPreview, LIBRARY_DRAG_PREFIX } from "./library/library-item";
 import { SectionLibrary } from "./library/section-library";
@@ -874,6 +875,20 @@ export function Editor({
       })}
 
       {!isPreview && commentMode && <CanvasCommentPopover project={project} />}
+
+      <CommandPalette
+        project={project}
+        page={page}
+        onSelectPage={(pageId) =>
+          router.replace(`/projects/${project.id}/editor?page=${pageId}`, { scroll: false })
+        }
+        onAddSection={() => setLibraryOpen(true)}
+        onUndo={() => undo(project.id)}
+        onRedo={() => redo(project.id)}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        canEdit={contentEditable}
+      />
 
       {isCustomer && contentEditable && <EditorTour />}
 
