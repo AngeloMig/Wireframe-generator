@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PanelLeftClose, PanelLeftOpen, PencilRuler } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { APP_CONFIG } from "@/config/app";
 import { ADMIN_NAV, MAIN_NAV, type NavItem } from "@/config/navigation";
 import { useSessionStore } from "@/stores/session-store";
 import { useUiStore } from "@/stores/ui-store";
 import { cn } from "@/utils/cn";
+import { BrandMark } from "@/components/brand/brand-mark";
 
 function NavLink({
   item,
@@ -30,7 +31,7 @@ function NavLink({
       className={cn(
         "group flex min-h-8 items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] font-medium transition-colors",
         active
-          ? "bg-[var(--surface-pressed)] font-semibold text-[var(--text-primary)]"
+          ? "bg-[var(--info-soft)] font-semibold text-[var(--info-text)]"
           : "text-[var(--text-secondary)] hover:bg-[#ebebeb] hover:text-[var(--text-primary)]",
         collapsed && "justify-center px-2",
       )}
@@ -94,9 +95,7 @@ export function Sidebar() {
       )}
     >
       <div className={cn("flex h-14 items-center gap-2.5 border-b border-[var(--border-default)] px-4", collapsed && "justify-center px-2")}>
-        <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--drafting-ink)] text-white">
-          <PencilRuler className="size-4" aria-hidden />
-        </div>
+        <BrandMark className="size-7 rounded-lg" />
         {!collapsed && (
           <span className="font-display truncate text-sm font-semibold tracking-tight text-[var(--text-primary)]">{APP_CONFIG.name}</span>
         )}

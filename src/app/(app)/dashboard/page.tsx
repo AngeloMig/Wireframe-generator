@@ -14,7 +14,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { PROJECT_STATUS_META, ROLE_LABELS } from "@/config/labels";
+import { PROJECT_STATUS_META } from "@/config/labels";
 import { nextRecommendedAction, projectCompletion } from "@/lib/project-utils";
 import { useCommentsStore } from "@/stores/comments-store";
 import { useNotificationsStore } from "@/stores/notifications-store";
@@ -182,25 +182,28 @@ function AgencyDashboard() {
 
   return (
     <div className="space-y-9">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="mb-1.5 font-mono text-[11px] font-medium tracking-[0.18em] text-[var(--text-muted)] uppercase">Your workspace</p>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-[var(--text-primary)]">
-            {isAgencySide ? `Good to see you, ${firstName}` : `Welcome back, ${firstName}`}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {isAgencySide
-              ? `You're viewing as ${ROLE_LABELS[user.role]} — review customer blueprints and keep projects moving.`
-              : "Let’s keep your website moving—one clear step at a time."}
-          </p>
+      <section className="relative overflow-hidden rounded-[18px] border border-[#d7e5f0] bg-[#e7f3fc] px-6 py-7 text-[var(--text-primary)] shadow-[0_12px_30px_rgb(58_92_120/0.08)] sm:px-8 sm:py-8">
+        <div className="absolute -right-12 -top-20 size-72 rounded-full bg-white/70 blur-3xl" aria-hidden />
+        <div className="relative flex flex-wrap items-end justify-between gap-6">
+          <div>
+            <p className="mb-2 font-mono text-[10px] font-medium tracking-[0.18em] text-[var(--info)] uppercase">Agency command center</p>
+            <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">Good to see you, {firstName}</h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-emerald-50/75">
+              Review customer blueprints, resolve feedback, and keep every project moving forward.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium text-[var(--text-secondary)]">
+              <span className="rounded-full bg-white/75 px-3 py-1.5">{visible.length} active project{visible.length === 1 ? "" : "s"}</span>
+              <span className="rounded-full bg-white/75 px-3 py-1.5">{agencyQueues?.readyForReview.length ?? 0} ready for review</span>
+            </div>
+          </div>
+          <Link href="/projects/new">
+            <Button size="lg" className="bg-[var(--info)] text-white shadow-none hover:bg-[var(--info-text)]">
+              <Plus className="size-4.5" aria-hidden />
+              Start a new project
+            </Button>
+          </Link>
         </div>
-        <Link href="/projects/new">
-          <Button size="lg">
-            <Plus className="size-4.5" aria-hidden />
-            Start a new project
-          </Button>
-        </Link>
-      </div>
+      </section>
 
       {!isAgencySide && focusProject && focusAction && (
         <section className="relative overflow-hidden rounded-[1.5rem] border border-[#cadeD6] bg-[#173f36] px-6 py-7 text-white shadow-[0_22px_55px_rgb(23_63_54/0.18)] sm:px-8 sm:py-9" aria-labelledby="next-step-heading">

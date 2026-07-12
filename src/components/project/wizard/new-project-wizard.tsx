@@ -223,10 +223,10 @@ export function NewProjectWizard() {
 
       <div className="rounded-[1.5rem] border border-[var(--border-default)] bg-white p-6 shadow-[var(--shadow-panel)] sm:p-9">
         <div className="mb-6">
-          <p className="text-xs font-bold tracking-[0.1em] text-[var(--primary)] uppercase">
+          <p className="font-mono text-[11px] font-medium tracking-[0.18em] text-[var(--text-muted)] uppercase">
             Step {data.step + 1} of {WIZARD_STEPS.length}
           </p>
-          <h2 className="mt-2 text-2xl font-bold tracking-[-0.025em] text-[var(--text-primary)]">
+          <h2 className="font-display mt-2 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
             {
               [
                 "Tell us about your project",

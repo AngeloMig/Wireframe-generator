@@ -6,7 +6,6 @@ import {
   ArrowRight,
   ClipboardList,
   Code2,
-  PencilRuler,
   ShieldCheck,
   UserRound,
   Users,
@@ -16,6 +15,7 @@ import { ROLE_LABELS } from "@/config/labels";
 import { MOCK_USERS } from "@/data/users";
 import { useSessionStore } from "@/stores/session-store";
 import type { UserRole } from "@/types";
+import { BrandMark } from "@/components/brand/brand-mark";
 
 const ROLE_ICONS: Record<UserRole, typeof UserRound> = {
   customer: UserRound,
@@ -51,27 +51,25 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col bg-[var(--app-background)] lg:flex-row">
       {/* Identity panel: the drafting table. */}
-      <div className="relative flex flex-col justify-between overflow-hidden bg-[var(--drafting-ink)] px-8 py-8 text-white lg:w-[46%] lg:px-12 lg:py-10">
+      <div className="relative flex flex-col justify-between overflow-hidden bg-[#e7f3fc] px-8 py-8 text-[var(--text-primary)] lg:w-[46%] lg:px-12 lg:py-10">
         {/* Drafting grid */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.07]"
+          className="pointer-events-none absolute inset-0 opacity-[0.12]"
           style={{
             backgroundImage:
-              "linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)",
+              "linear-gradient(to right, #3d78a1 1px, transparent 1px), linear-gradient(to bottom, #3d78a1 1px, transparent 1px)",
             backgroundSize: "28px 28px",
           }}
         />
 
         <div className="relative flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/25">
-            <PencilRuler className="size-4.5" aria-hidden />
-          </div>
+          <BrandMark className="size-9 rounded-lg" inverse />
           <div>
             <p className="font-display text-sm font-semibold tracking-tight">
               {APP_CONFIG.name}
             </p>
-            <p className="font-mono text-[10px] tracking-[0.18em] text-white/50 uppercase">
+            <p className="font-mono text-[10px] tracking-[0.18em] text-[var(--text-muted)] uppercase">
               by {APP_CONFIG.agencyName}
             </p>
           </div>
@@ -146,23 +144,23 @@ export default function LoginPage() {
         </div>
 
         {/* Title block, like the corner of an engineering drawing. */}
-        <div className="relative hidden border-t border-white/15 pt-4 lg:block">
+        <div className="relative hidden border-t border-[#b9d2e4] pt-4 lg:block">
           <dl className="flex gap-8 font-mono text-[10px] tracking-[0.14em] uppercase">
             <div>
-              <dt className="text-white/40">Project</dt>
-              <dd className="mt-0.5 text-white/85">Your website</dd>
+              <dt className="text-[var(--text-muted)]">Project</dt>
+              <dd className="mt-0.5 text-[var(--text-primary)]">Your website</dd>
             </div>
             <div>
-              <dt className="text-white/40">Medium</dt>
-              <dd className="mt-0.5 text-white/85">Wireframe</dd>
+              <dt className="text-[var(--text-muted)]">Medium</dt>
+              <dd className="mt-0.5 text-[var(--text-primary)]">Wireframe</dd>
             </div>
             <div>
-              <dt className="text-white/40">Rev</dt>
-              <dd className="mt-0.5 text-white/85">Draft A</dd>
+              <dt className="text-[var(--text-muted)]">Rev</dt>
+              <dd className="mt-0.5 text-[var(--text-primary)]">Draft A</dd>
             </div>
             <div>
-              <dt className="text-white/40">Scale</dt>
-              <dd className="mt-0.5 text-white/85">1 : 1</dd>
+              <dt className="text-[var(--text-muted)]">Scale</dt>
+              <dd className="mt-0.5 text-[var(--text-primary)]">1 : 1</dd>
             </div>
           </dl>
         </div>

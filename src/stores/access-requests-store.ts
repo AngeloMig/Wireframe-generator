@@ -9,6 +9,7 @@ interface AccessRequestsState {
   requests: AccessRequest[];
   hydrated: boolean;
   hydrate: () => void;
+  refresh: () => void;
   createRequest: (input: Omit<AccessRequest, "id" | "createdAt" | "status">) => AccessRequest;
   decide: (id: string, status: "approved" | "declined", decidedById: string, response?: string) => void;
 }
@@ -18,7 +19,12 @@ export const useAccessRequestsStore = create<AccessRequestsState>((set, get) => 
   hydrated: false,
   hydrate: () => {
     if (get().hydrated) return;
-    set({ requests: readJson<AccessRequest[]>(STORAGE_KEYS.accessRequests, []), hydrated: true });
+    const stored = readJson<AccessRequest[]>(STORAGE_KEYS.accessRequests, []);
+    set({ requests: Array.isArray(stored) ? stored : [], hydrated: true });
+  },
+  refresh: () => {
+    const stored = readJson<AccessRequest[]>(STORAGE_KEYS.accessRequests, []);
+    set({ requests: Array.isArray(stored) ? stored : [], hydrated: true });
   },
   createRequest: (input) => {
     const request: AccessRequest = { ...input, id: createId(), status: "pending", createdAt: nowIso() };
@@ -35,5 +41,8 @@ export const useAccessRequestsStore = create<AccessRequestsState>((set, get) => 
 }));
 
 export function accessLevelForRequest(level: AccessRequestLevel) {
-  return level === "page" ? "comment" : "edit";
+  // An approved page request must unlock the editor for the requester. The
+  // page-specific restriction is the next permission layer; the current
+  // member model stores the project-level edit gate.
+  return level === "page" || level === "content" || level === "builder" ? "edit" : "comment";
 }

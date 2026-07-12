@@ -70,7 +70,7 @@ export function VariationPreview({
       open
       onClose={onClose}
       title={variation.name}
-      description={variation.description}
+      description={`${variation.description} Full section preview — see the complete layout before adding it.`}
       size="xl"
       footer={
         <>
@@ -140,7 +140,7 @@ export function VariationPreview({
           </div>
         </div>
 
-        <div ref={frameRef} className="overflow-hidden rounded-lg bg-slate-100 p-4">
+        <div ref={frameRef} className="overflow-auto rounded-[1rem] border border-[var(--border-default)] bg-[#e9ece8] p-5 shadow-inner">
           <div
             className="mx-auto"
             style={{ width: deviceWidth * scale, height: innerHeight * scale || undefined }}
@@ -154,7 +154,7 @@ export function VariationPreview({
               }}
             >
               <WireProvider value={{ styled: mode === "styled", theme, device }}>
-                <div className="overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200">
+                <div className="overflow-hidden rounded-[1rem] bg-white shadow-[0_18px_45px_rgb(23_32_29/0.12)] ring-1 ring-[#d6ddd8]">
                   <SectionRenderer section={previewSection} />
                 </div>
               </WireProvider>

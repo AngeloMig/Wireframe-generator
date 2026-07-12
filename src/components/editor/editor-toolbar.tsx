@@ -69,6 +69,7 @@ export function EditorToolbar({
   themeHasOverrides,
   onThemeChange,
   onThemeReset,
+  canEditOverride,
 }: {
   project: Project;
   page: ProjectPage;
@@ -84,11 +85,12 @@ export function EditorToolbar({
   themeHasOverrides?: boolean;
   onThemeChange?: (patch: ThemeOverrides) => void;
   onThemeReset?: () => void;
+  canEditOverride?: boolean;
 }) {
   const router = useRouter();
   const user = useSessionStore((s) => s.user);
   const isCustomer = user.role === "customer";
-  const customerCanEdit = canEditProjectContent(user.role, project.status);
+  const customerCanEdit = canEditOverride ?? canEditProjectContent(user.role, project.status);
   const submissionMode =
     project.status === "revisions-requested" || project.status === "customer-revising"
       ? ("revisions" as const)

@@ -135,7 +135,7 @@ export function SearchButton() {
             const Icon = KIND_ICONS[kind];
             return (
               <div key={kind} className="mb-4">
-                <h3 className="mb-1 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                <h3 className="mb-1 font-mono text-[10px] font-medium tracking-[0.18em] text-slate-400 uppercase">
                   {SEARCH_KIND_LABELS[kind]}
                 </h3>
                 {kindResults.map((result) => (

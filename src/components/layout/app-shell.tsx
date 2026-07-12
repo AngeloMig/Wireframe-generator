@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, PencilRuler, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { APP_CONFIG } from "@/config/app";
 import { isCustomerAllowedPath } from "@/lib/customer-workspace";
 import { useNotificationsStore } from "@/stores/notifications-store";
@@ -17,6 +17,7 @@ import { NotificationsPanel } from "./notifications-panel";
 import { SearchButton } from "./search-dialog";
 import { Sidebar, SidebarContent } from "./sidebar";
 import { UserMenu } from "./user-menu";
+import { BrandMark } from "@/components/brand/brand-mark";
 
 /**
  * Authenticated application chrome: sidebar, top header, mobile nav.
@@ -72,9 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {!inEditor && (
           <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-[var(--border-default)] bg-white px-4 sm:px-6">
             <div className="flex items-center gap-2.5">
-              <div className="flex size-7 items-center justify-center rounded-lg bg-[var(--drafting-ink)] text-white">
-                <PencilRuler className="size-4" aria-hidden />
-              </div>
+              <BrandMark className="size-7 rounded-lg" />
               <span className="font-display text-sm font-semibold tracking-tight text-[var(--text-primary)]">
                 {APP_CONFIG.name}
               </span>
@@ -114,9 +113,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="relative flex h-full w-72 animate-slide-in-right flex-col bg-white shadow-[var(--shadow-overlay)]">
             <div className="flex h-14 items-center justify-between border-b border-slate-200 px-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex size-7 items-center justify-center rounded-lg bg-slate-900 text-white">
-                  <PencilRuler className="size-4.5" aria-hidden />
-                </div>
+                <BrandMark className="size-7 rounded-lg" />
                 <span className="text-sm font-semibold text-slate-900">{APP_CONFIG.name}</span>
               </div>
               <Button
@@ -134,7 +131,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-[var(--border-default)] bg-white px-4 sm:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-[var(--border-default)] bg-white/95 px-4 backdrop-blur sm:px-6">
           <Button
             variant="ghost"
             size="icon"

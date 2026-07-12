@@ -5,15 +5,16 @@ import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   CheckSquare,
+  CheckCircle2,
   FolderOpen,
   Lightbulb,
   Mail,
   MessageSquare,
   RefreshCcw,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import { APP_CONFIG } from "@/config/app";
-import { brandTheme } from "@/lib/editor-utils";
 import {
   customerEditorPath,
   customerProjects,
@@ -24,9 +25,8 @@ import { useProjectsStore } from "@/stores/projects-store";
 import { useSessionStore } from "@/stores/session-store";
 import { useSuggestionsStore } from "@/stores/suggestions-store";
 import type { Project } from "@/types";
-import { ScaledPreview } from "@/components/collab/scaled-preview";
-import { SectionRenderer } from "@/components/editor/wireframes/section-renderer";
-import { WireProvider } from "@/components/editor/wireframes/primitives";
+import { nextRecommendedAction, projectCompletion } from "@/lib/project-utils";
+import { SheetPreview } from "@/components/project/sheet-preview";
 import { ProjectStatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -92,15 +92,35 @@ export function CustomerHome() {
     : assigned;
 
   return (
-    <div className="mt-6">
-      <p className="mb-1.5 font-mono text-[11px] font-medium tracking-[0.18em] text-[var(--text-muted)] uppercase">Your drafting table</p>
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-        Welcome back, {user.name.split(" ")[0]}
-      </h1>
-      <p className="mt-1 text-sm text-[var(--text-secondary)]">
-        Choose a project to continue working on its wireframe.
-      </p>
-      <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+    <div className="space-y-7">
+      <section className="relative overflow-hidden rounded-[18px] border border-[#d7e5f0] bg-[#e7f3fc] px-6 py-7 text-[var(--text-primary)] shadow-[0_12px_30px_rgb(58_92_120/0.08)] sm:px-8 sm:py-8">
+        <div className="absolute -right-10 -top-16 size-64 rounded-full bg-white/70 blur-2xl" aria-hidden />
+        <div className="relative max-w-2xl">
+          <p className="mb-3 inline-flex items-center gap-2 font-mono text-[10px] font-medium tracking-[0.18em] text-[var(--info)] uppercase">
+            <Sparkles className="size-3.5" aria-hidden />
+            Your client workspace
+          </p>
+          <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+            Welcome back, {user.name.split(" ")[0]}
+          </h1>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--text-secondary)] sm:text-base">
+            Pick up where you left off, review feedback, and keep your website blueprint moving.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2 text-xs font-medium text-[var(--text-secondary)]">
+            <span className="rounded-full bg-white/75 px-3 py-1.5">{assigned.length} project{assigned.length === 1 ? "" : "s"} shared</span>
+            {lastOpened && <span className="rounded-full bg-white/75 px-3 py-1.5">Last opened recently</span>}
+          </div>
+        </div>
+      </section>
+
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="mb-1 font-mono text-[10px] font-medium tracking-[0.18em] text-[var(--text-muted)] uppercase">Your drafting table</p>
+          <h2 className="font-display text-2xl font-semibold tracking-tight text-[var(--text-primary)]">Projects to continue</h2>
+        </div>
+        <span className="text-sm text-[var(--text-secondary)]">Changes save automatically</span>
+      </div>
+      <ul className="grid gap-5 sm:grid-cols-2">
         {ordered.map((project, index) => (
           <li key={project.id} className={index === 0 ? "sm:col-span-2" : undefined}>
             <ProjectPickerCard
@@ -122,45 +142,6 @@ export function CustomerHome() {
           </li>
         ))}
       </ul>
-    </div>
-  );
-}
-
-/** A sheet from the flat file: live wireframe on top, title block below. */
-function SheetPreview({ project, tall }: { project: Project; tall: boolean }) {
-  const homepage =
-    project.pages.find((p) => p.isHomepage) ?? project.pages[0] ?? null;
-  const sections = homepage
-    ? [...homepage.sections]
-        .sort((a, b) => a.order - b.order)
-        .filter((sec) => !sec.isHidden)
-        .slice(0, 6)
-    : [];
-  return (
-    <div
-      aria-hidden
-      className={
-        "pointer-events-none relative shrink-0 overflow-hidden bg-white select-none " +
-        (tall ? "h-56 sm:h-72" : "h-40")
-      }
-    >
-      {sections.length > 0 ? (
-        <ScaledPreview scale={0.28}>
-          <WireProvider
-            value={{ styled: false, theme: brandTheme(project), device: "desktop" }}
-          >
-            {sections.map((section) => (
-              <SectionRenderer key={section.id} section={section} />
-            ))}
-          </WireProvider>
-        </ScaledPreview>
-      ) : (
-        <div className="flex h-full items-center justify-center font-mono text-[10px] tracking-[0.18em] text-slate-400 uppercase">
-          Blank sheet
-        </div>
-      )}
-      {/* paper fade so the crop reads as a sheet, not a bug */}
-      <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white to-transparent" />
     </div>
   );
 }
@@ -200,6 +181,8 @@ function ProjectPickerCard({
     (c) => !c.isActionItem && (c.status === "open" || c.status === "reopened"),
   );
   const pendingSuggestions = (suggestions ?? []).filter((s) => s.status === "pending");
+  const completion = projectCompletion(project);
+  const nextAction = nextRecommendedAction(project);
   const needsRevisions =
     project.status === "revisions-requested" || project.status === "customer-revising";
   const needsApproval =
@@ -215,7 +198,7 @@ function ProjectPickerCard({
   return (
     <div
       className={
-        "group flex h-full w-full overflow-hidden rounded-xl border border-[var(--border-default)] bg-white text-left shadow-[var(--shadow-card)] transition-colors hover:border-[var(--border-strong)] " +
+        "group flex h-full w-full overflow-hidden rounded-[14px] border border-[var(--border-default)] bg-white text-left shadow-[var(--shadow-card)] transition-[border-color,box-shadow] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-panel)] " +
         (featured ? "flex-col sm:flex-row" : "flex-col")
       }
     >
@@ -230,7 +213,7 @@ function ProjectPickerCard({
           (featured ? "border-b sm:w-[46%] sm:border-r sm:border-b-0" : "border-b")
         }
       >
-        <SheetPreview project={project} tall={featured} />
+        <SheetPreview project={project} className={featured ? "h-56 sm:h-72" : "h-40"} />
       </div>
 
       {/* Title block */}
@@ -271,6 +254,19 @@ function ProjectPickerCard({
           <span className="normal-case">
             <ProjectStatusBadge status={project.status} />
           </span>
+        </div>
+
+        <div className="mt-1 rounded-lg bg-[var(--surface-secondary)] p-2.5">
+          <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px]">
+            <span className="inline-flex items-center gap-1.5 font-medium text-[var(--text-secondary)]">
+              <CheckCircle2 className="size-3.5 text-emerald-600" aria-hidden />
+              {nextAction.label}
+            </span>
+            <span className="font-semibold tabular-nums text-[var(--text-muted)]">{completion}%</span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-white">
+            <div className="h-full rounded-full bg-[var(--accent-primary)] transition-all" style={{ width: `${completion}%` }} />
+          </div>
         </div>
 
       {hasSignals && (

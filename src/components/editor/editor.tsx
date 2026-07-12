@@ -32,6 +32,7 @@ import { cn } from "@/utils/cn";
 import { useCollabUiStore } from "@/stores/collab-ui-store";
 import { selectProjectComments, useCommentsStore } from "@/stores/comments-store";
 import { selectProjectMembers, useMembersStore } from "@/stores/members-store";
+import { useAccessRequestsStore } from "@/stores/access-requests-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { useSessionStore } from "@/stores/session-store";
 import { toast } from "@/stores/ui-store";
@@ -103,8 +104,11 @@ export function Editor({
   const openComposer = useCollabUiStore((s) => s.openComposer);
   const selectComment = useCollabUiStore((s) => s.selectComment);
   const loadComments = useCommentsStore((s) => s.load);
-  const loadMembers = useMembersStore((s) => s.load);
+  const refreshMembers = useMembersStore((s) => s.refresh);
   const members = useMembersStore((s) => selectProjectMembers(s, project.id));
+  const accessRequests = useAccessRequestsStore((s) => s.requests);
+  const hydrateAccessRequests = useAccessRequestsStore((s) => s.hydrate);
+  const refreshAccessRequests = useAccessRequestsStore((s) => s.refresh);
   const updateComment = useCommentsStore((s) => s.updateComment);
   const comments = useCommentsStore((s) => selectProjectComments(s, project.id));
 
@@ -122,8 +126,12 @@ export function Editor({
 
   useEffect(() => {
     void loadComments(project.id);
-    void loadMembers(project.id);
-  }, [project.id, loadComments, loadMembers]);
+    // Access decisions can be made by an agency user and then viewed by the
+    // customer in the same browser session, so always refresh membership here.
+    void refreshMembers(project.id);
+    hydrateAccessRequests();
+    refreshAccessRequests();
+  }, [project.id, loadComments, refreshMembers, hydrateAccessRequests, refreshAccessRequests]);
 
   // Leaving the editor exits comment mode so other pages start clean.
   useEffect(() => () => setCommentMode(false), [setCommentMode]);
@@ -157,9 +165,19 @@ export function Editor({
 
   // Status-based editing restriction (submission locks editing for customers).
   const memberAccess = members.find((member) => member.userId === user.id)?.accessLevel;
+  const approvedAccessRequest = accessRequests.some(
+    (request) =>
+      request.projectId === project.id &&
+      request.requesterId === user.id &&
+      request.status === "approved",
+  );
+  const explicitEditAccess =
+    user.role === "customer" &&
+    (memberAccess === "edit" || approvedAccessRequest) &&
+    !["approved", "completed", "archived"].includes(project.status);
   const contentEditable =
-    canEditProjectContent(user.role, project.status) &&
-    (user.role !== "customer" || !memberAccess || memberAccess === "edit");
+    (canEditProjectContent(user.role, project.status) || explicitEditAccess) &&
+    (user.role !== "customer" || !memberAccess || memberAccess === "edit" || approvedAccessRequest);
   const restrictionReason = editRestrictionReason(user.role, project.status);
 
   // Numbered comment markers per section, in page order.
@@ -577,6 +595,7 @@ export function Editor({
         themeHasOverrides={Object.keys(themeOverrides).length > 0}
         onThemeChange={changeTheme}
         onThemeReset={resetTheme}
+        canEditOverride={contentEditable}
       />
 
       {mode === "styled" && (
@@ -669,7 +688,7 @@ export function Editor({
 
           {!isPreview && !commentMode && contentEditable && libraryOpen && (
             <aside
-              className="hidden w-72 shrink-0 flex-col bg-white lg:flex xl:w-76"
+              className="hidden w-80 shrink-0 flex-col bg-white lg:flex xl:w-96"
               aria-label="Section library"
             >
               <div className="flex items-center justify-between border-b border-[var(--border-default)] px-3 py-2">

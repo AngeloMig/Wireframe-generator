@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Star, Trash2, UserPlus, Users } from "lucide-react";
 import { ACCESS_LEVEL_LABELS, ROLE_LABELS } from "@/config/labels";
 import { ALL_MOCK_USERS } from "@/data/users";
@@ -35,7 +35,13 @@ export default function MembersPage() {
   const updateProject = useProjectsStore((s) => s.updateProject);
   const store = useMembersStore();
   const members = useMembersStore((s) => selectProjectMembers(s, projectId));
-  const requests = useAccessRequestsStore((s) => s.requests.filter((r) => r.projectId === projectId));
+  // Select the stable store array first; filtering inside a Zustand selector
+  // creates a new snapshot every render and triggers an infinite update loop.
+  const allRequests = useAccessRequestsStore((s) => s.requests);
+  const requests = useMemo(
+    () => allRequests.filter((request) => request.projectId === projectId),
+    [allRequests, projectId],
+  );
   const hydrateRequests = useAccessRequestsStore((s) => s.hydrate);
   const decideRequest = useAccessRequestsStore((s) => s.decide);
 

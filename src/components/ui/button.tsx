@@ -15,11 +15,11 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    "bg-[var(--primary)] text-white shadow-[var(--shadow-bevel)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none",
+    "bg-[var(--primary)] text-white shadow-none hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none",
   secondary:
-    "border border-[var(--border-default)] bg-white text-[var(--text-primary)] shadow-[var(--shadow-subtle)] hover:bg-[var(--surface-secondary)] active:bg-[var(--surface-pressed)] disabled:text-slate-400 disabled:shadow-none",
+    "border border-[var(--border-default)] bg-white text-[var(--text-primary)] shadow-none hover:bg-[var(--surface-secondary)] active:bg-[var(--surface-pressed)] disabled:text-slate-400 disabled:shadow-none",
   outline:
-    "border border-[var(--border-default)] bg-white text-[var(--text-primary)] shadow-[var(--shadow-subtle)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-secondary)] disabled:text-slate-400",
+    "border border-[var(--border-default)] bg-white text-[var(--text-primary)] shadow-none hover:border-[var(--border-strong)] hover:bg-[var(--surface-secondary)] disabled:text-slate-400",
   ghost: "text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)] hover:text-[var(--text-primary)] disabled:text-slate-400",
   danger:
     "bg-rose-600 text-white shadow-[var(--shadow-bevel)] hover:bg-rose-700 active:bg-rose-800 disabled:bg-rose-300 disabled:shadow-none",

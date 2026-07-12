@@ -1,10 +1,15 @@
 "use client";
 
 import { useDraggable } from "@dnd-kit/core";
+import { useMemo } from "react";
 import { Expand, GripVertical, Plus, Star } from "lucide-react";
 import type { SectionVariation } from "@/types";
+import { createSectionFromVariation } from "@/lib/sections";
+import { DEVICE_WIDTHS } from "@/stores/editor-store";
 import { cn } from "@/utils/cn";
 import { Button } from "@/components/ui/button";
+import { WireProvider } from "../wireframes/primitives";
+import { SectionRenderer } from "../wireframes/section-renderer";
 import { SectionThumbnail } from "./section-thumbnail";
 
 export const LIBRARY_DRAG_PREFIX = "library:";
@@ -27,27 +32,57 @@ export function LibraryItem({
     id: `${LIBRARY_DRAG_PREFIX}${variation.id}`,
     data: { type: "library", variationId: variation.id },
   });
+  const previewSection = useMemo(() => createSectionFromVariation(variation), [variation]);
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "group relative flex items-start gap-2.5 rounded-lg border border-slate-200 bg-white p-2 shadow-sm transition-colors hover:border-indigo-300",
+        "group relative flex flex-col gap-2 rounded-xl border border-[var(--border-default)] bg-white p-2.5 shadow-[var(--shadow-subtle)] transition-[transform,box-shadow,border-color] hover:-translate-y-0.5 hover:border-[var(--primary)] hover:shadow-[var(--shadow-card)]",
         isDragging && "opacity-40",
       )}
     >
+      <div className="relative">
       <button
         type="button"
         {...attributes}
         {...listeners}
         aria-label={`Drag ${variation.name} onto the page`}
-        className="flex h-14 w-5 shrink-0 cursor-grab items-center justify-center rounded text-slate-300 hover:text-slate-500 active:cursor-grabbing"
+        className="absolute top-1/2 left-1 z-10 flex size-6 -translate-y-1/2 cursor-grab items-center justify-center rounded-md bg-white/90 text-slate-400 shadow-sm hover:text-[var(--primary)] active:cursor-grabbing"
       >
         <GripVertical className="size-4" aria-hidden />
       </button>
-      <SectionThumbnail variation={variation} />
+      <div className="relative flex h-28 w-full items-start justify-center overflow-hidden rounded-lg border border-[#d8dfda] bg-[#eef1ed]">
+        <div
+          className="absolute top-0 left-1/2 origin-top"
+          style={{
+            width: DEVICE_WIDTHS.desktop,
+            transform: "translateX(-50%) scale(0.245)",
+          }}
+        >
+          <WireProvider
+            value={{
+              styled: false,
+              device: "desktop",
+              theme: {
+                primary: "#315f53",
+                secondary: "#24332e",
+                accent: "#e5a65f",
+                cardRadius: "rounded-lg",
+                buttonRadius: "rounded-lg",
+                headingFont: "font-sans",
+              },
+            }}
+          >
+            <div className="overflow-hidden bg-white shadow-sm">
+              <SectionRenderer section={previewSection} />
+            </div>
+          </WireProvider>
+        </div>
+      </div>
+      </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate pr-5 text-xs font-semibold text-slate-900">{variation.name}</p>
+        <p className="truncate pr-5 text-[13px] font-bold text-[var(--text-primary)]">{variation.name}</p>
         <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-slate-500">
           {variation.description}
         </p>
@@ -63,11 +98,11 @@ export function LibraryItem({
             ))}
           </p>
         )}
-        <span className="mt-1.5 flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+        <span className="mt-2 flex gap-1">
           <Button
             variant="outline"
             size="sm"
-            className="h-6 px-2 text-[11px]"
+            className="h-7 flex-1 px-2 text-[11px]"
             aria-label={`Preview ${variation.name}`}
             onClick={() => onPreview(variation)}
           >
@@ -77,7 +112,7 @@ export function LibraryItem({
           <Button
             variant="primary"
             size="sm"
-            className="h-6 px-2 text-[11px]"
+            className="h-7 flex-1 px-2 text-[11px]"
             aria-label={`Add ${variation.name} to the page`}
             onClick={() => onAdd(variation)}
           >

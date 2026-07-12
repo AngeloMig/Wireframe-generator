@@ -109,9 +109,10 @@ export function ProjectShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="space-y-7">
-      <div className="rounded-[var(--radius-panel)] border border-[var(--border-default)] bg-white px-5 py-5 shadow-[var(--shadow-card)] sm:px-6">
+      <div className="rounded-[18px] border border-[var(--border-default)] bg-white px-5 py-6 shadow-[var(--shadow-card)] sm:px-7">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
+          <p className="mb-2 font-mono text-[10px] font-medium tracking-[0.16em] text-[var(--text-muted)] uppercase">Project workspace</p>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="font-display truncate text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
               {project.name}
@@ -119,7 +120,7 @@ export function ProjectShell({ children }: { children: React.ReactNode }) {
             <ProjectStatusBadge status={project.status} />
             <SaveIndicator />
           </div>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
             {project.companyName} · {project.websiteType}
           </p>
         </div>

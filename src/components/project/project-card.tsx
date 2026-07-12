@@ -23,6 +23,7 @@ import { useSessionStore } from "@/stores/session-store";
 import { toast } from "@/stores/ui-store";
 import type { Project } from "@/types";
 import { formatRelative } from "@/utils/dates";
+import { SheetPreview } from "./sheet-preview";
 import { ProjectStatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
@@ -67,16 +68,27 @@ export function ProjectCard({ project }: { project: Project }) {
   };
 
   return (
-    <article className="flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+    <article className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[var(--shadow-card)] transition-colors hover:border-[var(--border-strong)]">
+      {/* Decorative sheet preview; the title link below is the accessible way in. */}
+      <div
+        aria-hidden
+        onClick={() => router.push(overviewHref)}
+        className="cursor-pointer border-b border-[var(--border-default)]"
+      >
+        <SheetPreview project={project} className="h-32" />
+      </div>
+      <div className="flex flex-1 flex-col p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
+          <p className="mb-1 truncate font-mono text-[10px] font-medium tracking-[0.18em] text-[var(--text-muted)] uppercase">
+            {project.companyName}
+          </p>
           <Link
             href={overviewHref}
-            className="block truncate text-sm font-semibold text-slate-900 hover:text-indigo-700"
+            className="font-display block truncate text-base font-semibold tracking-tight text-slate-900 hover:text-indigo-700"
           >
             {project.name}
           </Link>
-          <p className="mt-0.5 truncate text-sm text-slate-500">{project.companyName}</p>
         </div>
         <DropdownMenu
           trigger={(props) => (
@@ -118,11 +130,11 @@ export function ProjectCard({ project }: { project: Project }) {
         </DropdownMenu>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[10px] tracking-[0.12em] text-slate-500 uppercase">
         <span>{project.websiteType}</span>
         <span className="inline-flex items-center gap-1">
-          <FileStack className="size-3.5" aria-hidden />
-          {project.pages.length} {project.pages.length === 1 ? "page" : "pages"}
+          <FileStack className="size-3" aria-hidden />
+          {project.pages.length} {project.pages.length === 1 ? "sheet" : "sheets"}
         </span>
         <span>Edited {formatRelative(project.lastEditedAt)}</span>
       </div>
@@ -135,10 +147,11 @@ export function ProjectCard({ project }: { project: Project }) {
         <ProgressBar value={completion} label={`${project.name} completion`} />
       </div>
 
-      <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-4">
+      <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-3.5">
         <Button variant="outline" size="sm" className="flex-1" onClick={() => router.push(overviewHref)}>
-          Continue Editing
+          Continue editing
         </Button>
+      </div>
       </div>
 
       <ConfirmDialog

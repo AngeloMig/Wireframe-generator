@@ -1,0 +1,6 @@
+{
+  "/(app)/dashboard/page": "app/(app)/dashboard/page.js",
+  "/(app)/admin/templates/page": "app/(app)/admin/templates/page.js",
+  "/(app)/projects/[projectId]/overview/page": "app/(app)/projects/[projectId]/overview/page.js",
+  "/(app)/projects/[projectId]/members/page": "app/(app)/projects/[projectId]/members/page.js"
+}

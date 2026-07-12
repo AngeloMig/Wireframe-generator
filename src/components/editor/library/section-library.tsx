@@ -118,6 +118,10 @@ export function SectionLibrary({
           <h2 className="text-sm font-bold text-[var(--text-primary)]">Add a section</h2>
           <p className="mt-0.5 text-[11px] leading-4 text-[var(--text-secondary)]">Choose a category, then click a design to add it.</p>
         </div>
+        <div className="rounded-xl border border-[#cfe3d9] bg-[var(--primary-soft)] px-3 py-2.5">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold text-[var(--primary)]"><Sparkles className="size-3.5" aria-hidden /> Recommended for this page</p>
+          <p className="mt-1 text-[11px] leading-4 text-[var(--text-secondary)]">Start with a design that fits your page type and goals.</p>
+        </div>
         <div className="relative">
           <Search
             className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-slate-400"

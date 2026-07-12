@@ -82,22 +82,22 @@
 :root {
   color-scheme: light;
   /* Drafting-studio surfaces: warm paper, white sheets, graphite ink. */
-  --app-background: #edece7;
+  --app-background: #edf2f6;
   --surface-primary: #ffffff;
-  --surface-secondary: #f6f5f0;
+  --surface-secondary: #f5f7fa;
   --surface-elevated: #ffffff;
-  --surface-pressed: #edece7;
+  --surface-pressed: #edf2f7;
   --text-primary: #1b1a17;
   --text-secondary: #62615a;
   --text-muted: #8b8a82;
   --text-on-dark: #ffffff;
-  --border-default: #e2e1d9;
-  --border-strong: #cfcec5;
+  --border-default: #e2e7ec;
+  --border-strong: #cdd6df;
   --border-input: #8b8a82;
   --primary: #1b1a17;
   --primary-hover: #31302c;
   --primary-active: #45443f;
-  --primary-soft: #f1f0eb;
+  --primary-soft: #edf2f7;
   --focus-ring: #005bd3;
   /* Deep drafting green — identity moments only (login panel, brand marks).
      Matched to the overview hero so the app carries one identity dark. */
@@ -120,8 +120,8 @@
   --radius-large: 0.75rem;
   --radius-panel: 0.75rem;
   --shadow-subtle: 0 1px 0 rgb(26 26 26 / 0.07);
-  --shadow-card: 0 1px 2px rgb(26 26 26 / 0.05);
-  --shadow-panel: 0 4px 12px rgb(26 26 26 / 0.1);
+  --shadow-card: 0 2px 8px rgb(38 57 74 / 0.05);
+  --shadow-panel: 0 8px 24px rgb(38 57 74 / 0.10);
   --shadow-overlay: 0 8px 32px rgb(26 26 26 / 0.16);
   --shadow-bevel: inset 0 1px 0 rgb(255 255 255 / 0.12), inset 0 -1px 0 rgb(0 0 0 / 0.2);
 }
