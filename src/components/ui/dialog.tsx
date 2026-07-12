@@ -24,7 +24,7 @@ export function Dialog({
   description?: string;
   children?: React.ReactNode;
   footer?: React.ReactNode;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "full";
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
@@ -80,6 +80,7 @@ export function Dialog({
     md: "max-w-lg",
     lg: "max-w-2xl",
     xl: "max-w-4xl",
+    full: "max-w-[min(1400px,calc(100vw-32px))]",
   }[size];
 
   return createPortal(
@@ -102,7 +103,7 @@ export function Dialog({
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
         className={cn(
-          "relative flex max-h-[85vh] w-full animate-scale-in flex-col rounded-xl bg-white shadow-[var(--shadow-overlay)]",
+          "relative flex max-h-[92vh] w-full animate-scale-in flex-col rounded-[18px] bg-white shadow-[var(--shadow-overlay)]",
           sizeClass,
         )}
       >

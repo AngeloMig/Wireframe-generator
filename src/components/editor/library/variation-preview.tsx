@@ -27,11 +27,17 @@ export function VariationPreview({
   theme,
   onClose,
   onAdd,
+  variantOptions,
+  onSelectVariation,
+  fullscreen = false,
 }: {
   variation: SectionVariation | null;
   theme: BrandTheme;
   onClose: () => void;
   onAdd: (variation: SectionVariation) => void;
+  variantOptions?: SectionVariation[];
+  onSelectVariation?: (variation: SectionVariation) => void;
+  fullscreen?: boolean;
 }) {
   const [device, setDevice] = useState<DeviceKind>("desktop");
   const [mode, setMode] = useState<EditorMode>("wireframe");
@@ -71,7 +77,7 @@ export function VariationPreview({
       onClose={onClose}
       title={variation.name}
       description={`${variation.description} Full section preview — see the complete layout before adding it.`}
-      size="xl"
+      size={fullscreen ? "full" : "xl"}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
@@ -91,6 +97,22 @@ export function VariationPreview({
     >
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
+          {variantOptions && variantOptions.length > 1 && onSelectVariation ? (
+            <label className="flex items-center gap-2 text-xs font-medium text-slate-500">
+              Design variant
+              <select
+                value={variation.id}
+                onChange={(event) => {
+                  const next = variantOptions.find((item) => item.id === event.target.value);
+                  if (next) onSelectVariation(next);
+                }}
+                className="h-8 max-w-56 rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs font-medium text-slate-700"
+                aria-label="Change design variant"
+              >
+                {variantOptions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </label>
+          ) : <span />}
           <div
             role="group"
             aria-label="Preview device"

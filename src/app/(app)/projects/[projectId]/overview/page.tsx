@@ -29,7 +29,6 @@ import { useCollabUiStore } from "@/stores/collab-ui-store";
 import { selectProjectComments, useCommentsStore } from "@/stores/comments-store";
 import { useSessionStore } from "@/stores/session-store";
 import { CollabDrawer } from "@/components/collab/collab-drawer";
-import { CollaborationPanel } from "@/components/collab/collaboration-panel";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { cn } from "@/utils/cn";
 import { PageStatusBadge } from "@/components/ui/badge";
@@ -79,6 +78,13 @@ function ProjectOverview() {
   );
   const openActionItems = visibleComments.filter((c) => c.isActionItem && !c.completedAt);
   const myActionItems = openActionItems.filter((c) => c.assignedToId === user.id);
+  const openThreads = visibleComments.filter(
+    (c) => !c.isActionItem && (c.status === "open" || c.status === "reopened"),
+  );
+  const urgentOpen = visibleComments.filter(
+    (c) => (c.status === "open" || c.status === "reopened") && c.priority === "urgent",
+  );
+  const resolvedCount = visibleComments.filter((c) => c.status === "resolved").length;
   const pages = [...project.pages].sort(
     (a, b) => Number(b.isHomepage) - Number(a.isHomepage) || a.order - b.order,
   );
@@ -110,9 +116,12 @@ function ProjectOverview() {
               <span className="font-semibold"> — {myActionItems.length} assigned to you</span>
             )}
           </p>
-          <span className="text-xs text-amber-700">
-            See the collaboration panel below
-          </span>
+          <Link
+            href={`${base}/activity`}
+            className="text-xs font-medium text-amber-800 hover:underline"
+          >
+            Review in Feedback →
+          </Link>
         </div>
       )}
 
@@ -212,10 +221,56 @@ function ProjectOverview() {
             </CardBody>
           </Card>
 
-          {/* Collaboration: inline on desktop, full-screen drawer on mobile */}
-          <Card className="hidden lg:block">
+          {/* Feedback triage — a summary that links out, not the full thread wall */}
+          <Card>
+            <CardHeader
+              title="Feedback"
+              action={
+                <Link
+                  href={`/projects/${projectId}/activity`}
+                  className="inline-flex items-center gap-1 text-sm font-medium text-[var(--focus-ring)] hover:underline"
+                >
+                  Open feedback
+                  <ArrowRight className="size-3.5" aria-hidden />
+                </Link>
+              }
+            />
             <CardBody>
-              <CollaborationPanel project={project} defaultScope="project" />
+              {visibleComments.length === 0 ? (
+                <p className="text-sm text-[var(--text-secondary)]">
+                  No feedback yet. Comments and requested changes will show up here.
+                </p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <TriageStat label="Open threads" value={openThreads.length} />
+                    <TriageStat
+                      label={myActionItems.length > 0 ? "Tasks for you" : "Action items"}
+                      value={myActionItems.length > 0 ? myActionItems.length : openActionItems.length}
+                      tone={myActionItems.length > 0 ? "attention" : "default"}
+                    />
+                    <TriageStat
+                      label="Urgent"
+                      value={urgentOpen.length}
+                      tone={urgentOpen.length > 0 ? "urgent" : "default"}
+                    />
+                    <TriageStat label="Resolved" value={resolvedCount} tone="muted" />
+                  </div>
+                  {(urgentOpen.length > 0 || myActionItems.length > 0) && (
+                    <p className="mt-3 text-sm text-[var(--text-secondary)]">
+                      {urgentOpen.length > 0
+                        ? `${urgentOpen.length} urgent ${urgentOpen.length === 1 ? "item needs" : "items need"} attention.`
+                        : `${myActionItems.length} ${myActionItems.length === 1 ? "task is" : "tasks are"} assigned to you.`}{" "}
+                      <Link
+                        href={`/projects/${projectId}/activity`}
+                        className="font-medium text-[var(--focus-ring)] hover:underline"
+                      >
+                        Review in Feedback →
+                      </Link>
+                    </p>
+                  )}
+                </>
+              )}
             </CardBody>
           </Card>
           <CollabDrawer project={project} />
@@ -344,6 +399,35 @@ function ProjectOverview() {
           </Card>
         </div>
       </div>
+    </div>
+  );
+}
+
+function TriageStat({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: number;
+  tone?: "default" | "attention" | "urgent" | "muted";
+}) {
+  const valueColor =
+    value === 0
+      ? "text-[var(--text-muted)]"
+      : tone === "urgent"
+        ? "text-[var(--danger)]"
+        : tone === "attention"
+          ? "text-[var(--warning-text)]"
+          : tone === "muted"
+            ? "text-[var(--text-secondary)]"
+            : "text-[var(--text-primary)]";
+  return (
+    <div className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-secondary)] px-3 py-2.5">
+      <p className={cn("font-display text-2xl font-semibold tracking-tight tabular-nums", valueColor)}>
+        {value}
+      </p>
+      <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{label}</p>
     </div>
   );
 }
