@@ -163,7 +163,12 @@ export function Editor({
   );
   const selectedSection = ordered.find((s) => s.id === selectedSectionId) ?? null;
 
-  // Status-based editing restriction (submission locks editing for customers).
+  // Editing is gated in two independent layers, and BOTH must pass:
+  //  1. The project status must be in an editable phase — submitting for review
+  //     or entering approval pauses editing, and no access grant overrides that.
+  //  2. The customer must actually hold edit rights (owner, an "edit" member,
+  //     or an approved access request). Access grants only unlock a customer
+  //     during an already-editable phase; they never bypass the review lock.
   const memberAccess = members.find((member) => member.userId === user.id)?.accessLevel;
   const approvedAccessRequest = accessRequests.some(
     (request) =>
@@ -171,13 +176,13 @@ export function Editor({
       request.requesterId === user.id &&
       request.status === "approved",
   );
-  const explicitEditAccess =
-    user.role === "customer" &&
-    (memberAccess === "edit" || approvedAccessRequest) &&
-    !["approved", "completed", "archived"].includes(project.status);
-  const contentEditable =
-    (canEditProjectContent(user.role, project.status) || explicitEditAccess) &&
-    (user.role !== "customer" || !memberAccess || memberAccess === "edit" || approvedAccessRequest);
+  const statusAllowsEditing = canEditProjectContent(user.role, project.status);
+  const customerHasEditRights =
+    user.role !== "customer" ||
+    !memberAccess ||
+    memberAccess === "edit" ||
+    approvedAccessRequest;
+  const contentEditable = statusAllowsEditing && customerHasEditRights;
   const restrictionReason = editRestrictionReason(user.role, project.status);
 
   // Numbered comment markers per section, in page order.
