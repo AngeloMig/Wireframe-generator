@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Eye, Layers, LayoutTemplate, Search, SearchX, SlidersHorizontal, Sparkles } from "lucide-react";
+import { ArrowRight, Clock3, Eye, Layers, LayoutTemplate, Search, SearchX, SlidersHorizontal, Sparkles, Star } from "lucide-react";
 import { PAGE_TEMPLATES } from "@/data/page-templates";
 import { SECTION_TYPE_ORDER, SECTION_VARIATIONS, getVariation, variationsOfType } from "@/data/section-variations";
 import { PAGE_TYPE_LABELS, SECTION_TYPE_LABELS } from "@/config/labels";
 import { createSectionByVariationId, createSectionFromVariation } from "@/lib/sections";
 import type { PageSection, PageTemplate, SectionType, SectionVariation } from "@/types";
+import { DEVICE_WIDTHS } from "@/stores/editor-store";
 import { cn } from "@/utils/cn";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,26 +40,67 @@ export default function TemplatesPage() {
   const [category, setCategory] = useState<SectionType | "all">("all");
   const [previewVariation, setPreviewVariation] = useState<SectionVariation | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<PageTemplate | null>(null);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [recentIds, setRecentIds] = useState<string[]>([]);
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [styleFilter, setStyleFilter] = useState("all");
+  const [goalFilter, setGoalFilter] = useState("all");
+
+  useEffect(() => {
+    try {
+      setFavorites(JSON.parse(localStorage.getItem("wb-template-favorites") ?? "[]"));
+      setRecentIds(JSON.parse(localStorage.getItem("wb-template-recent") ?? "[]"));
+    } catch { /* use defaults */ }
+  }, []);
+
+  const toggleFavorite = (id: string) => {
+    setFavorites((current) => {
+      const next = current.includes(id) ? current.filter((item) => item !== id) : [id, ...current];
+      localStorage.setItem("wb-template-favorites", JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const remember = (id: string) => {
+    setRecentIds((current) => {
+      const next = [id, ...current.filter((item) => item !== id)].slice(0, 8);
+      localStorage.setItem("wb-template-recent", JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const openVariation = (variation: SectionVariation) => {
+    remember(variation.id);
+    setPreviewVariation(variation);
+  };
+  const openTemplate = (template: PageTemplate) => {
+    remember(template.id);
+    setPreviewTemplate(template);
+  };
 
   const sections = useMemo(() => {
     const q = query.trim().toLowerCase();
     return SECTION_VARIATIONS.filter((t) => t.isActive)
       .filter((t) => category === "all" || t.sectionType === category)
+      .filter((t) => !favoritesOnly || favorites.includes(t.id))
       .filter(
         (t) =>
           !q ||
           t.name.toLowerCase().includes(q) ||
           t.description.toLowerCase().includes(q),
       );
-  }, [query, category]);
+  }, [query, category, favoritesOnly, favorites]);
 
   const pageTemplates = useMemo(() => {
     const q = query.trim().toLowerCase();
     return PAGE_TEMPLATES.filter((t) => t.isActive).filter(
       (t) =>
-        !q || t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q),
+        (!favoritesOnly || favorites.includes(t.id)) &&
+        (styleFilter === "all" || t.styles.includes(styleFilter as typeof t.styles[number])) &&
+        (goalFilter === "all" || t.goals.includes(goalFilter as typeof t.goals[number])) &&
+        (!q || t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q)),
     );
-  }, [query]);
+  }, [query, favoritesOnly, favorites, styleFilter, goalFilter]);
 
   return (
     <div className="space-y-7">
@@ -112,6 +154,27 @@ export default function TemplatesPage() {
             aria-label="Search templates"
           />
         </div>
+        <button type="button" onClick={() => setFavoritesOnly((value) => !value)} className={cn("inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold", favoritesOnly ? "border-amber-300 bg-amber-50 text-amber-700" : "border-[var(--border-default)] bg-white text-[var(--text-secondary)]")}>
+          <Star className="size-3.5" fill={favoritesOnly ? "currentColor" : "none"} aria-hidden /> Favorites
+        </button>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-[14px] border border-[var(--border-default)] bg-white px-4 py-3 shadow-[var(--shadow-card)]">
+          <p className="font-mono text-[10px] font-semibold tracking-[0.16em] text-[var(--text-muted)] uppercase">Design library</p>
+          <p className="mt-1 text-lg font-semibold text-[var(--text-primary)]">{SECTION_VARIATIONS.length + PAGE_TEMPLATES.length} starting points</p>
+          <p className="mt-0.5 text-xs text-[var(--text-secondary)]">Sections and complete page structures</p>
+        </div>
+        <div className="rounded-[14px] border border-[#d7e5f0] bg-[#f3f9fd] px-4 py-3 shadow-[var(--shadow-card)]">
+          <p className="font-mono text-[10px] font-semibold tracking-[0.16em] text-[var(--info)] uppercase">Saved by you</p>
+          <p className="mt-1 text-lg font-semibold text-[var(--text-primary)]">{favorites.length} favorite{favorites.length === 1 ? "" : "s"}</p>
+          <p className="mt-0.5 text-xs text-[var(--text-secondary)]">Keep useful directions close at hand</p>
+        </div>
+        <div className="rounded-[14px] border border-[#eadfca] bg-[#fffaf0] px-4 py-3 shadow-[var(--shadow-card)]">
+          <p className="font-mono text-[10px] font-semibold tracking-[0.16em] text-[#9a6b1f] uppercase">Workflow</p>
+          <p className="mt-1 text-lg font-semibold text-[var(--text-primary)]">Preview before you build</p>
+          <p className="mt-0.5 text-xs text-[var(--text-secondary)]">Switch variants without losing content</p>
+        </div>
       </div>
 
       {tab === "sections" && (
@@ -135,6 +198,8 @@ export default function TemplatesPage() {
               </button>
             ))}
           </div>
+          {recentIds.length > 0 && <p className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)]"><Clock3 className="size-3.5" aria-hidden /> Recently viewed templates are remembered on this browser.</p>}
+          <div className="flex items-end justify-between gap-3"><div><p className="font-mono text-[10px] font-semibold tracking-[0.16em] text-[var(--text-muted)] uppercase">Section library</p><h2 className="mt-1 font-display text-xl font-semibold tracking-tight text-[var(--text-primary)]">Choose the building block</h2></div><span className="text-xs text-[var(--text-muted)]">{sections.length} shown</span></div>
 
           {sections.length === 0 ? (
             <EmptyState
@@ -158,17 +223,15 @@ export default function TemplatesPage() {
               {sections.map((template) => (
                 <li key={template.id}>
                   <Card className="group h-full overflow-hidden transition-[transform,box-shadow,border-color] hover:-translate-y-1 hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-panel)]">
-                    <button type="button" onClick={() => setPreviewVariation(template)} className="block w-full cursor-pointer text-left">
-                      <TemplateVisual kind={template.sectionType} />
-                    </button>
+                    <div role="button" tabIndex={0} onClick={() => openVariation(template)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") openVariation(template); }} className="block w-full cursor-pointer text-left">
+                      <ActualSectionVisual variation={template} />
+                    </div>
                     <CardBody className="flex h-full flex-col gap-3 p-5">
                       <div className="flex items-start justify-between gap-2">
                         <span className="flex size-9 items-center justify-center rounded-lg bg-[var(--primary-soft)]">
                           <Layers className="size-4.5 text-[var(--primary)]" aria-hidden />
                         </span>
-                        <Badge className="border-slate-200 bg-slate-50 text-slate-600">
-                          {SECTION_TYPE_LABELS[template.sectionType]}
-                        </Badge>
+                        <div className="flex items-center gap-2"><Badge className="border-slate-200 bg-slate-50 text-slate-600">{SECTION_TYPE_LABELS[template.sectionType]}</Badge><button type="button" onClick={() => toggleFavorite(template.id)} aria-label={favorites.includes(template.id) ? "Remove favorite" : "Add favorite"} className="rounded-md p-1 text-amber-500 hover:bg-amber-50"><Star className="size-4" fill={favorites.includes(template.id) ? "currentColor" : "none"} aria-hidden /></button></div>
                       </div>
                       <div>
                         <h2 className="text-sm font-semibold text-slate-900">{template.name}</h2>
@@ -188,10 +251,10 @@ export default function TemplatesPage() {
                               : "")}
                       </p>
                       <div className="mt-2 flex gap-2 border-t border-[var(--border-default)] pt-3">
-                        <Button variant="outline" size="sm" className="flex-1" onClick={() => setPreviewVariation(template)}>
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => openVariation(template)}>
                           <Eye className="size-3.5" aria-hidden /> Preview
                         </Button>
-                        <Button size="sm" className="flex-1" onClick={() => setPreviewVariation(template)}>
+                        <Button size="sm" className="flex-1" onClick={() => openVariation(template)}>
                           View design <ArrowRight className="size-3.5" aria-hidden />
                         </Button>
                       </div>
@@ -205,7 +268,12 @@ export default function TemplatesPage() {
       )}
 
       {tab === "pages" &&
-        (pageTemplates.length === 0 ? (
+        (<>
+          <div className="flex flex-wrap gap-2">
+            <select value={styleFilter} onChange={(event) => setStyleFilter(event.target.value)} className="h-9 rounded-lg border border-[var(--border-default)] bg-white px-3 text-xs font-medium text-[var(--text-secondary)]"><option value="all">All styles</option>{[...new Set(PAGE_TEMPLATES.flatMap((template) => template.styles))].map((style) => <option key={style} value={style}>{style}</option>)}</select>
+            <select value={goalFilter} onChange={(event) => setGoalFilter(event.target.value)} className="h-9 rounded-lg border border-[var(--border-default)] bg-white px-3 text-xs font-medium text-[var(--text-secondary)]"><option value="all">All goals</option>{[...new Set(PAGE_TEMPLATES.flatMap((template) => template.goals))].map((goal) => <option key={goal} value={goal}>{goal.replaceAll("-", " ")}</option>)}</select>
+          </div>
+        {pageTemplates.length === 0 ? (
           <EmptyState
             icon={SearchX}
             title="No matching page templates"
@@ -217,21 +285,21 @@ export default function TemplatesPage() {
             }
           />
         ) : (
+          <>
+          <div className="flex items-end justify-between gap-3"><div><p className="font-mono text-[10px] font-semibold tracking-[0.16em] text-[var(--text-muted)] uppercase">Page library</p><h2 className="mt-1 font-display text-xl font-semibold tracking-tight text-[var(--text-primary)]">Start with a complete direction</h2></div><span className="text-xs text-[var(--text-muted)]">{pageTemplates.length} shown</span></div>
           <ul className="grid gap-4 sm:grid-cols-2">
             {pageTemplates.map((template) => (
               <li key={template.id}>
                   <Card className="group h-full overflow-hidden transition-[transform,box-shadow,border-color] hover:-translate-y-1 hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-panel)]">
-                  <button type="button" onClick={() => setPreviewTemplate(template)} className="block w-full cursor-pointer text-left">
-                    <TemplateVisual kind="page" />
-                  </button>
+                  <div role="button" tabIndex={0} onClick={() => openTemplate(template)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") openTemplate(template); }} className="block w-full cursor-pointer text-left">
+                    <ActualPageVisual template={template} />
+                  </div>
                   <CardBody className="flex h-full flex-col gap-3 p-5">
                     <div className="flex items-start justify-between gap-2">
                       <span className="flex size-9 items-center justify-center rounded-lg bg-[var(--primary-soft)]">
                         <LayoutTemplate className="size-4.5 text-[var(--primary)]" aria-hidden />
                       </span>
-                      <Badge className="border-slate-200 bg-slate-50 text-slate-600">
-                        {PAGE_TYPE_LABELS[template.pageType]}
-                      </Badge>
+                      <div className="flex items-center gap-2"><Badge className="border-slate-200 bg-slate-50 text-slate-600">{PAGE_TYPE_LABELS[template.pageType]}</Badge><button type="button" onClick={() => toggleFavorite(template.id)} aria-label={favorites.includes(template.id) ? "Remove favorite" : "Add favorite"} className="rounded-md p-1 text-amber-500 hover:bg-amber-50"><Star className="size-4" fill={favorites.includes(template.id) ? "currentColor" : "none"} aria-hidden /></button></div>
                     </div>
                     <div>
                       <h2 className="text-sm font-semibold text-slate-900">{template.name}</h2>
@@ -253,7 +321,7 @@ export default function TemplatesPage() {
                       </ol>
                     </div>
                     <div className="mt-1 flex gap-2 border-t border-[var(--border-default)] pt-3">
-                      <Button variant="outline" size="sm" className="flex-1" onClick={() => setPreviewTemplate(template)}>
+                      <Button variant="outline" size="sm" className="flex-1" onClick={() => openTemplate(template)}>
                         <Eye className="size-3.5" aria-hidden /> Preview full page
                       </Button>
                     </div>
@@ -262,7 +330,10 @@ export default function TemplatesPage() {
               </li>
             ))}
           </ul>
-        ))}
+          </>
+        )}
+        </>
+      )}
       {previewVariation && (
         <VariationPreview
           variation={previewVariation}
@@ -375,27 +446,39 @@ function PageTemplatePreview({
   );
 }
 
-function TemplateVisual({ kind }: { kind: SectionType | "page" }) {
-  const isPage = kind === "page";
+function PreviewFrame({ children, height = 180 }: { children: React.ReactNode; height?: number }) {
   return (
-    <div className="relative h-36 overflow-hidden border-b border-[var(--border-default)] bg-[#eef1ec] p-4" aria-hidden>
-      <div className="h-full rounded-lg border border-[#d3dad5] bg-white p-3 shadow-[0_5px_15px_rgb(23_32_29/0.06)] transition-transform duration-300 group-hover:scale-[1.015]">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="h-1.5 w-10 rounded-full bg-[#315f53]" />
-          <div className="flex gap-1"><div className="size-1.5 rounded-full bg-[#bdc9c4]" /><div className="size-1.5 rounded-full bg-[#bdc9c4]" /><div className="size-1.5 rounded-full bg-[#bdc9c4]" /></div>
-        </div>
-        {isPage ? (
-          <div className="space-y-2">
-            <div className="grid grid-cols-[1.25fr_.75fr] gap-2"><div className="space-y-1.5 rounded bg-[#edf5f1] p-2"><div className="h-1.5 w-3/4 rounded bg-[#7da699]" /><div className="h-1 w-full rounded bg-[#cad8d2]" /><div className="h-3 w-10 rounded bg-[#e5a65f]" /></div><div className="rounded bg-[#e4e6e2]" /></div>
-            <div className="grid grid-cols-3 gap-1.5"><div className="h-5 rounded bg-[#f2eee7]" /><div className="h-5 rounded bg-[#f2eee7]" /><div className="h-5 rounded bg-[#f2eee7]" /></div>
-          </div>
-        ) : (
-          <div className="grid h-[76px] grid-cols-[1.15fr_.85fr] gap-3 rounded bg-[#f7f4ed] p-3">
-            <div className="space-y-2"><div className="h-2 w-4/5 rounded bg-[#6f8f85]" /><div className="h-1.5 w-full rounded bg-[#c4cfcb]" /><div className="h-1.5 w-2/3 rounded bg-[#d4ddda]" /><div className="h-3 w-11 rounded bg-[#e5a65f]" /></div>
-            <div className="rounded bg-[#dce5e1]" />
-          </div>
-        )}
+    <div className="relative overflow-hidden border-b border-[#dce6ee] bg-[#eef4f8] p-3" style={{ height }} aria-hidden>
+      <div className="pointer-events-none absolute top-3 left-1/2 origin-top rounded-[10px] bg-white shadow-[0_8px_18px_rgb(38_57_74/0.08)] ring-1 ring-[#d3e0e9]" style={{ width: DEVICE_WIDTHS.desktop, transform: "translateX(-50%) scale(0.235)" }}>
+        {children}
       </div>
     </div>
+  );
+}
+
+function ActualSectionVisual({ variation }: { variation: SectionVariation }) {
+  const section = createSectionFromVariation(variation);
+  return (
+    <PreviewFrame>
+      <WireProvider value={{ styled: false, theme: TEMPLATE_THEME, device: "desktop" }}>
+        <SectionRenderer section={section} />
+      </WireProvider>
+    </PreviewFrame>
+  );
+}
+
+function ActualPageVisual({ template }: { template: PageTemplate }) {
+  const sections = template.sections.flatMap((entry, index) => {
+    const section = createSectionByVariationId(entry.variationId, { contentOverrides: entry.contentOverrides, order: index });
+    return section ? [{ ...section, layout: { ...section.layout, ...entry.layoutOverrides }, style: { ...section.style, ...entry.styleOverrides } }] : [];
+  });
+  return (
+    <PreviewFrame height={220}>
+      <WireProvider value={{ styled: false, theme: TEMPLATE_THEME, device: "desktop" }}>
+        <div className="overflow-hidden rounded-[10px] bg-white">
+          {sections.slice(0, 5).map((section) => <SectionRenderer key={section.id} section={section} />)}
+        </div>
+      </WireProvider>
+    </PreviewFrame>
   );
 }
