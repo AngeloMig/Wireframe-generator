@@ -1,6 +1,7 @@
 import type {
   CommentVisibility,
   Project,
+  ProjectAccessLevel,
   ProjectComment,
   ProjectStatus,
   UserRole,
@@ -89,6 +90,28 @@ export function canEditProjectContent(role: UserRole, status: ProjectStatus): bo
     status === "revisions-requested" ||
     status === "awaiting-approval"
   );
+}
+
+/**
+ * Whether the editor should allow content changes. Two independent gates,
+ * BOTH required:
+ *   1. The status must be an editable phase (canEditProjectContent) — submitting
+ *      for review or entering approval pauses editing, and no access grant
+ *      overrides that.
+ *   2. The customer must hold edit rights (owner/no member record, an "edit"
+ *      member, or an approved access request). Access grants only unlock a
+ *      customer DURING an already-editable phase; they never bypass the lock.
+ * Extracted as a pure function so this rule is unit-tested and can't silently
+ * regress (it did once — an access grant was OR'd past the status gate).
+ */
+export function canEditInEditor(
+  role: UserRole,
+  status: ProjectStatus,
+  access: { memberAccess?: ProjectAccessLevel; approvedAccessRequest?: boolean } = {},
+): boolean {
+  if (!canEditProjectContent(role, status)) return false;
+  if (role !== "customer") return true;
+  return !access.memberAccess || access.memberAccess === "edit" || Boolean(access.approvedAccessRequest);
 }
 
 /** Explains why editing is unavailable — shown next to disabled controls. */

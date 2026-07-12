@@ -26,7 +26,7 @@ import {
   writeThemeOverrides,
   type ThemeOverrides,
 } from "@/lib/theme-overrides";
-import { canEditProjectContent, editRestrictionReason } from "@/lib/permissions";
+import { canEditInEditor, editRestrictionReason } from "@/lib/permissions";
 import { createSectionFromVariation, switchSectionVariation } from "@/lib/sections";
 import { cn } from "@/utils/cn";
 import { useCollabUiStore } from "@/stores/collab-ui-store";
@@ -176,13 +176,10 @@ export function Editor({
       request.requesterId === user.id &&
       request.status === "approved",
   );
-  const statusAllowsEditing = canEditProjectContent(user.role, project.status);
-  const customerHasEditRights =
-    user.role !== "customer" ||
-    !memberAccess ||
-    memberAccess === "edit" ||
-    approvedAccessRequest;
-  const contentEditable = statusAllowsEditing && customerHasEditRights;
+  const contentEditable = canEditInEditor(user.role, project.status, {
+    memberAccess,
+    approvedAccessRequest,
+  });
   const restrictionReason = editRestrictionReason(user.role, project.status);
 
   // Numbered comment markers per section, in page order.
