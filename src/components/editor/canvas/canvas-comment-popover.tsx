@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useReducer } from "react";
 import { MessageSquare, X } from "lucide-react";
 import { useCommentsStore, selectProjectComments } from "@/stores/comments-store";
 import { useMembersStore, selectProjectMembers } from "@/stores/members-store";
@@ -7,6 +8,30 @@ import { useCollabUiStore } from "@/stores/collab-ui-store";
 import type { Project } from "@/types";
 import { CommentCard } from "@/components/collab/comment-card";
 import { CommentComposer } from "@/components/collab/comment-composer";
+
+/** Live screen position of a `point:fx:fy` anchor, from its section's rect. */
+function anchorPosition(
+  sectionId: string | null | undefined,
+  anchorKey: string | null | undefined,
+  fallback: { x: number; y: number },
+): { x: number; y: number } {
+  const parts = anchorKey?.split(":") ?? [];
+  if (parts[0] !== "point" || !sectionId) return fallback;
+  const fx = Number(parts[1]);
+  const fy = Number(parts[2]);
+  if (!Number.isFinite(fx) || !Number.isFinite(fy)) return fallback;
+  const el =
+    typeof document === "undefined"
+      ? null
+      : document.querySelector(`[data-canvas-section="${sectionId}"]`);
+  if (!el) return fallback;
+  const rect = el.getBoundingClientRect();
+  const isFraction = Math.abs(fx) <= 1 && Math.abs(fy) <= 1;
+  return {
+    x: isFraction ? rect.left + fx * rect.width : fx,
+    y: isFraction ? rect.top + fy * rect.height : fy,
+  };
+}
 
 export function CanvasCommentPopover({ project }: { project: Project }) {
   const comments = useCommentsStore((state) => selectProjectComments(state, project.id));
@@ -18,6 +43,24 @@ export function CanvasCommentPopover({ project }: { project: Project }) {
   const position = useCollabUiStore((state) => state.composerPosition);
   const close = useCollabUiStore((state) => state.closeComposer);
 
+  // Keep the popover pinned beside its marker as the canvas scrolls/zooms.
+  const [, reflow] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    if (!position) return;
+    let frame = 0;
+    const onChange = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => reflow());
+    };
+    document.addEventListener("scroll", onChange, true);
+    window.addEventListener("resize", onChange);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("scroll", onChange, true);
+      window.removeEventListener("resize", onChange);
+    };
+  }, [position]);
+
   if (!position) return null;
 
   const thread = comments.filter(
@@ -26,10 +69,11 @@ export function CanvasCommentPopover({ project }: { project: Project }) {
       comment.sectionId === sectionId &&
       (comment.anchorKey ?? null) === (anchorKey ?? null),
   );
+  const anchor = anchorPosition(sectionId, anchorKey, position);
   const viewportWidth = typeof window === "undefined" ? 1200 : window.innerWidth;
   const viewportHeight = typeof window === "undefined" ? 800 : window.innerHeight;
-  const left = Math.min(position.x + 14, viewportWidth - 380);
-  const top = Math.min(position.y + 14, viewportHeight - 330);
+  const left = Math.min(anchor.x + 14, viewportWidth - 380);
+  const top = Math.min(anchor.y + 14, viewportHeight - 330);
 
   return (
     <div

@@ -35,9 +35,12 @@ export function canDeleteComment(
   comment: ProjectComment,
   userId: string,
 ): boolean {
+  // The author can always delete their own comment; otherwise it takes higher
+  // authority — admins and agency staff can moderate any comment. Customers
+  // can only delete their own.
+  if (comment.authorId === userId) return true;
   if (role === "admin") return true;
-  // Customers can never delete agency feedback.
-  return comment.authorId === userId;
+  return isAgencyUser(role);
 }
 
 export function canResolveComment(role: UserRole, comment: ProjectComment, userId: string): boolean {
