@@ -1,13 +1,14 @@
 "use client";
 
 import { create } from "zustand";
-import { getUserForRole, MOCK_USERS, normalizeLegacyRole } from "@/data/users";
+import { getUserById, getUserForRole, MOCK_USERS, normalizeLegacyRole } from "@/data/users";
 import { readJson, STORAGE_KEYS, writeJson } from "@/lib/storage/local-storage";
 import type { AppUser, UserRole } from "@/types";
 
 /**
- * Simulated session — development-only role switching, no real auth.
- * Replaced later by Supabase auth without changing consumers.
+ * Simulated session — development-only user switching, no real auth.
+ * Sessions are per-USER (not per-role) so the multi-agency demo can sign in
+ * as staff of different agencies. Replaced later by Supabase auth.
  */
 
 interface SessionState {
@@ -15,27 +16,48 @@ interface SessionState {
   hydrated: boolean;
   isLoggedIn: boolean;
   hydrate: () => void;
-  login: (role: UserRole) => void;
+  /** Sign in as a specific mock user. */
+  login: (userId: string) => void;
   logout: () => void;
+  /** Switch to a specific mock user (dev-only switcher). */
+  switchUser: (userId: string) => void;
+  /** Legacy helper: switch to the first mock user with this role. */
   switchRole: (role: UserRole) => void;
 }
 
 interface StoredSession {
-  role: UserRole;
+  userId?: string;
+  /** Pre-v4 sessions stored a role instead of a user id. */
+  role?: string;
   isLoggedIn: boolean;
+}
+
+function resolveUser(stored: StoredSession): AppUser {
+  if (stored.userId) {
+    const user = getUserById(stored.userId);
+    if (user) return user;
+  }
+  if (stored.role) return getUserForRole(normalizeLegacyRole(stored.role));
+  return MOCK_USERS[0];
+}
+
+function persist(user: AppUser, isLoggedIn: boolean) {
+  writeJson(STORAGE_KEYS.session, {
+    userId: user.id,
+    isLoggedIn,
+  } satisfies StoredSession);
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
   user: MOCK_USERS[0],
   hydrated: false,
   isLoggedIn: false,
+
   hydrate: () => {
     const stored = readJson<StoredSession | null>(STORAGE_KEYS.session, null);
     if (stored) {
-      // Pre-v3 sessions stored the legacy "agency" role.
-      const role = normalizeLegacyRole(stored.role);
       set({
-        user: getUserForRole(role),
+        user: resolveUser(stored),
         isLoggedIn: stored.isLoggedIn,
         hydrated: true,
       });
@@ -43,16 +65,27 @@ export const useSessionStore = create<SessionState>((set) => ({
       set({ hydrated: true });
     }
   },
-  login: (role) => {
-    writeJson(STORAGE_KEYS.session, { role, isLoggedIn: true } satisfies StoredSession);
-    set({ user: getUserForRole(role), isLoggedIn: true });
+
+  login: (userId) => {
+    const user = getUserById(userId) ?? MOCK_USERS[0];
+    persist(user, true);
+    set({ user, isLoggedIn: true });
   },
+
   logout: () => {
-    writeJson(STORAGE_KEYS.session, { role: "customer", isLoggedIn: false } satisfies StoredSession);
-    set({ user: getUserForRole("customer"), isLoggedIn: false });
+    persist(MOCK_USERS[0], false);
+    set({ user: MOCK_USERS[0], isLoggedIn: false });
   },
+
+  switchUser: (userId) => {
+    const user = getUserById(userId) ?? MOCK_USERS[0];
+    persist(user, true);
+    set({ user, isLoggedIn: true });
+  },
+
   switchRole: (role) => {
-    writeJson(STORAGE_KEYS.session, { role, isLoggedIn: true } satisfies StoredSession);
-    set({ user: getUserForRole(role), isLoggedIn: true });
+    const user = getUserForRole(role);
+    persist(user, true);
+    set({ user, isLoggedIn: true });
   },
 }));

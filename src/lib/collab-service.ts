@@ -11,11 +11,13 @@ import { useNotificationsStore } from "@/stores/notifications-store";
 import { useProjectsStore } from "@/stores/projects-store";
 import { useSuggestionsStore } from "@/stores/suggestions-store";
 import { useVersionsStore } from "@/stores/versions-store";
+import { isAgencyUser } from "@/types";
 import type {
   ActivityType,
   AppNotification,
   AppUser,
   CommentPriority,
+  CommentVisibility,
   PageStatus,
   Project,
   ProjectPage,
@@ -116,6 +118,54 @@ export async function notifyCustomer(
   const customerIds = await memberIdsByRole(project.id, (r) => r === "customer");
   // Always include the owner even if the members list is incomplete.
   await notifyUsers([...customerIds, project.ownerId], actorId, input);
+}
+
+/**
+ * Notify the OTHER side when a new top-level comment is posted, so a plain
+ * comment (no @mention, no assignee) still reaches someone. Every comment
+ * entry point should call this — routing lives here so no caller can forget it.
+ */
+export async function notifyNewComment(
+  project: Project,
+  actor: Actor,
+  comment: {
+    visibility: CommentVisibility;
+    message: string;
+    pageId?: string;
+    sectionId?: string;
+  },
+): Promise<void> {
+  const fromAgency = isAgencyUser(actor.role);
+  const notice: NotificationInput = {
+    projectId: project.id,
+    pageId: comment.pageId,
+    sectionId: comment.sectionId,
+    type: "general",
+    title: fromAgency ? "New comment from the agency" : "New comment",
+    message: `${actor.name} commented on “${project.name}”: ${comment.message.slice(0, 80)}`,
+    actionUrl: `/projects/${project.id}/overview`,
+  };
+  // Customer → agency; agency customer-visible → customer; agency-only → team.
+  if (!fromAgency || comment.visibility === "agency") {
+    await notifyAgency(project, actor.id, notice);
+  } else {
+    await notifyCustomer(project, actor.id, notice);
+  }
+}
+
+/**
+ * Tell the agency the customer is editing the blueprint. Meant to be throttled
+ * by the caller (one leading-edge ping per cooldown window) so a burst of edits
+ * doesn't turn into a burst of notifications.
+ */
+export async function notifyCustomerEditing(project: Project, actor: Actor): Promise<void> {
+  await notifyAgency(project, actor.id, {
+    projectId: project.id,
+    type: "general",
+    title: "Customer is editing",
+    message: `${actor.name} is making changes to “${project.name}”.`,
+    actionUrl: `/projects/${project.id}/overview`,
+  });
 }
 
 // ---------------------------------------------------------------------------

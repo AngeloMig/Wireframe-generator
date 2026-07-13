@@ -2,13 +2,20 @@
 
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
+import { projectsForUser } from "@/lib/org";
 import { useProjectsStore } from "@/stores/projects-store";
+import { useSessionStore } from "@/stores/session-store";
 import { ActivityFeed } from "@/components/project/activity-feed";
 import { Input, Select } from "@/components/ui/input";
 
-/** Global activity feed aggregated across all projects. */
+/** Global activity feed aggregated across the projects you can see. */
 export default function ActivityPage() {
-  const projects = useProjectsStore((s) => s.projects);
+  const allProjects = useProjectsStore((s) => s.projects);
+  const user = useSessionStore((s) => s.user);
+  const projects = useMemo(
+    () => projectsForUser(allProjects, user),
+    [allProjects, user],
+  );
   const [query, setQuery] = useState("");
   const [projectFilter, setProjectFilter] = useState("all");
 

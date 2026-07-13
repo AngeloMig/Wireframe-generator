@@ -4,11 +4,14 @@ import {
   buildDemoNotifications,
   buildDemoProjects,
 } from "@/data/demo-projects";
+import { ALL_MOCK_USERS } from "@/data/users";
 import type {
+  AccessRequest,
   AppNotification,
   PageStatus,
   Project,
   ProjectComment,
+  ProjectMember,
   UserRole,
 } from "@/types";
 import { createId } from "@/utils/id";
@@ -184,6 +187,98 @@ function migrate(meta: StorageMeta): StorageMeta {
   if (current.schemaVersion === 2) {
     migrateV2toV3();
     current.schemaVersion = 3;
+  }
+
+  if (current.schemaVersion === 3) {
+    // v4: multi-agency preview — every project belongs to an organization.
+    // Pre-v4 projects all belonged to the original demo agency.
+    const projects = readJson<Project[]>(STORAGE_KEYS.projects, []);
+    writeJson(
+      STORAGE_KEYS.projects,
+      projects.map((p) => ({
+        ...p,
+        organization: p.organization ?? APP_CONFIG.agencyName,
+      })),
+    );
+    current.schemaVersion = 4;
+  }
+
+  if (current.schemaVersion === 4) {
+    // v5: the demo cast was renamed (Angelo Miguel + the new agency roster).
+    // Stored member records carry the old names, and comment cards resolve
+    // author names from them — sync identity fields with the canonical
+    // roster so existing browsers pick up the rename without a data reset.
+    const members = readJson<ProjectMember[]>(STORAGE_KEYS.members, []);
+    writeJson(
+      STORAGE_KEYS.members,
+      members.map((member) => {
+        const canonical = ALL_MOCK_USERS.find((u) => u.id === member.userId);
+        return canonical
+          ? {
+              ...member,
+              name: canonical.name,
+              email: canonical.email,
+              initials: canonical.initials,
+              avatarColor: canonical.avatarColor,
+            }
+          : member;
+      }),
+    );
+    current.schemaVersion = 5;
+  }
+
+  if (current.schemaVersion === 5) {
+    // v6: scrub the pre-rename demo names out of stored TEXT too — v5 only
+    // synced live member records, leaving "Angelo Bermejo" & co. in activity
+    // entries, notification copy, comment bodies, and access requests.
+    const RENAMES: [string, string][] = [
+      ["Angelo Bermejo", "Angelo Miguel"],
+      ["Maya Lindqvist", "Alo"],
+      ["Devon Carter", "Macky"],
+      ["Priya Raman", "Noel"],
+    ];
+    const rename = (text: string): string =>
+      RENAMES.reduce((s, [from, to]) => s.split(from).join(to), text);
+
+    const projects = readJson<Project[]>(STORAGE_KEYS.projects, []);
+    writeJson(
+      STORAGE_KEYS.projects,
+      projects.map((project) => ({
+        ...project,
+        activity: (project.activity ?? []).map((entry) => ({
+          ...entry,
+          actorName: rename(entry.actorName),
+          message: rename(entry.message),
+        })),
+      })),
+    );
+
+    const notifications = readJson<AppNotification[]>(STORAGE_KEYS.notifications, []);
+    writeJson(
+      STORAGE_KEYS.notifications,
+      notifications.map((n) => ({ ...n, title: rename(n.title), message: rename(n.message) })),
+    );
+
+    const comments = readJson<ProjectComment[]>(STORAGE_KEYS.comments, []);
+    writeJson(
+      STORAGE_KEYS.comments,
+      comments.map((comment) => ({
+        ...comment,
+        message: rename(comment.message),
+        replies: (comment.replies ?? []).map((reply) => ({
+          ...reply,
+          message: rename(reply.message),
+        })),
+      })),
+    );
+
+    const requests = readJson<AccessRequest[]>(STORAGE_KEYS.accessRequests, []);
+    writeJson(
+      STORAGE_KEYS.accessRequests,
+      requests.map((request) => ({ ...request, requesterName: rename(request.requesterName) })),
+    );
+
+    current.schemaVersion = 6;
   }
 
   current.schemaVersion = APP_CONFIG.storageSchemaVersion;

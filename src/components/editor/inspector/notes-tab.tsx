@@ -64,7 +64,7 @@ export function NotesTab({
                 className={cn(
                   "cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
                   active
-                    ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                    ? "border-[#f2b90d] bg-[#f7d34e]/25 text-[#5c4600]"
                     : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-800",
                 )}
               >

@@ -1,3 +1,4 @@
+import { AGENCY_ORGS } from "@/data/users";
 import { createSectionByVariationId } from "@/lib/sections";
 import type {
   ActivityEntry,
@@ -89,10 +90,16 @@ function activity(
   };
 }
 
-const CUSTOMER = { id: "user-customer-1", name: "Angelo Bermejo", role: "customer" as const };
-const DESIGNER = { id: "user-agency-1", name: "Maya Lindqvist", role: "agency-designer" as const };
-const DEVELOPER = { id: "user-agency-2", name: "Devon Carter", role: "agency-developer" as const };
-const PM = { id: "user-agency-3", name: "Priya Raman", role: "agency-pm" as const };
+const CUSTOMER = { id: "user-customer-1", name: "Angelo Miguel", role: "customer" as const };
+const DESIGNER = { id: "user-agency-1", name: "Alo", role: "agency-designer" as const };
+const DEVELOPER = { id: "user-agency-2", name: "Macky", role: "agency-developer" as const };
+const PM = { id: "user-agency-3", name: "Noel", role: "agency-pm" as const };
+
+// Southpaw Studio (agency two) cast.
+const SP_CUSTOMER = { id: "user-sp-customer", name: "Owen Reyes", role: "customer" as const };
+const SP_DESIGNER = { id: "user-sp-designer", name: "Noa Kimura", role: "agency-designer" as const };
+const SP_DEVELOPER = { id: "user-sp-developer", name: "Ruben Alvarez", role: "agency-developer" as const };
+const SP_PM = { id: "user-sp-pm", name: "Greta Volkova", role: "agency-pm" as const };
 
 const emptyQuestionnaire: ProjectQuestionnaire = {
   companyName: "",
@@ -162,6 +169,7 @@ function buildFurnitureProject(): Project {
     companyName: "Nordhaus Furniture",
     status: "customer-editing",
     websiteType: "Ecommerce & Retail",
+    organization: AGENCY_ORGS.northshore,
     ownerId: CUSTOMER.id,
     questionnaire: {
       ...emptyQuestionnaire,
@@ -258,6 +266,7 @@ function buildAgencyProject(): Project {
     companyName: "Pixelforge Digital",
     status: "revisions-requested",
     websiteType: "Creative & Design",
+    organization: AGENCY_ORGS.northshore,
     ownerId: CUSTOMER.id,
     questionnaire: {
       ...emptyQuestionnaire,
@@ -276,7 +285,7 @@ function buildAgencyProject(): Project {
     pages: [homepage, services, work],
     activity: [
       activity(id, "revisions-requested", "Revisions requested on Homepage", DESIGNER, daysAgo(2), { pageId: homepage.id }),
-      activity(id, "comment-created", "Maya left feedback on the Homepage hero", DESIGNER, daysAgo(2), { pageId: homepage.id }),
+      activity(id, "comment-created", "Alo left feedback on the Homepage hero", DESIGNER, daysAgo(2), { pageId: homepage.id }),
       activity(id, "project-submitted", "Project submitted for agency review", CUSTOMER, daysAgo(4)),
       activity(id, "project-created", "Project created", CUSTOMER, created),
     ],
@@ -330,6 +339,7 @@ function buildWellnessProject(): Project {
     companyName: "Willow Wellness Studio",
     status: "ready-for-review",
     websiteType: "Health & Wellness",
+    organization: AGENCY_ORGS.northshore,
     ownerId: CUSTOMER.id,
     questionnaire: {
       ...emptyQuestionnaire,
@@ -366,8 +376,93 @@ function buildWellnessProject(): Project {
   };
 }
 
+// ---------------------------------------------------------------------------
+// 4. Summit Peak Outfitters — Southpaw Studio's project (agency two)
+// ---------------------------------------------------------------------------
+
+function buildSummitPeakProject(): Project {
+  const id = createId();
+  const created = daysAgo(5);
+
+  const homepage = buildPage(
+    id,
+    {
+      name: "Homepage",
+      type: "homepage",
+      status: "ready-for-review",
+      isHomepage: true,
+      order: 0,
+      sections: buildSections([
+        { variationId: "nav-standard", content: { logoText: "Summit Peak", links: [{ label: "Gear" }, { label: "Guides" }, { label: "Trips" }, { label: "About" }], ctaLabel: "Book a trip" } },
+        { variationId: "hero-fullbg", content: { eyebrow: "Est. 2011 · Boulder, CO", heading: "Gear up. Get out there.", description: "Outfitting weekend hikers and alpine expeditions alike — rentals, guided trips, and hand-tested gear.", buttonLabel: "Shop gear" } },
+        { variationId: "svc-icon-cards", content: { heading: "What we do", items: [{ title: "Gear rentals", description: "Four-season kit, ready when you are.", linkLabel: "See rates" }, { title: "Guided trips", description: "From first summit to fourteeners.", linkLabel: "Browse trips" }, { title: "Repairs", description: "Keep good gear going longer.", linkLabel: "Learn more" }] } },
+        { variationId: "testi-review-summary", content: { heading: "Trusted by 4,000+ adventurers" } },
+        { variationId: "cta-centered", content: { heading: "Ready for your next trailhead?", buttonLabel: "Plan your trip" } },
+        { variationId: "footer-contact", content: { logoText: "Summit Peak Outfitters" } },
+      ]),
+      createdAt: created,
+      updatedAt: daysAgo(0, 8),
+    },
+    created,
+  );
+
+  const trips = buildPage(
+    id,
+    { name: "Guided Trips", type: "services", status: "draft", order: 1 },
+    daysAgo(4),
+  );
+
+  return {
+    id,
+    name: "Summit Peak Website",
+    companyName: "Summit Peak Outfitters",
+    status: "ready-for-review",
+    websiteType: "Outdoor & Recreation",
+    organization: AGENCY_ORGS.southpaw,
+    ownerId: SP_CUSTOMER.id,
+    questionnaire: {
+      ...emptyQuestionnaire,
+      companyName: "Summit Peak Outfitters",
+      industry: "Outdoor & Recreation",
+      businessDescription:
+        "Outdoor outfitter offering gear retail, rentals, and guided mountain trips out of Boulder, Colorado.",
+      mainGoal: "Drive guided-trip bookings and gear rental reservations.",
+      targetAudience: "Active 25–45s planning hikes and alpine trips in the Rockies.",
+      estimatedPages: "4-6 pages",
+      platform: "webflow",
+      goals: ["book-appointments", "sell-products", "brand-awareness"],
+      visualStyles: ["bold", "organic", "technical"],
+      brand: {
+        primaryColor: "#2f4f3e",
+        secondaryColor: "#f2ede3",
+        accentColor: "#d97b29",
+        headingStyle: "display",
+        buttonStyle: "square",
+        borderRadius: "sharp",
+        spacing: "balanced",
+      },
+      inspirations: [],
+    },
+    pages: [homepage, trips],
+    activity: [
+      activity(id, "project-submitted", "Project submitted for agency review", SP_CUSTOMER, daysAgo(0, 8)),
+      activity(id, "page-added", "Guided Trips page added", SP_CUSTOMER, daysAgo(4)),
+      activity(id, "project-created", "Project created", SP_PM, created),
+    ],
+    assets: [],
+    createdAt: created,
+    updatedAt: daysAgo(0, 8),
+    lastEditedAt: daysAgo(0, 8),
+  };
+}
+
 export function buildDemoProjects(): Project[] {
-  return [buildFurnitureProject(), buildAgencyProject(), buildWellnessProject()];
+  return [
+    buildFurnitureProject(),
+    buildAgencyProject(),
+    buildWellnessProject(),
+    buildSummitPeakProject(),
+  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -427,35 +522,69 @@ export function buildDemoCollaboration(projects: Project[]): DemoCollaborationDa
   const versions: ProjectVersion[] = [];
   const suggestions: SectionVariationSuggestion[] = [];
 
-  // Every project gets the standard cast of members.
+  // Each project gets its own agency's cast — never the other agency's.
   for (const project of projects) {
     const added = project.createdAt;
+    if (project.organization === AGENCY_ORGS.southpaw) {
+      members.push(
+        member(project.id, SP_CUSTOMER, {
+          email: "owen@summitpeak.example.com",
+          initials: "OR",
+          avatarColor: "bg-lime-600",
+          organization: project.companyName,
+          accessLevel: "edit",
+        }, added),
+        member(project.id, SP_DESIGNER, {
+          email: "noa@southpaw.studio",
+          initials: "NK",
+          avatarColor: "bg-fuchsia-500",
+          organization: AGENCY_ORGS.southpaw,
+          accessLevel: "edit",
+          isPrimaryContact: true,
+        }, added),
+        member(project.id, SP_DEVELOPER, {
+          email: "ruben@southpaw.studio",
+          initials: "RA",
+          avatarColor: "bg-cyan-600",
+          organization: AGENCY_ORGS.southpaw,
+          accessLevel: "comment",
+        }, added),
+        member(project.id, SP_PM, {
+          email: "greta@southpaw.studio",
+          initials: "GV",
+          avatarColor: "bg-orange-500",
+          organization: AGENCY_ORGS.southpaw,
+          accessLevel: "edit",
+        }, added),
+      );
+      continue;
+    }
     members.push(
       member(project.id, CUSTOMER, {
         email: "angelobmig@gmail.com",
-        initials: "AB",
+        initials: "AM",
         avatarColor: "bg-indigo-500",
         organization: project.companyName,
         accessLevel: "edit",
       }, added),
       member(project.id, DESIGNER, {
-        email: "maya@northshore.studio",
-        initials: "ML",
+        email: "alo@northshore.studio",
+        initials: "AL",
         avatarColor: "bg-emerald-500",
         organization: AGENCY_ORG,
         accessLevel: "edit",
         isPrimaryContact: true,
       }, added),
       member(project.id, DEVELOPER, {
-        email: "devon@northshore.studio",
-        initials: "DC",
+        email: "macky@northshore.studio",
+        initials: "MK",
         avatarColor: "bg-sky-500",
         organization: AGENCY_ORG,
         accessLevel: "comment",
       }, added),
       member(project.id, PM, {
-        email: "priya@northshore.studio",
-        initials: "PR",
+        email: "noel@northshore.studio",
+        initials: "NO",
         avatarColor: "bg-amber-500",
         organization: AGENCY_ORG,
         accessLevel: "edit",
@@ -780,7 +909,7 @@ export function buildDemoNotifications(projects: Project[]): AppNotification[] {
         projectId: nordhaus.id,
         type: "comment-assigned",
         title: "Action item assigned to you",
-        message: "Maya asked you to upload the final hero photography for Nordhaus.",
+        message: "Alo asked you to upload the final hero photography for Nordhaus.",
         isRead: false,
         createdAt: daysAgo(2, 3),
         actionUrl: `/projects/${nordhaus.id}/overview`,
@@ -791,7 +920,7 @@ export function buildDemoNotifications(projects: Project[]): AppNotification[] {
         projectId: nordhaus.id,
         type: "suggestion-received",
         title: "Design suggestion received",
-        message: "Maya suggested a different product grid layout for your homepage.",
+        message: "Alo suggested a different product grid layout for your homepage.",
         isRead: false,
         createdAt: daysAgo(1, 5),
         actionUrl: `/projects/${nordhaus.id}/editor`,
@@ -813,7 +942,7 @@ export function buildDemoNotifications(projects: Project[]): AppNotification[] {
         projectId: nordhaus.id,
         type: "mention",
         title: "You were mentioned",
-        message: "Devon flagged a Shopify collection question on Nordhaus (internal).",
+        message: "Macky flagged a Shopify collection question on Nordhaus (internal).",
         isRead: false,
         createdAt: daysAgo(1, 4),
         actionUrl: `/projects/${nordhaus.id}/overview`,
@@ -827,7 +956,7 @@ export function buildDemoNotifications(projects: Project[]): AppNotification[] {
       projectId: pixelforge.id,
       type: "revisions-requested",
       title: "Revisions requested",
-      message: "Maya requested revisions on the Pixelforge homepage.",
+      message: "Alo requested revisions on the Pixelforge homepage.",
       isRead: false,
       createdAt: daysAgo(2),
       actionUrl: `/projects/${pixelforge.id}/overview`,
@@ -845,6 +974,24 @@ export function buildDemoNotifications(projects: Project[]): AppNotification[] {
       createdAt: daysAgo(1),
       actionUrl: `/projects/${willow.id}/overview`,
     });
+  }
+
+  // Southpaw Studio's inbox — invisible to Northshore staff.
+  const summit = projects.find((p) => p.companyName === "Summit Peak Outfitters");
+  if (summit) {
+    for (const recipient of [SP_DESIGNER.id, SP_PM.id]) {
+      notifications.push({
+        id: createId(),
+        userId: recipient,
+        projectId: summit.id,
+        type: "review-submitted",
+        title: "Ready for review",
+        message: "Summit Peak Website was submitted for agency review.",
+        isRead: false,
+        createdAt: daysAgo(0, 8),
+        actionUrl: `/projects/${summit.id}/agency-review`,
+      });
+    }
   }
   return notifications;
 }

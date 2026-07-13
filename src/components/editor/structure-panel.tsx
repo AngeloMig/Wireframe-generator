@@ -121,7 +121,7 @@ export function StructurePanel({
   }, [ordered]);
 
   return (
-    <nav aria-label="Page structure" className="flex h-full flex-col overflow-y-auto border-r border-[var(--border-default)] bg-[#f8faf7] py-4">
+    <nav aria-label="Page structure" className="flex h-full flex-col overflow-y-auto pb-4">
       {groups.map((group) => {
         const rows = group.items.map((section, index) => (
           <StructureRow
@@ -230,13 +230,13 @@ function StructureRow({
         className={cn(
           "flex w-full cursor-pointer items-center gap-2 rounded-lg py-1.5 pr-1 pl-2 text-left text-[13px] transition-colors",
           isSelected
-            ? "bg-indigo-50 font-medium text-indigo-900"
-            : cn("text-slate-700 hover:bg-slate-100", isInView && "bg-slate-100"),
+            ? "bg-[#f7d34e]/30 font-medium text-[#5c4600]"
+            : cn("text-slate-700 hover:bg-black/[0.05]", isInView && "bg-black/[0.05]"),
           section.isHidden && "opacity-50",
         )}
       >
         <Icon
-          className={cn("size-4 shrink-0", isSelected ? "text-indigo-600" : "text-slate-400")}
+          className={cn("size-4 shrink-0", isSelected ? "text-[#a07800]" : "text-slate-400")}
           strokeWidth={1.75}
           aria-hidden
         />

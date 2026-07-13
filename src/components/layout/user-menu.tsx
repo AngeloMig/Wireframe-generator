@@ -1,13 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Check, LogOut, RotateCcw, UserRound } from "lucide-react";
+import { Check, LogOut, RotateCcw } from "lucide-react";
 import { ROLE_LABELS } from "@/config/labels";
+import { AGENCY_ORGS, MOCK_USERS } from "@/data/users";
 import { useProjectsStore } from "@/stores/projects-store";
 import { useSessionStore } from "@/stores/session-store";
 import { useNotificationsStore } from "@/stores/notifications-store";
 import { toast } from "@/stores/ui-store";
-import type { UserRole } from "@/types";
 import { cn } from "@/utils/cn";
 import {
   DropdownItem,
@@ -16,12 +16,32 @@ import {
   DropdownSeparator,
 } from "@/components/ui/dropdown-menu";
 
-const ROLES: UserRole[] = ["customer", "agency-designer", "agency-developer", "agency-pm", "admin"];
+/** Dev-only switcher, grouped so the two demo agencies stay distinguishable. */
+const SWITCHER_GROUPS = [
+  {
+    label: AGENCY_ORGS.northshore,
+    users: MOCK_USERS.filter(
+      (u) =>
+        (u.organization === AGENCY_ORGS.northshore && u.role !== "admin") ||
+        u.id === "user-customer-1",
+    ),
+  },
+  {
+    label: AGENCY_ORGS.southpaw,
+    users: MOCK_USERS.filter(
+      (u) => u.organization === AGENCY_ORGS.southpaw || u.id === "user-sp-customer",
+    ),
+  },
+  {
+    label: "Platform",
+    users: MOCK_USERS.filter((u) => u.role === "admin"),
+  },
+];
 
 export function UserMenu() {
   const router = useRouter();
   const user = useSessionStore((s) => s.user);
-  const switchRole = useSessionStore((s) => s.switchRole);
+  const switchUser = useSessionStore((s) => s.switchUser);
   const logout = useSessionStore((s) => s.logout);
   const resetDemoData = useProjectsStore((s) => s.resetDemoData);
   const refreshNotifications = useNotificationsStore((s) => s.refresh);
@@ -54,20 +74,44 @@ export function UserMenu() {
         <p className="truncate text-xs text-slate-500">{user.email}</p>
       </div>
       <DropdownSeparator />
-      <DropdownLabel>Switch role (dev only)</DropdownLabel>
-      {ROLES.map((role) => (
-        <DropdownItem
-          key={role}
-          onSelect={() => {
-            switchRole(role);
-            toast(`Now viewing as ${ROLE_LABELS[role]}`, "info");
-            router.push("/dashboard");
-          }}
-        >
-          <UserRound className="size-4 text-slate-400" aria-hidden />
-          <span className="flex-1">{ROLE_LABELS[role]}</span>
-          {user.role === role && <Check className="size-4 text-indigo-600" aria-hidden />}
-        </DropdownItem>
+      {SWITCHER_GROUPS.map((group) => (
+        <div key={group.label}>
+          <DropdownLabel>{group.label}</DropdownLabel>
+          {group.users.map((mockUser) => (
+            <DropdownItem
+              key={mockUser.id}
+              onSelect={async () => {
+                switchUser(mockUser.id);
+                // Notifications are per-user and only hydrate once, so the new
+                // user's inbox must be re-read — otherwise the panel keeps
+                // showing the previous user's list (and misses ones delivered
+                // to this user while another role was active).
+                await refreshNotifications();
+                toast(`Now viewing as ${mockUser.name}`, "info");
+                router.push("/dashboard");
+              }}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold text-white",
+                  mockUser.avatarColor,
+                )}
+              >
+                {mockUser.initials}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate">{mockUser.name}</span>
+                <span className="block truncate text-[11px] text-slate-400">
+                  {ROLE_LABELS[mockUser.role]}
+                </span>
+              </span>
+              {user.id === mockUser.id && (
+                <Check className="size-4 text-[var(--primary)]" aria-hidden />
+              )}
+            </DropdownItem>
+          ))}
+        </div>
       ))}
       <DropdownSeparator />
       <DropdownItem

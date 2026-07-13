@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Check, ChevronDown, FolderX } from "lucide-react";
+import { canAccessProject } from "@/lib/org";
 import { projectCompletion } from "@/lib/project-utils";
 import { useProject } from "@/hooks/use-project";
 import { useSessionStore } from "@/stores/session-store";
@@ -55,8 +56,9 @@ export function ProjectShell({ children }: { children: React.ReactNode }) {
 
   const isCustomer = user.role === "customer";
 
-  // Customers only ever see projects assigned to them.
-  const accessible = project && (!isCustomer || project.ownerId === user.id);
+  // Multi-tenant wall: customers see their own projects, agency staff their
+  // agency's, the platform admin everything.
+  const accessible = project && canAccessProject(project, user);
 
   if (!project || !accessible) {
     return (

@@ -14,6 +14,7 @@ import {
   NavUtility,
 } from "./sections/navigation";
 import {
+  HeroArch,
   HeroCards,
   HeroCentered,
   HeroEditorial,
@@ -75,9 +76,19 @@ import {
   FooterSimple,
 } from "./sections/footer";
 import {
+  ContentArticleHeader,
+  ContentAuthor,
+  ContentBento,
   ContentBlog,
+  ContentCode,
+  ContentGallery,
   ContentImageText,
   ContentIntro,
+  ContentPostList,
+  ContentProse,
+  ContentQuote,
+  ContentScrollStory,
+  ContentSpecTable,
   ContentStatement,
   ContentStats,
   ContentTeam,
@@ -88,7 +99,9 @@ import {
   EcomBestSellers,
   EcomCollections,
   EcomFeatured,
+  EcomFilterGrid,
   EcomGrid,
+  EcomProductDetail,
 } from "./sections/ecommerce";
 
 /**
@@ -125,6 +138,7 @@ export const sectionComponentRegistry: Record<SectionType, Record<string, Sectio
     "hero-cards": HeroCards,
     "hero-promo": HeroPromo,
     "hero-minimal": HeroMinimal,
+    "hero-arch": HeroArch,
   },
   faq: {
     "faq-accordion": FaqAccordion,
@@ -186,6 +200,16 @@ export const sectionComponentRegistry: Record<SectionType, Record<string, Sectio
     "content-stats": ContentStats,
     "content-blog": ContentBlog,
     "content-team": ContentTeam,
+    "content-bento": ContentBento,
+    "content-spec-table": ContentSpecTable,
+    "content-quote": ContentQuote,
+    "content-gallery": ContentGallery,
+    "content-scroll-story": ContentScrollStory,
+    "content-code": ContentCode,
+    "content-article-header": ContentArticleHeader,
+    "content-prose": ContentProse,
+    "content-author": ContentAuthor,
+    "content-post-list": ContentPostList,
   },
   ecommerce: {
     "ecom-featured": EcomFeatured,
@@ -193,6 +217,8 @@ export const sectionComponentRegistry: Record<SectionType, Record<string, Sectio
     "ecom-collections": EcomCollections,
     "ecom-best-sellers": EcomBestSellers,
     "ecom-benefits": EcomBenefits,
+    "ecom-product-detail": EcomProductDetail,
+    "ecom-filter-grid": EcomFilterGrid,
   },
 };
 

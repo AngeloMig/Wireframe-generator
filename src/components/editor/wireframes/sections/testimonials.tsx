@@ -147,7 +147,7 @@ export function TestiCarousel({ section }: SectionComponentProps) {
         e.stopPropagation();
         setIndex((i) => i + dir);
       }}
-      className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-current/20 opacity-60 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-indigo-400"
+      className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-current/20 opacity-60 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-[#eab308]"
     >
       <Icon className="size-4" aria-hidden />
     </button>

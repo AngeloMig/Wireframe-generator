@@ -90,7 +90,7 @@ function AccordionItem({
           setOpen((v) => !v);
         }}
         className={cn(
-          "flex w-full cursor-pointer items-center justify-between gap-3 py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-indigo-400",
+          "flex w-full cursor-pointer items-center justify-between gap-3 py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-[#eab308]",
           flush && "px-0",
         )}
       >
@@ -203,7 +203,7 @@ export function FaqSidebar({ section }: SectionComponentProps) {
                       setActiveId(cat.id);
                     }}
                     className={cn(
-                      "w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-indigo-400",
+                      "w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-[#eab308]",
                       cat.id === active?.id
                         ? "bg-current/10 font-semibold"
                         : "opacity-70 hover:opacity-100",
@@ -257,7 +257,7 @@ export function FaqTabs({ section }: SectionComponentProps) {
               setActiveId(cat.id);
             }}
             className={cn(
-              "cursor-pointer rounded-full border px-3.5 py-1.5 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-indigo-400",
+              "cursor-pointer rounded-full border px-3.5 py-1.5 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-[#eab308]",
               cat.id === active?.id
                 ? "border-current bg-current/10 font-semibold"
                 : "border-current/20 opacity-70 hover:opacity-100",
@@ -351,7 +351,7 @@ export function FaqSearch({ section }: SectionComponentProps) {
           onChange={(e) => setQuery(e.target.value)}
           placeholder={str(c, "searchPlaceholder") || "Search questions…"}
           aria-label="Search questions"
-          className="w-full rounded-full border border-current/20 bg-white/90 py-2.5 pr-4 pl-9 text-sm text-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+          className="w-full rounded-full border border-current/20 bg-white/90 py-2.5 pr-4 pl-9 text-sm text-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-[#eab308]"
         />
       </div>
       {visible.length === 0 ? (

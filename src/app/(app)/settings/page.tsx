@@ -51,8 +51,10 @@ export default function SettingsPage() {
               key={role}
               variant={user.role === role ? "primary" : "outline"}
               size="sm"
-              onClick={() => {
+              onClick={async () => {
                 switchRole(role);
+                // Per-user notifications must be re-read for the new identity.
+                await refreshNotifications();
                 toast(`Now viewing as ${label}`, "info");
               }}
             >

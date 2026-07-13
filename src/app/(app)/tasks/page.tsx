@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, CheckCircle2, CheckSquare, RotateCcw } from "lucide-react";
 import { COMMENT_PRIORITY_META } from "@/config/labels";
+import { projectsForUser } from "@/lib/org";
 import { canCompleteActionItem } from "@/lib/permissions";
 import { useCommentsStore } from "@/stores/comments-store";
 import { useProjectsStore } from "@/stores/projects-store";
@@ -31,8 +32,8 @@ export default function TasksPage() {
   const [filter, setFilter] = useState<TaskFilter>("open");
 
   const visible = useMemo(
-    () => projects.filter((p) => p.status !== "archived"),
-    [projects],
+    () => projectsForUser(projects, user).filter((p) => p.status !== "archived"),
+    [projects, user],
   );
 
   useEffect(() => {

@@ -32,7 +32,6 @@ import { CollabDrawer } from "@/components/collab/collab-drawer";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { cn } from "@/utils/cn";
 import { PageStatusBadge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { ProgressBar } from "@/components/ui/progress";
 
@@ -91,17 +90,45 @@ function ProjectOverview() {
 
   return (
     <div className="space-y-8">
-      {/* Project command center */}
-      <section className="relative overflow-hidden rounded-[1.5rem] border border-[#285d4f] bg-[#173f36] px-6 py-7 text-white shadow-[0_22px_55px_rgb(23_63_54/0.18)] sm:px-8 sm:py-8">
-        <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_center,rgb(229_180_111/0.2),transparent_65%)]" aria-hidden />
-        <div className="relative grid gap-8 lg:grid-cols-[1fr_280px] lg:items-end">
+      {/* The next recommended action, as machined hardware — silver tray
+          cradling a white plate, matching the dashboard's "Next up". */}
+      <section className="rounded-[1.75rem] bg-[var(--surface-secondary)] p-1.5 shadow-[var(--shadow-panel)] ring-1 ring-black/[0.04]">
+        <div className="grid gap-8 rounded-[1.45rem] bg-white p-6 sm:p-8 lg:grid-cols-[1fr_300px] lg:items-center">
           <div>
-            <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-emerald-100"><span className="flex size-7 items-center justify-center rounded-full bg-white/10"><Sparkles className="size-3.5" aria-hidden /></span>Project workspace</div>
-            <h2 className="max-w-2xl text-3xl font-bold tracking-[-0.04em] sm:text-4xl">{action.label}</h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-emerald-50/80 sm:text-base">{action.description}</p>
-            <div className="mt-6 flex flex-wrap items-center gap-3"><Link href={action.href}><Button size="lg" className="bg-[#f3b96c] text-[#24332e] shadow-none hover:bg-[#ffc77d]">{action.label}<ArrowRight className="size-4" aria-hidden /></Button></Link><span className="text-sm text-white/70">{statusMeta.label}</span></div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e0492c]/10 px-2.5 py-0.5 text-[10px] font-semibold tracking-[0.16em] text-[#e0492c] uppercase">
+              <Sparkles className="size-3" aria-hidden /> Next step
+            </span>
+            <h2 className="mt-4 max-w-2xl font-display text-3xl font-semibold tracking-tight text-[var(--text-primary)] sm:text-4xl">
+              {action.label}
+            </h2>
+            <p className="mt-2.5 max-w-xl text-sm leading-6 text-[var(--text-secondary)] sm:text-base">
+              {action.description}
+            </p>
+            <div className="mt-6 flex flex-wrap items-center gap-4">
+              <Link
+                href={action.href}
+                className="group inline-flex items-center gap-3 rounded-full bg-[#e0492c] py-2.5 pr-2.5 pl-5 text-sm font-semibold text-white shadow-[0_4px_16px_rgb(224_73_44/0.28)] transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:shadow-[0_8px_24px_rgb(224_73_44/0.38)] active:scale-[0.98]"
+              >
+                {action.label}
+                <span className="flex size-8 items-center justify-center rounded-full bg-white/20 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5">
+                  <ArrowRight className="size-4" aria-hidden />
+                </span>
+              </Link>
+              <span className="text-sm text-[var(--text-muted)]">{statusMeta.label}</span>
+            </div>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm"><div className="flex items-center justify-between text-xs text-emerald-50/80"><span>Blueprint progress</span><span className="font-bold text-white">{completion}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-[#f3b96c]" style={{ width: `${completion}%` }} /></div><p className="mt-3 text-xs leading-5 text-emerald-50/70">{missing.length ? `${missing.length} checklist item${missing.length === 1 ? "" : "s"} still need attention.` : "Everything is ready for the next step."}</p></div>
+          <div className="rounded-[1.1rem] bg-[var(--surface-secondary)] p-4 ring-1 ring-black/[0.05]">
+            <div className="flex items-center justify-between text-xs text-[var(--text-secondary)]">
+              <span className="font-medium">Blueprint progress</span>
+              <span className="font-bold text-[var(--text-primary)]">{completion}%</span>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/[0.06]">
+              <div className="h-full rounded-full bg-[var(--text-primary)] transition-all duration-500" style={{ width: `${completion}%` }} />
+            </div>
+            <p className="mt-3 text-xs leading-5 text-[var(--text-muted)]">
+              {missing.length ? `${missing.length} checklist item${missing.length === 1 ? "" : "s"} still need attention.` : "Everything is ready for the next step."}
+            </p>
+          </div>
         </div>
       </section>
 
@@ -156,13 +183,13 @@ function ProjectOverview() {
           <Link
             key={item.href + item.label}
             href={item.href}
-            className="group rounded-[var(--radius-large)] border border-[var(--border-default)] bg-white p-5 shadow-[var(--shadow-card)] transition-[transform,box-shadow,border-color] hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-panel)]"
+            className="group rounded-[1.25rem] bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-black/[0.04] transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-1 hover:shadow-[var(--shadow-panel)]"
           >
-            <span className="flex size-9 items-center justify-center rounded-xl bg-[var(--primary-soft)]"><item.icon className="size-4.5 text-[var(--primary)]" aria-hidden /></span>
-            <p className="mt-3 text-sm font-bold text-[var(--text-primary)] group-hover:text-[var(--primary)]">
+            <span className="flex size-10 items-center justify-center rounded-[0.9rem] bg-[var(--surface-secondary)] ring-1 ring-black/[0.04] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-0.5"><item.icon className="size-5 text-[var(--text-primary)]" aria-hidden /></span>
+            <p className="mt-3.5 text-sm font-semibold text-[var(--text-primary)]">
               {item.label}
             </p>
-            <p className="mt-0.5 text-xs text-slate-500">{item.hint}</p>
+            <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{item.hint}</p>
           </Link>
         ))}
       </div>
@@ -181,7 +208,7 @@ function ProjectOverview() {
               action={
                 <Link
                   href={`${base}/sitemap`}
-                  className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                  className="text-sm font-medium text-[var(--focus-ring)] hover:underline"
                 >
                   Manage pages
                 </Link>
@@ -199,7 +226,7 @@ function ProjectOverview() {
                       <p className="truncate text-sm font-medium text-slate-900">
                         {page.name}
                         {page.isHomepage && (
-                          <span className="ml-2 rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-medium text-indigo-600">
+                          <span className="ml-2 rounded-full bg-[var(--info-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--info-text)]">
                             Homepage
                           </span>
                         )}
@@ -328,7 +355,7 @@ function ProjectOverview() {
               action={
                 <Link
                   href={`${base}/questionnaire`}
-                  className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                  className="text-sm font-medium text-[var(--focus-ring)] hover:underline"
                 >
                   Edit
                 </Link>
@@ -370,7 +397,7 @@ function ProjectOverview() {
               action={
                 <Link
                   href={`${base}/assets`}
-                  className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                  className="text-sm font-medium text-[var(--focus-ring)] hover:underline"
                 >
                   View all
                 </Link>

@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { normalizeSectionOrder } from "@/lib/sections";
 import { withActivity } from "@/lib/project-utils";
 import type { ActivityType, PageSection } from "@/types";
 import { nowIso } from "@/utils/id";
@@ -97,7 +98,12 @@ function writeSections(
         page.id === pageId
           ? {
               ...page,
-              sections: sections.map((section, index) => ({ ...section, order: index })),
+              // Nav pins to the top, footer to the bottom — enforced here at
+              // the single write point so no drag/move/insert path can bypass it.
+              sections: normalizeSectionOrder(sections).map((section, index) => ({
+                ...section,
+                order: index,
+              })),
               status:
                 page.status === "draft" && sections.length > 0
                   ? ("content-needed" as const)

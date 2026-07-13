@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { FolderKanban, Plus, Search, SearchX } from "lucide-react";
 import { PROJECT_STATUS_META } from "@/config/labels";
+import { projectsForUser } from "@/lib/org";
 import { useProjectsStore } from "@/stores/projects-store";
+import { useSessionStore } from "@/stores/session-store";
 import type { ProjectStatus } from "@/types";
 import { ProjectCard } from "@/components/project/project-card";
 import { Button } from "@/components/ui/button";
@@ -27,7 +29,12 @@ const STATUS_FILTERS: (ProjectStatus | "all" | "active")[] = [
 ];
 
 export default function ProjectsPage() {
-  const projects = useProjectsStore((s) => s.projects);
+  const allProjects = useProjectsStore((s) => s.projects);
+  const user = useSessionStore((s) => s.user);
+  const projects = useMemo(
+    () => projectsForUser(allProjects, user),
+    [allProjects, user],
+  );
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]>("active");
 

@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-display: var(--font-archivo), var(--font-inter), ui-sans-serif, sans-serif;
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-outfit), var(--font-geist), ui-sans-serif, sans-serif;
   --font-mono: var(--font-spline-mono), ui-monospace, "SF Mono", monospace;
 
   /* Cool blue-gray neutral scale — the app's workhorse neutral, tuned to match
@@ -150,6 +150,16 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Frosted "spatial UI" surfaces need a solid fallback when the user asks for
+   reduced transparency. Every blurred surface in the app is light, so a solid
+   white plate is always the right substitute. */
+@media (prefers-reduced-transparency: reduce) {
+  [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    background-color: var(--surface-primary) !important;
   }
 }
 

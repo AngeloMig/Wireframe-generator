@@ -18,6 +18,21 @@ interface CreateSectionOptions {
   order?: number;
 }
 
+/**
+ * Navigation always sits at the top of the page and footers at the bottom,
+ * whatever an edit tried to do — a drag or move that crosses those bounds
+ * snaps back into the template zone. Relative order within each group is
+ * preserved (stable partition).
+ */
+export function normalizeSectionOrder(sections: PageSection[]): PageSection[] {
+  const nav = sections.filter((s) => s.sectionType === "navigation");
+  const footer = sections.filter((s) => s.sectionType === "footer");
+  const body = sections.filter(
+    (s) => s.sectionType !== "navigation" && s.sectionType !== "footer",
+  );
+  return [...nav, ...body, ...footer];
+}
+
 /** Instantiate a page section from a library design variation. */
 export function createSectionFromVariation(
   variation: SectionVariation,

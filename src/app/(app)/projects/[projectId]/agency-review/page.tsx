@@ -41,6 +41,7 @@ import {
 } from "@/lib/review-transitions";
 import { useProject } from "@/hooks/use-project";
 import { useCollabUiStore } from "@/stores/collab-ui-store";
+import { selectProjectComments, useCommentsStore } from "@/stores/comments-store";
 import { useProjectsStore } from "@/stores/projects-store";
 import { useSessionStore } from "@/stores/session-store";
 import { toast } from "@/stores/ui-store";
@@ -75,6 +76,10 @@ export default function AgencyReviewPage() {
   const user = useSessionStore((s) => s.user);
   const updateProject = useProjectsStore((s) => s.updateProject);
   const openComposer = useCollabUiStore((s) => s.openComposer);
+  const selectComment = useCollabUiStore((s) => s.selectComment);
+  const selectedCommentId = useCollabUiStore((s) => s.selectedCommentId);
+  const loadComments = useCommentsStore((s) => s.load);
+  const comments = useCommentsStore((s) => selectProjectComments(s, projectId));
 
   const [pageId, setPageId] = useState<string | null>(null);
   const [revisionsOpen, setRevisionsOpen] = useState(false);
@@ -96,6 +101,22 @@ export default function AgencyReviewPage() {
   }, [project, pageId]);
 
   const theme = useMemo(() => (project ? brandTheme(project) : null), [project]);
+
+  useEffect(() => {
+    const commentId = new URLSearchParams(window.location.search).get("comment");
+    if (commentId) selectComment(commentId);
+    if (projectId) void loadComments(projectId);
+  }, [projectId, loadComments, selectComment]);
+
+  useEffect(() => {
+    const commentId = new URLSearchParams(window.location.search).get("comment");
+    const target = comments.find((comment) => comment.id === commentId);
+    if (!target) return;
+    if (target.pageId) setPageId(target.pageId);
+    if (target.sectionId) {
+      window.setTimeout(() => document.getElementById(`review-section-${target.sectionId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+    }
+  }, [comments]);
 
   useEffect(() => {
     if (project && user.role === "customer") {
@@ -286,7 +307,8 @@ export default function AgencyReviewPage() {
                 return (
                   <div
                     key={section.id}
-                    className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                    id={`review-section-${section.id}`}
+                    className={cn("overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow", selectedCommentId && comments.some((comment) => comment.id === selectedCommentId && comment.sectionId === section.id) && "ring-2 ring-indigo-400 ring-offset-2")}
                   >
                     <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-2.5">
                       <span className="text-sm font-semibold text-slate-800">{name}</span>

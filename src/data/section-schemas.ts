@@ -446,6 +446,8 @@ const ecommerce: SectionTypeDefinition = {
   contentSchema: [
     text("eyebrow", "Eyebrow"),
     text("heading", "Heading"),
+    text("price", "Price"),
+    textarea("description", "Description"),
     ...primaryButton,
     repeater("items", "Items", "Item", [
       text("title", "Title"),
@@ -456,6 +458,8 @@ const ecommerce: SectionTypeDefinition = {
   defaultContent: {
     eyebrow: "Featured",
     heading: "Customer favourites",
+    price: "",
+    description: "",
     buttonLabel: "View all products",
     buttonUrl: "/collections/all",
     items: [

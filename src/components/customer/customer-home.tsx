@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
   CheckSquare,
@@ -12,7 +13,6 @@ import {
   MessageSquare,
   RefreshCcw,
   ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import { APP_CONFIG } from "@/config/app";
 import {
@@ -37,6 +37,16 @@ import { PageSkeleton } from "@/components/ui/skeleton";
  * Zero projects → friendly empty state. One → straight to its editor.
  * Several → a simple picker with "what's waiting on you" signals.
  */
+type AttentionItem = {
+  key: string;
+  priority: number;
+  label: string;
+  detail: string;
+  icon: LucideIcon;
+  iconClass: string;
+  onClick: () => void;
+};
+
 export function CustomerHome() {
   const router = useRouter();
   const user = useSessionStore((s) => s.user);
@@ -62,6 +72,111 @@ export function CustomerHome() {
     const pageId = lastOpened?.projectId === only.id ? lastOpened.pageId : undefined;
     router.replace(customerEditorPath(only.id, pageId));
   }, [hydrated, assigned, lastOpened, router]);
+
+  const loadComments = useCommentsStore((s) => s.load);
+  const loadSuggestions = useSuggestionsStore((s) => s.load);
+  const commentsByProject = useCommentsStore((s) => s.byProject);
+  const suggestionsByProject = useSuggestionsStore((s) => s.byProject);
+
+  // The header sentence and attention strip need every project's signals,
+  // not just the ones whose cards have mounted.
+  useEffect(() => {
+    for (const project of assigned) {
+      void loadComments(project.id);
+      void loadSuggestions(project.id);
+    }
+  }, [assigned, loadComments, loadSuggestions]);
+
+  const { attention, summary } = useMemo(() => {
+    const items: AttentionItem[] = [];
+    const approvals: Project[] = [];
+    const revisions: Project[] = [];
+    let taskTotal = 0;
+    for (const project of assigned) {
+      const needsApproval =
+        project.status === "awaiting-approval" || project.status === "partially-approved";
+      const needsRevisions =
+        project.status === "revisions-requested" || project.status === "customer-revising";
+      const visible = (commentsByProject[project.id] ?? []).filter(
+        (c) => c.visibility === "customer",
+      );
+      const tasks = visible.filter(
+        (c) => c.isActionItem && !c.completedAt && c.assignedToId === user.id,
+      );
+      const ideas = (suggestionsByProject[project.id] ?? []).filter(
+        (s) => s.status === "pending",
+      );
+      taskTotal += tasks.length;
+      if (needsApproval) {
+        approvals.push(project);
+        items.push({
+          key: `${project.id}-approve`,
+          priority: 0,
+          label: "Review & approve",
+          detail: project.name,
+          icon: ShieldCheck,
+          iconClass: "bg-emerald-50 text-emerald-700",
+          onClick: () => router.push(`/projects/${project.id}/review`),
+        });
+      }
+      if (needsRevisions) {
+        revisions.push(project);
+        items.push({
+          key: `${project.id}-revise`,
+          priority: 1,
+          label: "Continue revisions",
+          detail: project.name,
+          icon: RefreshCcw,
+          iconClass: "bg-rose-50 text-rose-700",
+          onClick: () => router.push(`/projects/${project.id}/revisions`),
+        });
+      }
+      if (tasks.length > 0) {
+        items.push({
+          key: `${project.id}-tasks`,
+          priority: 2,
+          label: `${tasks.length} task${tasks.length === 1 ? "" : "s"} for you`,
+          detail: project.name,
+          icon: CheckSquare,
+          iconClass: "bg-amber-50 text-amber-700",
+          onClick: () => router.push(`/projects/${project.id}/revisions`),
+        });
+      }
+      if (ideas.length > 0) {
+        items.push({
+          key: `${project.id}-ideas`,
+          priority: 3,
+          label: `${ideas.length} design idea${ideas.length === 1 ? "" : "s"} to review`,
+          detail: project.name,
+          icon: Lightbulb,
+          iconClass: "bg-violet-50 text-violet-700",
+          onClick: () => router.push(customerEditorPath(project.id)),
+        });
+      }
+    }
+    items.sort((a, b) => a.priority - b.priority);
+
+    const parts: string[] = [];
+    if (approvals.length === 1) parts.push(`${approvals[0].name} is ready for your approval`);
+    else if (approvals.length > 1)
+      parts.push(`${approvals.length} blueprints are ready for your approval`);
+    if (taskTotal > 0)
+      parts.push(`${taskTotal} ${taskTotal === 1 ? "task is" : "tasks are"} waiting on you`);
+    if (parts.length === 0 && revisions.length > 0)
+      parts.push(
+        revisions.length === 1
+          ? `revisions are underway on ${revisions[0].name}`
+          : `revisions are underway on ${revisions.length} projects`,
+      );
+    const sentence =
+      parts.length > 0
+        ? `${parts.join(", and ")}.`
+        : "Nothing needs your attention right now. Your agency is working on the next round.";
+    return {
+      attention: items.slice(0, 4),
+      summary: sentence.charAt(0).toUpperCase() + sentence.slice(1),
+    };
+  }, [assigned, commentsByProject, suggestionsByProject, user.id, router]);
 
   if (!hydrated || redirecting) return <PageSkeleton />;
 
@@ -91,57 +206,81 @@ export function CustomerHome() {
       ]
     : assigned;
 
-  return (
-    <div className="space-y-7">
-      <section className="relative overflow-hidden rounded-[18px] border border-[#d7e5f0] bg-[#e7f3fc] px-6 py-7 text-[var(--text-primary)] shadow-[0_12px_30px_rgb(58_92_120/0.08)] sm:px-8 sm:py-8">
-        <div className="absolute -right-10 -top-16 size-64 rounded-full bg-white/70 blur-2xl" aria-hidden />
-        <div className="relative max-w-2xl">
-          <p className="mb-3 inline-flex items-center gap-2 font-mono text-[10px] font-medium tracking-[0.18em] text-[var(--info)] uppercase">
-            <Sparkles className="size-3.5" aria-hidden />
-            Your client workspace
-          </p>
-          <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
-            Welcome back, {user.name.split(" ")[0]}
-          </h1>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--text-secondary)] sm:text-base">
-            Pick up where you left off, review feedback, and keep your website blueprint moving.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-2 text-xs font-medium text-[var(--text-secondary)]">
-            <span className="rounded-full bg-white/75 px-3 py-1.5">{assigned.length} project{assigned.length === 1 ? "" : "s"} shared</span>
-            {lastOpened && <span className="rounded-full bg-white/75 px-3 py-1.5">Last opened recently</span>}
-          </div>
-        </div>
-      </section>
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="mb-1 font-mono text-[10px] font-medium tracking-[0.18em] text-[var(--text-muted)] uppercase">Your drafting table</p>
-          <h2 className="font-display text-2xl font-semibold tracking-tight text-[var(--text-primary)]">Projects to continue</h2>
+  return (
+    <div className="space-y-12">
+      <header className="max-w-2xl">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-[var(--text-primary)] sm:text-4xl">
+          {greeting}, {user.name.split(" ")[0]}.
+        </h1>
+        <p className="mt-2.5 text-sm leading-6 text-[var(--text-secondary)] sm:text-base">
+          {summary}
+        </p>
+      </header>
+
+      {attention.length > 0 && (
+        <section aria-label="Waiting on you">
+          <p className="inline-flex items-center gap-2 font-mono text-[10px] font-medium tracking-[0.18em] text-[var(--text-muted)] uppercase">
+            <span className="size-1.5 rounded-full bg-[#e0492c]" aria-hidden />
+            Waiting on you
+          </p>
+          <div className="mt-2.5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {attention.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={item.onClick}
+                  className="group flex cursor-pointer items-center gap-3 rounded-[12px] border border-[var(--border-default)] bg-white px-4 py-3.5 text-left transition-[border-color,box-shadow] duration-200 hover:border-[var(--border-strong)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+                >
+                  <span className={`flex size-9 shrink-0 items-center justify-center rounded-full ${item.iconClass}`}>
+                    <Icon className="size-4" aria-hidden />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-[var(--text-primary)]">{item.label}</span>
+                    <span className="block truncate text-xs text-[var(--text-secondary)]">{item.detail}</span>
+                  </span>
+                  <ArrowRight className="ml-auto size-4 shrink-0 text-slate-300 transition-colors group-hover:text-slate-500" aria-hidden />
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      <section className="rounded-[12px] border border-[var(--border-default)] bg-[#FBFBFA] bg-[linear-gradient(rgba(0,0,0,0.022)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.022)_1px,transparent_1px)] bg-[size:26px_26px] p-5 sm:p-7">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3 px-1">
+          <h2 className="font-display text-xl font-semibold tracking-tight text-[var(--text-primary)]">
+            Your drafting table
+          </h2>
+          <span className="text-xs text-[var(--text-muted)]">Changes save automatically</span>
         </div>
-        <span className="text-sm text-[var(--text-secondary)]">Changes save automatically</span>
-      </div>
-      <ul className="grid gap-5 sm:grid-cols-2">
-        {ordered.map((project, index) => (
-          <li key={project.id} className={index === 0 ? "sm:col-span-2" : undefined}>
-            <ProjectPickerCard
-              project={project}
-              userId={user.id}
-              featured={index === 0}
-              continueHint={lastOpened?.projectId === project.id && index === 0}
-              onOpen={() =>
-                router.push(
-                  customerEditorPath(
-                    project.id,
-                    lastOpened?.projectId === project.id ? lastOpened?.pageId : undefined,
-                  ),
-                )
-              }
-              onOpenRevisions={() => router.push(`/projects/${project.id}/revisions`)}
-              onOpenReview={() => router.push(`/projects/${project.id}/review`)}
-            />
-          </li>
-        ))}
-      </ul>
+        <ul className="grid gap-4 sm:grid-cols-2">
+          {ordered.map((project, index) => (
+            <li key={project.id} className={index === 0 ? "sm:col-span-2" : undefined}>
+              <ProjectPickerCard
+                project={project}
+                userId={user.id}
+                featured={index === 0}
+                continueHint={lastOpened?.projectId === project.id && index === 0}
+                onOpen={() =>
+                  router.push(
+                    customerEditorPath(
+                      project.id,
+                      lastOpened?.projectId === project.id ? lastOpened?.pageId : undefined,
+                    ),
+                  )
+                }
+                onOpenRevisions={() => router.push(`/projects/${project.id}/revisions`)}
+                onOpenReview={() => router.push(`/projects/${project.id}/review`)}
+              />
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }
@@ -198,7 +337,7 @@ function ProjectPickerCard({
   return (
     <div
       className={
-        "group flex h-full w-full overflow-hidden rounded-[14px] border border-[var(--border-default)] bg-white text-left shadow-[var(--shadow-card)] transition-[border-color,box-shadow] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-panel)] " +
+        "group flex h-full w-full overflow-hidden rounded-[12px] border border-[var(--border-default)] bg-white text-left transition-[border-color,box-shadow] duration-200 hover:border-[var(--border-strong)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)] " +
         (featured ? "flex-col sm:flex-row" : "flex-col")
       }
     >
@@ -265,7 +404,7 @@ function ProjectPickerCard({
             <span className="font-semibold tabular-nums text-[var(--text-muted)]">{completion}%</span>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-white">
-            <div className="h-full rounded-full bg-[var(--accent-primary)] transition-all" style={{ width: `${completion}%` }} />
+            <div className="h-full rounded-full bg-[var(--text-primary)] transition-all" style={{ width: `${completion}%` }} />
           </div>
         </div>
 

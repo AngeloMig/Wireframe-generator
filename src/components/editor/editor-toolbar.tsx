@@ -70,6 +70,7 @@ export function EditorToolbar({
   onThemeChange,
   onThemeReset,
   canEditOverride,
+  canBuildSections,
 }: {
   project: Project;
   page: ProjectPage;
@@ -86,11 +87,16 @@ export function EditorToolbar({
   onThemeChange?: (patch: ThemeOverrides) => void;
   onThemeReset?: () => void;
   canEditOverride?: boolean;
+  /** May add/arrange sections — gates the "Add section" affordance. */
+  canBuildSections?: boolean;
 }) {
   const router = useRouter();
   const user = useSessionStore((s) => s.user);
   const isCustomer = user.role === "customer";
   const customerCanEdit = canEditOverride ?? canEditProjectContent(user.role, project.status);
+  // Falls back to the blanket edit flag when the granular one isn't supplied
+  // (e.g. agency toolbars that don't pass capabilities).
+  const canAddSections = canBuildSections ?? customerCanEdit;
   const submissionMode =
     project.status === "revisions-requested" || project.status === "customer-revising"
       ? ("revisions" as const)
@@ -111,19 +117,28 @@ export function EditorToolbar({
   const commentMode = useCollabUiStore((s) => s.commentMode);
   const setCommentMode = useCollabUiStore((s) => s.setCommentMode);
 
+  // Floating-panel "spatial UI": squircle buttons, yellow marks the active tool.
   const iconButton = (active?: boolean) =>
     cn(
-      "flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-30",
-      active ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)] hover:text-[var(--text-primary)]",
+      "flex size-8 cursor-pointer items-center justify-center rounded-xl transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-30",
+      active
+        ? "bg-[#f7d34e] text-[#5c4600] shadow-[0_1px_3px_rgb(0_0_0/0.10)]"
+        : "text-[var(--text-secondary)] hover:bg-black/[0.05] hover:text-[var(--text-primary)]",
     );
 
+  // Frosted island that groups related controls into a soft rounded cluster.
+  const island = "flex items-center gap-0.5 rounded-[0.9rem] bg-white/70 p-1 shadow-[inset_0_1px_0_rgb(255_255_255/0.7),0_1px_2px_rgb(0_0_0/0.04)] ring-1 ring-black/[0.04] backdrop-blur";
+
   return (
-    <div className="relative flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--border-default)] bg-white px-3 py-2 shadow-[var(--shadow-subtle)]">
+    // z-30: backdrop-blur makes this bar a stacking context, which would trap
+    // its dropdowns (user menu, shortcuts) *below* the workspace panels that
+    // come later in the DOM — so the whole bar must sit above the workspace.
+    <div className="relative z-30 flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 border-b border-black/[0.04] bg-[var(--surface-secondary)]/80 px-3 py-2 backdrop-blur-xl">
       {/* Left: project / page context */}
       <div className="flex min-w-0 items-center gap-2">
         <Link
           href={isCustomer ? "/dashboard" : `/projects/${project.id}/overview`}
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)] hover:text-[var(--text-primary)]"
+          className="flex size-8 shrink-0 items-center justify-center rounded-xl text-[var(--text-secondary)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-black/[0.05] hover:text-[var(--text-primary)] active:scale-[0.94]"
           aria-label={isCustomer ? "Back to your projects" : "Back to project overview"}
         >
           <ArrowLeft className="size-4" aria-hidden />
@@ -136,7 +151,7 @@ export function EditorToolbar({
           <PageStatusBadge status={page.status} />
         </div>
         <SaveIndicator />
-        {isCustomer && onToggleLibrary && customerCanEdit && (
+        {isCustomer && onToggleLibrary && canAddSections && (
           <Button
             variant={libraryOpen ? "secondary" : "outline"}
             size="sm"
@@ -150,9 +165,9 @@ export function EditorToolbar({
         )}
       </div>
 
-      <div className="order-3 mx-auto flex w-full items-center justify-center gap-2 border-t border-[var(--border-default)] pt-2 lg:order-none lg:w-auto lg:border-0 lg:pt-0">
+      <div className="order-3 mx-auto flex w-full items-center justify-center gap-2 pt-2 lg:order-none lg:w-auto lg:pt-0">
         {/* Undo / redo */}
-        <div className="flex items-center gap-0.5">
+        <div className={island}>
           <button
             type="button"
             className={iconButton()}
@@ -173,10 +188,8 @@ export function EditorToolbar({
           </button>
         </div>
 
-        <Divider />
-
         {/* Device preview */}
-        <div className="flex items-center gap-0.5" role="group" aria-label="Device preview">
+        <div className={island} role="group" aria-label="Device preview">
           {DEVICES.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -191,11 +204,9 @@ export function EditorToolbar({
           ))}
         </div>
 
-        <Divider />
-
         {/* Mode toggle */}
         <div
-          className="flex rounded-lg border border-[var(--border-default)] bg-[var(--surface-secondary)] p-0.5"
+          className="flex rounded-[0.9rem] bg-white/70 p-1 shadow-[inset_0_1px_0_rgb(255_255_255/0.7),0_1px_2px_rgb(0_0_0/0.04)] ring-1 ring-black/[0.04] backdrop-blur"
           role="group"
           aria-label="Display mode"
         >
@@ -204,8 +215,8 @@ export function EditorToolbar({
             aria-pressed={mode === "wireframe"}
             onClick={() => setMode("wireframe")}
             className={cn(
-              "flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-              mode === "wireframe" ? "bg-white text-[var(--primary)] shadow-sm" : "text-[var(--text-secondary)]",
+              "flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.96]",
+              mode === "wireframe" ? "bg-[#f7d34e] text-[#5c4600] shadow-[0_1px_3px_rgb(0_0_0/0.10)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
             )}
           >
             <PencilRuler className="size-3.5" aria-hidden />
@@ -217,8 +228,8 @@ export function EditorToolbar({
             aria-pressed={mode === "styled"}
             onClick={() => setMode("styled")}
             className={cn(
-              "flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-              mode === "styled" ? "bg-white text-[var(--primary)] shadow-sm" : "text-[var(--text-secondary)]",
+              "flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.96]",
+              mode === "styled" ? "bg-[#f7d34e] text-[#5c4600] shadow-[0_1px_3px_rgb(0_0_0/0.10)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
             )}
           >
             <Paintbrush className="size-3.5" aria-hidden />
@@ -237,10 +248,8 @@ export function EditorToolbar({
           />
         )}
 
-        <Divider />
-
         {/* Zoom */}
-        <div className="hidden items-center gap-0.5 xl:flex">
+        <div className={cn(island, "hidden xl:flex")}>
           <button
             type="button"
             className={iconButton()}
@@ -250,7 +259,7 @@ export function EditorToolbar({
           >
             <ZoomOut className="size-4" aria-hidden />
           </button>
-          <span className="w-10 text-center text-xs tabular-nums text-slate-600">
+          <span className="w-10 text-center text-xs tabular-nums text-[var(--text-secondary)]">
             {Math.round(zoom * 100)}%
           </span>
           <button
@@ -379,8 +388,4 @@ export function EditorToolbar({
       )}
     </div>
   );
-}
-
-function Divider() {
-  return <span className="hidden h-5 w-px bg-slate-200 sm:block" aria-hidden />;
 }

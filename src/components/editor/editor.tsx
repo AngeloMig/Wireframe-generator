@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -18,7 +18,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { MessageCircle, X } from "lucide-react";
+import { MessageCircle, PencilRuler, X } from "lucide-react";
 import { getVariation } from "@/data/section-variations";
 import { brandTheme, setContentValue } from "@/lib/editor-utils";
 import {
@@ -26,13 +26,14 @@ import {
   writeThemeOverrides,
   type ThemeOverrides,
 } from "@/lib/theme-overrides";
-import { canEditInEditor, editRestrictionReason } from "@/lib/permissions";
+import { grantedCapabilities, canEditAnything, editRestrictionReason } from "@/lib/permissions";
+import { notifyCustomerEditing } from "@/lib/collab-service";
 import { createSectionFromVariation, switchSectionVariation } from "@/lib/sections";
 import { cn } from "@/utils/cn";
 import { useCollabUiStore } from "@/stores/collab-ui-store";
 import { selectProjectComments, useCommentsStore } from "@/stores/comments-store";
 import { selectProjectMembers, useMembersStore } from "@/stores/members-store";
-import { useAccessRequestsStore } from "@/stores/access-requests-store";
+import { approvedLevelsFor, useAccessRequestsStore } from "@/stores/access-requests-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { useSessionStore } from "@/stores/session-store";
 import { toast } from "@/stores/ui-store";
@@ -171,17 +172,41 @@ export function Editor({
   //     or an approved access request). Access grants only unlock a customer
   //     during an already-editable phase; they never bypass the review lock.
   const memberAccess = members.find((member) => member.userId === user.id)?.accessLevel;
-  const approvedAccessRequest = accessRequests.some(
-    (request) =>
-      request.projectId === project.id &&
-      request.requesterId === user.id &&
-      request.status === "approved",
-  );
-  const contentEditable = canEditInEditor(user.role, project.status, {
-    memberAccess,
-    approvedAccessRequest,
-  });
-  const restrictionReason = editRestrictionReason(user.role, project.status);
+  const approvedLevels = approvedLevelsFor(accessRequests, project.id, user.id);
+  const caps = grantedCapabilities(user.role, project.status, { memberAccess, approvedLevels });
+  const canEditContent = caps.content;
+  const canBuildSections = caps.builder;
+  const contentEditable = canEditAnything(caps);
+  // The customer holds an access grant when they own the project, are an "edit"
+  // member, or have any approved capability — so if editing is still blocked,
+  // it's the status, not a missing grant. Used to word the restriction banner.
+  const hasAccessGrant =
+    user.role === "customer" &&
+    (!memberAccess || memberAccess === "edit" || approvedLevels.length > 0);
+  const restrictionReason = editRestrictionReason(user.role, project.status, hasAccessGrant);
+
+  // Ping the agency when the customer edits — but batched. applySections bumps
+  // project.lastEditedAt on every change, so we watch that and fire at most one
+  // "customer is editing" notification per cooldown window (leading edge), so a
+  // burst of edits doesn't spam. Baseline is skipped so opening the editor is
+  // never mistaken for an edit.
+  const lastEditSeenRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (user.role !== "customer" || !contentEditable) return;
+    if (lastEditSeenRef.current === null) {
+      lastEditSeenRef.current = project.lastEditedAt;
+      return;
+    }
+    if (project.lastEditedAt === lastEditSeenRef.current) return;
+    lastEditSeenRef.current = project.lastEditedAt;
+
+    const key = `wf:edit-notify:${project.id}`;
+    const COOLDOWN_MS = 10 * 60 * 1000;
+    const last = Number(window.localStorage.getItem(key) ?? 0);
+    if (Date.now() - last < COOLDOWN_MS) return;
+    window.localStorage.setItem(key, String(Date.now()));
+    void notifyCustomerEditing(project, user);
+  }, [project, user, contentEditable]);
 
   // Numbered comment markers per section, in page order.
   const markers = useMemo(() => {
@@ -588,7 +613,7 @@ export function Editor({
         !isPreview &&
         !previewVariation &&
         !commentMode &&
-        contentEditable
+        canBuildSections
       ) {
         event.preventDefault();
         canvasActions.onDelete(selectedSectionId);
@@ -605,7 +630,7 @@ export function Editor({
     canvasActions,
     previewVariation,
     commentMode,
-    contentEditable,
+    canBuildSections,
   ]);
 
   // ----- Render ------------------------------------------------------------------
@@ -616,7 +641,13 @@ export function Editor({
         "flex flex-col bg-[var(--app-background)]",
         commentMode
           ? "fixed inset-0 z-[70] h-screen overflow-hidden shadow-[var(--shadow-overlay)]"
-          : "relative h-[calc(100vh-4rem)]",
+          : // Customers get no app-shell header (the toolbar IS the header), so
+            // the editor owns the full viewport; agency users sit under the
+            // 4rem shell top bar. Reserving 4rem for customers left a dead
+            // band below the workspace.
+            isCustomer
+            ? "relative h-dvh"
+            : "relative h-[calc(100vh-4rem)]",
       )}
       aria-label={commentMode ? "Fullscreen comment workspace" : "Wireframe editor"}
     >
@@ -638,6 +669,7 @@ export function Editor({
         onThemeChange={changeTheme}
         onThemeReset={resetTheme}
         canEditOverride={contentEditable}
+        canBuildSections={canBuildSections}
       />
 
       {mode === "styled" && (
@@ -649,7 +681,7 @@ export function Editor({
 
       {commentMode && (
         <p
-          className="border-b border-indigo-200 bg-indigo-50 px-4 py-1.5 text-center text-xs text-indigo-800"
+          className="border-b border-amber-200 bg-amber-50 px-4 py-1.5 text-center text-xs text-amber-800"
           aria-live="polite"
         >
           Comment mode — click any section to start a conversation. Editing is paused.
@@ -671,6 +703,20 @@ export function Editor({
               Review &amp; approve →
             </Link>
           )}
+        </p>
+      )}
+
+      {isCustomer && contentEditable && !commentMode && !isPreview && (
+        <p
+          className="flex items-center justify-center gap-1.5 border-b border-[var(--focus-ring)]/30 bg-[var(--info-soft)] px-4 py-1.5 text-center text-xs text-[#1a4e8a]"
+          aria-live="polite"
+        >
+          <PencilRuler className="size-3.5 shrink-0" aria-hidden />
+          <span>
+            <span className="font-semibold">You&apos;re editing a working copy.</span>{" "}
+            Your changes stay separate from the agency&apos;s main design until they
+            review and approve them.
+          </span>
         </p>
       )}
 
@@ -710,36 +756,56 @@ export function Editor({
           setDropTarget(null);
         }}
       >
-        <div className="flex min-h-0 flex-1 gap-px bg-[var(--border-default)]">
+        {/* The workspace: a grey drafting table that the panels float over as
+            rounded frosted cards (PicGen-style spatial UI). Soft ambient color
+            blobs sit behind everything so the glass has something to blur —
+            frosted panels over a flat color are indistinguishable from solid. */}
+        <div className="relative isolate flex min-h-0 flex-1 gap-3 bg-[#e9ece8] p-3">
+          <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+            <div className="absolute -top-24 -left-24 size-[30rem] rounded-full bg-[#f7d34e]/40 blur-[110px]" />
+            <div className="absolute top-1/4 -right-32 size-[32rem] rounded-full bg-[#7cc0f8]/35 blur-[120px]" />
+            <div className="absolute -bottom-36 left-1/3 size-[28rem] rounded-full bg-[#f8b4c0]/30 blur-[110px]" />
+          </div>
           {!isPreview && !commentMode && (
             <aside
-              className="hidden w-60 shrink-0 bg-white lg:block"
+              className="hidden w-60 shrink-0 flex-col relative z-10 overflow-hidden rounded-[1.25rem] bg-white/70 shadow-[inset_0_1px_0_rgb(255_255_255/0.6),0_10px_30px_rgb(38_57_74/0.10)] ring-1 ring-black/[0.05] backdrop-blur-xl lg:flex"
               aria-label="Page structure"
               data-tour="structure"
             >
-              <StructurePanel
-                sections={page.sections}
-                selectedId={selectedSectionId}
-                actions={canvasActions}
-                readOnly={!contentEditable}
-                onAddSection={() => setLibraryOpen(true)}
-                attentionIds={attentionIds}
-              />
+              <div className="px-4 pt-4 pb-2">
+                <p className="text-[15px] font-semibold tracking-tight text-[var(--text-primary)]">Structure</p>
+                <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                  {page.sections.length} section{page.sections.length === 1 ? "" : "s"} on this page
+                </p>
+              </div>
+              <div className="min-h-0 flex-1">
+                <StructurePanel
+                  sections={page.sections}
+                  selectedId={selectedSectionId}
+                  actions={canvasActions}
+                  readOnly={!canBuildSections}
+                  onAddSection={() => setLibraryOpen(true)}
+                  attentionIds={attentionIds}
+                />
+              </div>
             </aside>
           )}
 
-          {!isPreview && !commentMode && contentEditable && libraryOpen && (
+          {!isPreview && !commentMode && canBuildSections && libraryOpen && (
             <aside
-              className="hidden w-80 shrink-0 flex-col bg-white lg:flex xl:w-96"
+              className="hidden w-80 shrink-0 flex-col relative z-10 overflow-hidden rounded-[1.25rem] bg-white/70 shadow-[inset_0_1px_0_rgb(255_255_255/0.6),0_10px_30px_rgb(38_57_74/0.10)] ring-1 ring-black/[0.05] backdrop-blur-xl lg:flex xl:w-96"
               aria-label="Section library"
             >
-              <div className="flex items-center justify-between border-b border-[var(--border-default)] px-3 py-2">
-                <p className="text-[13px] font-semibold text-[var(--text-primary)]">Add section</p>
+              <div className="flex items-start justify-between px-4 pt-4 pb-2">
+                <div>
+                  <p className="text-[15px] font-semibold tracking-tight text-[var(--text-primary)]">Add section</p>
+                  <p className="mt-0.5 text-xs text-[var(--text-muted)]">Drag onto the canvas, or click to insert</p>
+                </div>
                 <button
                   type="button"
                   aria-label="Close the section list"
                   onClick={() => setLibraryOpen(false)}
-                  className="flex size-6 cursor-pointer items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                  className="flex size-8 cursor-pointer items-center justify-center rounded-xl bg-black/[0.04] text-slate-500 transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-black/[0.08] hover:text-slate-900 active:scale-[0.94]"
                 >
                   <X className="size-4" aria-hidden />
                 </button>
@@ -764,7 +830,8 @@ export function Editor({
             dropTarget={activeDrag?.type === "library" ? dropTarget : null}
             isLibraryDragging={activeDrag?.type === "library"}
             actions={canvasActions}
-            readOnly={!contentEditable}
+            canEditContent={canEditContent}
+            canEditStructure={canBuildSections}
             commentMode={commentMode}
             markers={markers}
             onMarkerSelect={(sectionId) => {
@@ -774,7 +841,7 @@ export function Editor({
               select(sectionId);
               if (first) selectComment(first.id);
             }}
-            onInsertStarter={contentEditable ? insertStarter : undefined}
+            onInsertStarter={canBuildSections ? insertStarter : undefined}
             onContextComment={
               isPreview
                 ? undefined
@@ -794,7 +861,7 @@ export function Editor({
 
           {!isPreview && !commentMode && (
             <aside
-              className="hidden w-80 shrink-0 bg-white xl:block"
+              className="hidden w-80 shrink-0 relative z-10 overflow-hidden rounded-[1.25rem] bg-white/70 shadow-[inset_0_1px_0_rgb(255_255_255/0.6),0_10px_30px_rgb(38_57_74/0.10)] ring-1 ring-black/[0.05] backdrop-blur-xl xl:block"
               aria-label="Section inspector"
               data-tour="inspector"
             >
@@ -808,7 +875,7 @@ export function Editor({
             <LibraryDragPreview variation={activeDrag.variation} />
           )}
           {activeDrag?.type === "section" && (
-            <div className="rounded-lg border border-[var(--primary)] bg-white px-4 py-2.5 text-xs font-semibold text-[var(--text-primary)] shadow-[var(--shadow-panel)]">
+            <div className="rounded-2xl bg-white/90 px-4 py-2.5 text-xs font-semibold text-[var(--text-primary)] shadow-[0_12px_36px_rgb(0_0_0/0.18)] ring-1 ring-[#f2b90d]/60 backdrop-blur-md">
               {activeDrag.name}
             </div>
           )}
@@ -849,9 +916,24 @@ export function Editor({
         />
       )}
 
-      {commentMode && pointComments.map((comment, index) => {
+      {commentMode && (() => {
+        // Pins are position:fixed with a z-index above the editor chrome, so a
+        // pin whose anchor scrolls under the toolbar would float on top of it.
+        // Hide any pin that leaves the canvas viewport instead.
+        const canvasBounds = document
+          .querySelector("[data-editor-canvas]")
+          ?.getBoundingClientRect();
+        return pointComments.map((comment, index) => {
         const pos = anchorScreenPosition(comment);
         if (!pos) return null;
+        if (
+          canvasBounds &&
+          (pos.y < canvasBounds.top + 4 ||
+            pos.y > canvasBounds.bottom - 4 ||
+            pos.x < canvasBounds.left ||
+            pos.x > canvasBounds.right)
+        )
+          return null;
         return (
           <button
             key={comment.id}
@@ -866,13 +948,14 @@ export function Editor({
                 position: pos,
               })
             }
-            className="fixed z-[75] flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-[var(--primary)] text-white shadow-[0_4px_14px_rgb(22_107_87/0.3)] transition-transform hover:scale-110"
+            className="fixed z-[75] flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-[#f7d34e] text-[#5c4600] shadow-[0_4px_14px_rgb(0_0_0/0.22)] transition-transform hover:scale-110"
             style={{ left: pos.x, top: pos.y }}
           >
             <MessageCircle className="size-3.5" aria-hidden />
           </button>
         );
-      })}
+        });
+      })()}
 
       {!isPreview && commentMode && <CanvasCommentPopover project={project} />}
 

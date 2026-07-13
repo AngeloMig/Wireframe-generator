@@ -35,7 +35,7 @@ export interface ProjectMember {
 }
 
 export type AccessRequestLevel = "page" | "content" | "builder";
-export type AccessRequestStatus = "pending" | "approved" | "declined";
+export type AccessRequestStatus = "pending" | "approved" | "declined" | "revoked";
 
 export interface AccessRequest {
   id: string;

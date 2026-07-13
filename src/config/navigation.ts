@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   Users,
   CheckSquare,
+  MessageSquare,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/types";
@@ -32,6 +33,7 @@ export const MAIN_NAV: NavItem[] = [
   { label: "Templates", href: "/templates", icon: LayoutTemplate, roles: AGENCY_AND_ADMIN },
   { label: "Tasks", href: "/tasks", icon: CheckSquare, roles: AGENCY_AND_ADMIN },
   { label: "Activity", href: "/activity", icon: Activity, roles: AGENCY_AND_ADMIN },
+  { label: "Inbox", href: "/inbox", icon: MessageSquare, roles: AGENCY_AND_ADMIN },
   { label: "Customers", href: "/admin/users", icon: Users, roles: ["agency-pm"] },
 ];
 

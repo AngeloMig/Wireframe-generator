@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canEditInEditor, canEditProjectContent } from "./permissions";
+import { canEditInEditor, canEditProjectContent, grantedCapabilities } from "./permissions";
 import type { ProjectStatus, UserRole } from "@/types";
 
 const EDITABLE: ProjectStatus[] = [
@@ -67,5 +67,58 @@ describe("canEditInEditor — the review lock", () => {
       expect(canEditInEditor(role, "agency-reviewing", {})).toBe(true);
       expect(canEditInEditor(role, "approved", {})).toBe(false); // status still gates
     }
+  });
+});
+
+describe("grantedCapabilities — per-capability access", () => {
+  it("grants exactly the approved levels to a comment-only customer", () => {
+    const caps = grantedCapabilities("customer", "customer-editing", {
+      memberAccess: "comment",
+      approvedLevels: ["content"],
+    });
+    expect(caps).toEqual({ content: true, builder: false, page: false });
+  });
+
+  it("does not let a content grant unlock section building", () => {
+    const caps = grantedCapabilities("customer", "customer-editing", {
+      memberAccess: "comment",
+      approvedLevels: ["content"],
+    });
+    expect(caps.builder).toBe(false);
+  });
+
+  it("gives owners, edit members, and agency the full set", () => {
+    expect(grantedCapabilities("customer", "draft", {})).toEqual({
+      content: true,
+      builder: true,
+      page: true,
+    });
+    expect(
+      grantedCapabilities("customer", "draft", { memberAccess: "edit" }),
+    ).toEqual({ content: true, builder: true, page: true });
+    expect(grantedCapabilities("agency-designer", "agency-reviewing", {})).toEqual({
+      content: true,
+      builder: true,
+      page: true,
+    });
+  });
+
+  it("grants nothing once the status locks editing, whatever was approved", () => {
+    for (const status of LOCKED_FOR_CUSTOMER) {
+      expect(
+        grantedCapabilities("customer", status, {
+          memberAccess: "comment",
+          approvedLevels: ["content", "builder", "page"],
+        }),
+      ).toEqual({ content: false, builder: false, page: false });
+    }
+  });
+
+  it("drops all capabilities when grants are revoked (no approved levels)", () => {
+    const caps = grantedCapabilities("customer", "customer-editing", {
+      memberAccess: "comment",
+      approvedLevels: [],
+    });
+    expect(caps).toEqual({ content: false, builder: false, page: false });
   });
 });

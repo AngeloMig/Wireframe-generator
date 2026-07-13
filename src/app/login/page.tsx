@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { APP_CONFIG } from "@/config/app";
 import { ROLE_LABELS } from "@/config/labels";
-import { MOCK_USERS } from "@/data/users";
+import { AGENCY_ORGS, MOCK_USERS } from "@/data/users";
 import { useSessionStore } from "@/stores/session-store";
 import type { UserRole } from "@/types";
 import { BrandMark } from "@/components/brand/brand-mark";
@@ -30,8 +30,34 @@ const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
   "agency-designer": "Review customer blueprints, leave feedback, and request revisions.",
   "agency-developer": "Add technical notes and mark sections as technically reviewed.",
   "agency-pm": "Assign work, manage statuses, send blueprints for approval, export handoffs.",
-  admin: "Manage section templates, users, statuses, and platform settings.",
+  admin: "Sees every agency and project — manages the whole platform.",
 };
+
+/** Seat picker grouped by organization — the multi-agency demo at a glance. */
+const ORG_GROUPS = [
+  {
+    label: `${AGENCY_ORGS.northshore} — agency one`,
+    users: MOCK_USERS.filter(
+      (u) => u.organization === AGENCY_ORGS.northshore && u.role !== "admin",
+    ),
+  },
+  {
+    label: "Their customer",
+    users: MOCK_USERS.filter((u) => u.id === "user-customer-1"),
+  },
+  {
+    label: `${AGENCY_ORGS.southpaw} — agency two`,
+    users: MOCK_USERS.filter((u) => u.organization === AGENCY_ORGS.southpaw),
+  },
+  {
+    label: "Their customer",
+    users: MOCK_USERS.filter((u) => u.id === "user-sp-customer"),
+  },
+  {
+    label: "Platform",
+    users: MOCK_USERS.filter((u) => u.role === "admin"),
+  },
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -179,40 +205,49 @@ export default function LoginPage() {
             Choose a role to explore. Everything you draw is stored in this browser.
           </p>
 
-          <div className="mt-7 space-y-2.5">
-            {MOCK_USERS.map((user) => {
-              const Icon = ROLE_ICONS[user.role];
-              return (
-                <button
-                  key={user.id}
-                  type="button"
-                  className="group flex w-full cursor-pointer items-center gap-4 rounded-xl border border-[var(--border-default)] bg-white p-4 text-left shadow-[var(--shadow-card)] transition-colors hover:border-[var(--border-strong)]"
-                  onClick={() => {
-                    login(user.role);
-                    router.push("/dashboard");
-                  }}
-                >
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-secondary)] text-[var(--text-secondary)] transition-colors group-hover:bg-[var(--drafting-ink)] group-hover:text-white">
-                    <Icon className="size-5" strokeWidth={1.75} aria-hidden />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-[var(--text-primary)]">
-                      {ROLE_LABELS[user.role]}
-                      <span className="ml-2 font-normal text-[var(--text-muted)]">
-                        {user.name}
-                      </span>
-                    </p>
-                    <p className="mt-0.5 text-[13px] leading-snug text-[var(--text-secondary)]">
-                      {ROLE_DESCRIPTIONS[user.role]}
-                    </p>
-                  </div>
-                  <ArrowRight
-                    className="size-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-500"
-                    aria-hidden
-                  />
-                </button>
-              );
-            })}
+          <div className="mt-7 space-y-5">
+            {ORG_GROUPS.map((group, groupIndex) => (
+              <div key={`${group.label}-${groupIndex}`}>
+                <p className="mb-2 font-mono text-[10px] font-medium tracking-[0.16em] text-[var(--text-muted)] uppercase">
+                  {group.label}
+                </p>
+                <div className="space-y-2">
+                  {group.users.map((user) => {
+                    const Icon = ROLE_ICONS[user.role];
+                    return (
+                      <button
+                        key={user.id}
+                        type="button"
+                        className="group flex w-full cursor-pointer items-center gap-4 rounded-xl border border-[var(--border-default)] bg-white p-3.5 text-left shadow-[var(--shadow-card)] transition-colors hover:border-[var(--border-strong)]"
+                        onClick={() => {
+                          login(user.id);
+                          router.push("/dashboard");
+                        }}
+                      >
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-secondary)] text-[var(--text-secondary)] transition-colors group-hover:bg-[var(--drafting-ink)] group-hover:text-white">
+                          <Icon className="size-4.5" strokeWidth={1.75} aria-hidden />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-[var(--text-primary)]">
+                            {ROLE_LABELS[user.role]}
+                            <span className="ml-2 font-normal text-[var(--text-muted)]">
+                              {user.name}
+                            </span>
+                          </p>
+                          <p className="mt-0.5 truncate text-[13px] leading-snug text-[var(--text-secondary)]">
+                            {ROLE_DESCRIPTIONS[user.role]}
+                          </p>
+                        </div>
+                        <ArrowRight
+                          className="size-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-500"
+                          aria-hidden
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
 
           <p className="mt-7 font-mono text-[10px] tracking-[0.14em] text-[var(--text-muted)] uppercase">

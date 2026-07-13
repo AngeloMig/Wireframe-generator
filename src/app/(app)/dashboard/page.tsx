@@ -5,60 +5,30 @@ import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   ArrowRight,
-  CheckCircle2,
   CheckSquare,
-  Clock,
+  Clock3,
   FolderKanban,
   MessageSquare,
   Plus,
-  ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import { PROJECT_STATUS_META } from "@/config/labels";
-import { nextRecommendedAction, projectCompletion } from "@/lib/project-utils";
+import { projectsForUser } from "@/lib/org";
 import { useCommentsStore } from "@/stores/comments-store";
 import { useNotificationsStore } from "@/stores/notifications-store";
 import { useProjectsStore } from "@/stores/projects-store";
 import { useSessionStore } from "@/stores/session-store";
 import type { Project, ProjectComment, ProjectStatus } from "@/types";
+import { cn } from "@/utils/cn";
 import { formatRelative } from "@/utils/dates";
 import { CustomerHome } from "@/components/customer/customer-home";
 import { ProjectCard } from "@/components/project/project-card";
-import { ProjectStatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Select } from "@/components/ui/input";
 
-const ACTION_STATUSES: ProjectStatus[] = [
-  "revisions-requested",
-  "customer-revising",
-  "awaiting-approval",
-  "partially-approved",
-];
-
-function StatusSummary({ projects }: { projects: Project[] }) {
-  const counts = new Map<ProjectStatus, number>();
-  projects.forEach((p) => counts.set(p.status, (counts.get(p.status) ?? 0) + 1));
-  const entries = Array.from(counts.entries());
-  if (entries.length === 0) return null;
-  return (
-    <div className="flex flex-wrap gap-2">
-      {entries.map(([status, count]) => (
-        <span
-          key={status}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm shadow-sm"
-        >
-          <span className="font-semibold text-slate-900">{count}</span>
-          <span className="text-slate-500">{PROJECT_STATUS_META[status].label}</span>
-        </span>
-      ))}
-    </div>
-  );
-}
-
 /** Cross-project collaboration signals for the current user. */
-function useCollabSignals(projects: Project[], userId: string, isAgency: boolean) {
+function useCollabSignals(projects: Project[], userId: string) {
   const load = useCommentsStore((s) => s.load);
   const byProject = useCommentsStore((s) => s.byProject);
 
@@ -70,7 +40,6 @@ function useCollabSignals(projects: Project[], userId: string, isAgency: boolean
     const all: { project: Project; comment: ProjectComment }[] = [];
     for (const project of projects) {
       for (const comment of byProject[project.id] ?? []) {
-        if (!isAgency && comment.visibility === "agency") continue;
         all.push({ project, comment });
       }
     }
@@ -90,17 +59,13 @@ function useCollabSignals(projects: Project[], userId: string, isAgency: boolean
         comment.dueDate &&
         new Date(comment.dueDate) < new Date(),
     );
-    const upcoming = all
-      .filter(
-        ({ comment }) =>
-          comment.isActionItem &&
-          !comment.completedAt &&
-          comment.dueDate &&
-          new Date(comment.dueDate) >= new Date(),
-      )
-      .sort((a, b) => (a.comment.dueDate ?? "").localeCompare(b.comment.dueDate ?? ""));
-    return { myActionItems, urgent, overdue, upcoming };
-  }, [projects, byProject, userId, isAgency]);
+    const customerQuestions = all.filter(
+      ({ comment }) =>
+        comment.message.startsWith("[Question for") &&
+        (comment.status === "open" || comment.status === "reopened"),
+    );
+    return { myActionItems, urgent, overdue, customerQuestions };
+  }, [projects, byProject, userId]);
 }
 
 export default function DashboardPage() {
@@ -110,22 +75,174 @@ export default function DashboardPage() {
   return <AgencyDashboard />;
 }
 
+// ---------------------------------------------------------------------------
+// The pipeline board: the whole book of work as one annotated drawing.
+// ---------------------------------------------------------------------------
+
+interface PipelineStage {
+  id: string;
+  label: string;
+  statuses: ProjectStatus[];
+  /** Where clicking a project chip in this stage should land. */
+  href: (p: Project) => string;
+}
+
+const PIPELINE: PipelineStage[] = [
+  {
+    id: "drafting",
+    label: "Drafting",
+    statuses: ["draft", "customer-editing"],
+    href: (p) => `/projects/${p.id}/overview`,
+  },
+  {
+    id: "submitted",
+    label: "Submitted",
+    statuses: ["ready-for-review"],
+    href: (p) => `/projects/${p.id}/agency-review`,
+  },
+  {
+    id: "in-review",
+    label: "In review",
+    statuses: ["agency-reviewing"],
+    href: (p) => `/projects/${p.id}/agency-review`,
+  },
+  {
+    id: "revisions",
+    label: "Revisions",
+    statuses: ["revisions-requested", "customer-revising"],
+    href: (p) => `/projects/${p.id}/overview`,
+  },
+  {
+    id: "approval",
+    label: "Approval",
+    statuses: ["awaiting-approval", "partially-approved"],
+    href: (p) => `/projects/${p.id}/review`,
+  },
+  {
+    id: "approved",
+    label: "Approved",
+    statuses: ["approved", "in-development", "completed"],
+    href: (p) => `/projects/${p.id}/handoff`,
+  },
+];
+
+function daysWaiting(project: Project): number {
+  return Math.floor((Date.now() - new Date(project.lastEditedAt).getTime()) / 86_400_000);
+}
+
 function AgencyDashboard() {
-  const projects = useProjectsStore((s) => s.projects);
+  const allProjects = useProjectsStore((s) => s.projects);
   const user = useSessionStore((s) => s.user);
   const notifications = useNotificationsStore((s) => s.notifications);
-  const isAgencySide = user.role !== "customer";
 
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | "all">("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
   const visible = useMemo(
-    () => projects.filter((p) => p.status !== "archived"),
-    [projects],
+    () => projectsForUser(allProjects, user).filter((p) => p.status !== "archived"),
+    [allProjects, user],
   );
 
-  const signals = useCollabSignals(visible, user.id, isAgencySide);
+  const signals = useCollabSignals(visible, user.id);
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const stages = useMemo(
+    () =>
+      PIPELINE.map((stage) => ({
+        ...stage,
+        projects: visible
+          .filter((p) => stage.statuses.includes(p.status))
+          .sort((a, b) => a.lastEditedAt.localeCompare(b.lastEditedAt)),
+      })),
+    [visible],
+  );
+
+  // The one action the agency should take next, as a redline annotation.
+  const nextUp = useMemo(() => {
+    const submitted = stages.find((s) => s.id === "submitted")?.projects[0];
+    if (submitted) {
+      return {
+        verb: "Start the review",
+        subject: submitted.name,
+        detail: `Submitted by ${submitted.companyName} — waiting ${formatRelative(submitted.lastEditedAt)}.`,
+        href: `/projects/${submitted.id}/agency-review`,
+        cta: "Start review",
+      };
+    }
+    if (signals.urgent.length > 0) {
+      const { project, comment } = signals.urgent[0];
+      return {
+        verb: "Respond to an urgent comment",
+        subject: project.name,
+        detail: comment.message,
+        href: `/projects/${project.id}/overview?comment=${comment.id}`,
+        cta: "Open comment",
+      };
+    }
+    if (signals.customerQuestions.length > 0) {
+      const { project, comment } = signals.customerQuestions[0];
+      return {
+        verb: "Answer a customer question",
+        subject: project.name,
+        detail: comment.message.replace(/^\[Question for .*?\]\s*/, ""),
+        href: `/projects/${project.id}/agency-review`,
+        cta: "Open feedback",
+      };
+    }
+    const reviewing = stages.find((s) => s.id === "in-review")?.projects[0];
+    if (reviewing) {
+      return {
+        verb: "Continue the review",
+        subject: reviewing.name,
+        detail: "Pick up where the team left off.",
+        href: `/projects/${reviewing.id}/agency-review`,
+        cta: "Continue review",
+      };
+    }
+    const approval = stages.find((s) => s.id === "approval")?.projects[0];
+    if (approval) {
+      return {
+        verb: "Waiting on customer approval",
+        subject: approval.name,
+        detail: "A nudge might help if it's been a while.",
+        href: `/projects/${approval.id}/review`,
+        cta: "View approval",
+      };
+    }
+    return null;
+  }, [stages, signals.urgent, signals.customerQuestions]);
+
+  const attention = useMemo(
+    () =>
+      [
+        ...signals.urgent.map((item) => ({ ...item, kind: "urgent" as const })),
+        ...signals.overdue.map((item) => ({ ...item, kind: "overdue" as const })),
+        ...signals.customerQuestions.map((item) => ({ ...item, kind: "question" as const })),
+        ...signals.myActionItems
+          .filter(
+            ({ comment }) =>
+              !signals.overdue.some((o) => o.comment.id === comment.id),
+          )
+          .map((item) => ({ ...item, kind: "task" as const })),
+      ].slice(0, 6),
+    [signals],
+  );
+
+  // Book-of-work pulse: how much sits at each actionable stage right now.
+  const stageCount = (id: string) => stages.find((s) => s.id === id)?.projects.length ?? 0;
+
+  // At risk: projects that have sat in an actionable stage past the SLA window.
+  const atRisk = useMemo(() => {
+    const riskStages = new Set(["submitted", "in-review", "revisions", "approval"]);
+    return stages
+      .filter((stage) => riskStages.has(stage.id))
+      .flatMap((stage) =>
+        stage.projects.map((project) => ({ project, stage, days: daysWaiting(project) })),
+      )
+      .filter((entry) => entry.days >= 4)
+      .sort((a, b) => b.days - a.days)
+      .slice(0, 3);
+  }, [stages]);
 
   const websiteTypes = useMemo(
     () => [...new Set(visible.map((p) => p.websiteType))].sort(),
@@ -134,329 +251,379 @@ function AgencyDashboard() {
 
   const filtered = useMemo(
     () =>
-      visible.filter(
-        (p) =>
-          (statusFilter === "all" || p.status === statusFilter) &&
-          (typeFilter === "all" || p.websiteType === typeFilter),
-      ),
+      visible
+        .filter(
+          (p) =>
+            (statusFilter === "all" || p.status === statusFilter) &&
+            (typeFilter === "all" || p.websiteType === typeFilter),
+        )
+        .sort((a, b) => b.lastEditedAt.localeCompare(a.lastEditedAt)),
     [visible, statusFilter, typeFilter],
   );
 
-  const recent = useMemo(
-    () =>
-      [...filtered]
-        .sort((a, b) => b.lastEditedAt.localeCompare(a.lastEditedAt))
-        .slice(0, 6),
-    [filtered],
-  );
-
-  const firstName = user.name.split(" ")[0];
-
-  // Role-specific queues.
-  const agencyQueues = useMemo(() => {
-    if (!isAgencySide) return null;
-    return {
-      readyForReview: visible.filter((p) => p.status === "ready-for-review"),
-      reviewing: visible.filter((p) => p.status === "agency-reviewing"),
-      awaitingRevisions: visible.filter(
-        (p) => p.status === "revisions-requested" || p.status === "customer-revising",
-      ),
-      awaitingApproval: visible.filter(
-        (p) => p.status === "awaiting-approval" || p.status === "partially-approved",
-      ),
-      recentlyApproved: visible.filter(
-        (p) =>
-          p.status === "approved" ||
-          p.status === "in-development" ||
-          p.status === "completed",
-      ),
-    };
-  }, [visible, isAgencySide]);
-
-  const customerNeedsAction = useMemo(
-    () => visible.filter((p) => ACTION_STATUSES.includes(p.status)),
-    [visible],
-  );
-  const focusProject = customerNeedsAction[0] ?? recent[0] ?? null;
-  const focusAction = focusProject ? nextRecommendedAction(focusProject) : null;
+  const digest: { label: string; href: string }[] = [
+    signals.myActionItems.length > 0 && {
+      label: `${signals.myActionItems.length} task${signals.myActionItems.length === 1 ? "" : "s"} for you`,
+      href: "/tasks",
+    },
+    signals.urgent.length > 0 && {
+      label: `${signals.urgent.length} urgent`,
+      href: "#attention",
+    },
+    unreadCount > 0 && { label: `${unreadCount} unread`, href: "/activity" },
+  ].filter(Boolean) as { label: string; href: string }[];
 
   return (
-    <div className="space-y-9">
-      <section className="relative overflow-hidden rounded-[18px] border border-[#d7e5f0] bg-[#e7f3fc] px-6 py-7 text-[var(--text-primary)] shadow-[0_12px_30px_rgb(58_92_120/0.08)] sm:px-8 sm:py-8">
-        <div className="absolute -right-12 -top-20 size-72 rounded-full bg-white/70 blur-3xl" aria-hidden />
-        <div className="relative flex flex-wrap items-end justify-between gap-6">
-          <div>
-            <p className="mb-2 font-mono text-[10px] font-medium tracking-[0.18em] text-[var(--info)] uppercase">Agency command center</p>
-            <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">Good to see you, {firstName}</h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-emerald-50/75">
-              Review customer blueprints, resolve feedback, and keep every project moving forward.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium text-[var(--text-secondary)]">
-              <span className="rounded-full bg-white/75 px-3 py-1.5">{visible.length} active project{visible.length === 1 ? "" : "s"}</span>
-              <span className="rounded-full bg-white/75 px-3 py-1.5">{agencyQueues?.readyForReview.length ?? 0} ready for review</span>
-            </div>
+    <div className="animate-fade-in space-y-10">
+      {/* Header: the greeting leads; the board below is the show. */}
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="font-display text-[2rem] font-semibold leading-[1.1] tracking-tight text-[var(--text-primary)] md:text-[2.5rem]">
+            Good to see you, {user.name.split(" ")[0]}
+          </h1>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {digest.length === 0 ? (
+              <span className="inline-flex items-center gap-2 rounded-full bg-[var(--success-soft)] px-3 py-1 text-xs font-medium text-[var(--success-text)]">
+                <span className="size-1.5 rounded-full bg-[var(--success)]" aria-hidden />
+                All clear — nothing is waiting on you
+              </span>
+            ) : (
+              <>
+                <span className="text-xs font-medium text-[var(--text-muted)]">Waiting on you</span>
+                {digest.map((item) => (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    className="inline-flex items-center rounded-full border border-[var(--border-default)] bg-white px-3 py-1 text-xs font-semibold text-[var(--text-primary)] shadow-[var(--shadow-subtle)] transition-[transform,border-color] hover:-translate-y-px hover:border-[var(--border-strong)] active:translate-y-0"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </>
+            )}
           </div>
-          <Link href="/projects/new">
-            <Button size="lg" className="bg-[var(--info)] text-white shadow-none hover:bg-[var(--info-text)]">
-              <Plus className="size-4.5" aria-hidden />
-              Start a new project
-            </Button>
-          </Link>
         </div>
-      </section>
+        <Link href="/projects/new">
+          <Button variant="outline">
+            <Plus className="size-4" aria-hidden />
+            New project
+          </Button>
+        </Link>
+      </header>
 
-      {!isAgencySide && focusProject && focusAction && (
-        <section className="relative overflow-hidden rounded-[1.5rem] border border-[#cadeD6] bg-[#173f36] px-6 py-7 text-white shadow-[0_22px_55px_rgb(23_63_54/0.18)] sm:px-8 sm:py-9" aria-labelledby="next-step-heading">
-          <div className="absolute inset-y-0 right-0 w-1/3 bg-[radial-gradient(circle_at_center,rgb(229_180_111/0.22),transparent_65%)]" aria-hidden />
-          <div className="relative max-w-2xl">
-            <div className="mb-5 flex items-center gap-2 text-sm font-semibold text-emerald-100">
-              <span className="flex size-7 items-center justify-center rounded-full bg-white/10"><Sparkles className="size-3.5" aria-hidden /></span>
-              Recommended next step
+      {/* Next up: the single primary action, presented as machined hardware —
+          silver tray (outer shell) cradling a white plate (inner core). */}
+      {nextUp && (
+        <section
+          aria-labelledby="next-up-heading"
+          className="rounded-[1.6rem] bg-[var(--surface-secondary)] p-1.5 shadow-[var(--shadow-panel)] ring-1 ring-black/[0.04]"
+        >
+          <div className="flex flex-wrap items-center gap-5 rounded-[1.2rem] bg-white px-5 py-4 sm:px-6">
+            <span
+              aria-hidden
+              className="flex size-9 shrink-0 items-center justify-center rounded-full rounded-br-none bg-[#e0492c] text-sm font-bold text-white shadow-[0_4px_14px_rgb(224_73_44/0.35)]"
+            >
+              1
+            </span>
+            <div className="min-w-0 flex-1">
+              <span className="inline-flex items-center rounded-full bg-[#e0492c]/10 px-2.5 py-0.5 text-[10px] font-semibold tracking-[0.16em] text-[#e0492c] uppercase">
+                Next up
+              </span>
+              <h2 id="next-up-heading" className="mt-1.5 text-base font-semibold tracking-tight text-[var(--text-primary)]">
+                {nextUp.verb} — {nextUp.subject}
+              </h2>
+              <p className="mt-0.5 truncate text-[13px] text-[var(--text-secondary)]">
+                {nextUp.detail}
+              </p>
             </div>
-            <h2 id="next-step-heading" className="text-2xl font-bold tracking-[-0.025em] sm:text-3xl">{focusAction.label}</h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-emerald-50/80 sm:text-base">{focusAction.description}</p>
-            <div className="mt-7 flex flex-wrap items-center gap-4">
-              <Link href={focusAction.href}><Button size="lg" className="bg-[#f3b96c] text-[#24332e] shadow-none hover:bg-[#ffc77d]">{focusAction.label}<ArrowRight className="size-4" aria-hidden /></Button></Link>
-              <Link href={`/projects/${focusProject.id}/overview`} className="text-sm font-semibold text-white/80 hover:text-white">View project overview</Link>
-            </div>
-            <div className="mt-7 flex max-w-lg items-center gap-3">
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-[#f3b96c]" style={{ width: `${projectCompletion(focusProject)}%` }} /></div>
-              <span className="text-xs font-semibold text-white/70">{projectCompletion(focusProject)}% complete</span>
-            </div>
+            <Link
+              href={nextUp.href}
+              className="group inline-flex items-center gap-3 rounded-full bg-[#e0492c] py-2.5 pr-2.5 pl-5 text-sm font-semibold text-white shadow-[0_4px_16px_rgb(224_73_44/0.28)] transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:shadow-[0_8px_24px_rgb(224_73_44/0.38)] active:scale-[0.98]"
+            >
+              {nextUp.cta}
+              <span className="flex size-8 items-center justify-center rounded-full bg-white/20 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5">
+                <ArrowRight className="size-4" aria-hidden />
+              </span>
+            </Link>
           </div>
         </section>
       )}
 
-      {/* Agency signals stay compact; customer signals live in the guided action area. */}
-      {isAgencySide && <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <SignalTile
-          icon={CheckSquare}
-          label="Action items for you"
-          value={signals.myActionItems.length}
-          tone={signals.myActionItems.length > 0 ? "amber" : "slate"}
-        />
-        <SignalTile
-          icon={MessageSquare}
-          label="Unread notifications"
-          value={unreadCount}
-          tone={unreadCount > 0 ? "indigo" : "slate"}
-        />
-        <SignalTile
-          icon={AlertCircle}
-          label={isAgencySide ? "Urgent comments" : "Overdue actions"}
-          value={isAgencySide ? signals.urgent.length : signals.overdue.length}
-          tone={
-            (isAgencySide ? signals.urgent.length : signals.overdue.length) > 0
-              ? "rose"
-              : "slate"
-          }
-        />
-        <SignalTile
-          icon={ShieldCheck}
-          label={isAgencySide ? "Awaiting customer approval" : "Ready for your approval"}
-          value={
-            isAgencySide
-              ? (agencyQueues?.awaitingApproval.length ?? 0)
-              : visible.filter(
-                  (p) =>
-                    p.status === "awaiting-approval" || p.status === "partially-approved",
-                ).length
-          }
-          tone="emerald"
-        />
-      </div>}
-
-      {isAgencySide && <StatusSummary projects={visible} />}
-
-      {/* Customer: priority actions */}
-      {!isAgencySide && (customerNeedsAction.length > 0 || signals.myActionItems.length > 0) && (
-        <Card>
-          <CardHeader
-            title={
-              <span className="inline-flex items-center gap-2">
-                <AlertCircle className="size-4 text-amber-500" aria-hidden />
-                Needs your attention
+      {/* Pulse: the book of work at a glance. Red marks the two metrics that
+          actually demand action (waiting on you, and overdue). */}
+      {visible.length > 0 && (
+        <section aria-label="Pipeline pulse" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {(
+            [
+              { label: "Awaiting your review", value: stageCount("submitted"), href: "#pipeline", action: true },
+              { label: "In review", value: stageCount("in-review"), href: "#pipeline", action: false },
+              { label: "Awaiting approval", value: stageCount("approval"), href: "#pipeline", action: false },
+              { label: "Overdue tasks", value: signals.overdue.length, href: "#attention", action: true },
+            ] as const
+          ).map((stat) => (
+            <Link
+              key={stat.label}
+              href={stat.href}
+              className="rounded-[1.25rem] bg-white px-5 py-4 shadow-[var(--shadow-card)] ring-1 ring-black/[0.04] transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-panel)]"
+            >
+              <span
+                className={cn(
+                  "font-display text-3xl font-semibold tabular-nums tracking-tight",
+                  stat.value === 0
+                    ? "text-[var(--text-muted)]"
+                    : stat.action
+                      ? "text-[#e0492c]"
+                      : "text-[var(--text-primary)]",
+                )}
+              >
+                {stat.value}
               </span>
-            }
-            description="Revisions, approvals, and action items waiting for you."
-          />
-          <CardBody className="divide-y divide-slate-100 p-0">
-            {customerNeedsAction.map((project) => {
-              const action = nextRecommendedAction(project);
-              return (
-                <div key={project.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
-                  <div className="min-w-0 flex-1">
-                    <Link
-                      href={`/projects/${project.id}/overview`}
-                      className="text-sm font-medium text-slate-900 hover:text-indigo-700"
-                    >
-                      {project.name}
-                    </Link>
-                    <p className="mt-0.5 text-xs text-slate-500">{action.description}</p>
-                  </div>
-                  <ProjectStatusBadge status={project.status} />
-                  <Link href={action.href}>
-                    <Button variant="outline" size="sm">
-                      {action.label}
-                      <ArrowRight className="size-3.5" aria-hidden />
-                    </Button>
-                  </Link>
-                </div>
-              );
-            })}
-            {signals.myActionItems.slice(0, 4).map(({ project, comment }) => (
-              <div key={comment.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
-                <CheckSquare className="size-4 shrink-0 text-indigo-500" aria-hidden />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm text-slate-800">{comment.message}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    {project.name}
-                    {comment.dueDate &&
-                      ` · due ${new Date(comment.dueDate).toLocaleDateString()}`}
-                  </p>
-                </div>
-                <Link href={`/projects/${project.id}/revisions`}>
-                  <Button variant="outline" size="sm">
-                    Open
-                    <ArrowRight className="size-3.5" aria-hidden />
-                  </Button>
-                </Link>
-              </div>
-            ))}
-          </CardBody>
-        </Card>
+              <span className="mt-1 block text-xs font-medium text-[var(--text-secondary)]">
+                {stat.label}
+              </span>
+            </Link>
+          ))}
+        </section>
       )}
 
-      {/* Agency: work queues */}
-      {isAgencySide && agencyQueues && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <QueueCard
-            title="Ready for review"
-            description="Submitted by customers — start here."
-            projects={agencyQueues.readyForReview}
-            cta="Start review"
-            href={(p) => `/projects/${p.id}/agency-review`}
-          />
-          <QueueCard
-            title="In review"
-            description="Reviews in progress."
-            projects={agencyQueues.reviewing}
-            cta="Continue review"
-            href={(p) => `/projects/${p.id}/agency-review`}
-          />
-          <QueueCard
-            title="Waiting on customer revisions"
-            description="Customers are working through your feedback."
-            projects={agencyQueues.awaitingRevisions}
-            cta="View project"
-            href={(p) => `/projects/${p.id}/overview`}
-          />
-          <QueueCard
-            title="Awaiting customer approval"
-            description="Sent for approval — nudge if needed."
-            projects={agencyQueues.awaitingApproval}
-            cta="View status"
-            href={(p) => `/projects/${p.id}/review`}
-          />
+      {/* At risk: anything that has sat in an actionable stage too long. */}
+      {atRisk.length > 0 && (
+        <section
+          aria-label="At risk"
+          className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[1.25rem] border-l-[3px] border-l-[#e0492c] bg-white px-5 py-3.5 shadow-[var(--shadow-card)] ring-1 ring-black/[0.04]"
+        >
+          <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#e0492c]">
+            <AlertCircle className="size-4" aria-hidden />
+            At risk
+          </span>
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5">
+            {atRisk.map(({ project, stage, days }) => (
+              <Link
+                key={project.id}
+                href={stage.href(project)}
+                className="group inline-flex items-center gap-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              >
+                <span className="font-medium text-[var(--text-primary)] group-hover:underline">{project.name}</span>
+                <span className="text-[var(--text-muted)]">· {days}d in {stage.label.toLowerCase()}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* The board: every project at its station on the review pipeline —
+          same machined tray/plate as Next up, in a calm neutral register. */}
+      <section
+        id="pipeline"
+        aria-label="Review pipeline"
+        className="scroll-mt-6 rounded-[1.6rem] bg-[var(--surface-secondary)] p-1.5 shadow-[var(--shadow-panel)] ring-1 ring-black/[0.04]"
+      >
+        <div className="rounded-[1.2rem] bg-white px-5 pt-5 pb-6 sm:px-7">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-base font-semibold tracking-tight text-[var(--text-primary)]">
+              Review pipeline
+            </h2>
+            <span className="text-xs text-[var(--text-muted)]">
+              {visible.length} project{visible.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          {visible.length === 0 ? (
+            <p className="mt-6 pb-2 text-sm text-[var(--text-secondary)]">
+              No projects on the board yet — start one and it appears here, moving
+              station by station from draft to approved.
+            </p>
+          ) : (
+            <div className="mt-6 overflow-x-auto">
+              <div className="grid min-w-[880px] grid-cols-6 gap-3">
+                {stages.map((stage, index) => {
+                  const active = stage.projects.length > 0;
+                  return (
+                    <div key={stage.id} className="relative">
+                      {/* Connecting line to the next station */}
+                      {index < stages.length - 1 && (
+                        <span
+                          aria-hidden
+                          className="absolute top-[7px] left-4 h-px w-full bg-[var(--border-default)]"
+                        />
+                      )}
+                      <div className="relative flex items-center gap-2">
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "size-3.5 shrink-0 rounded-full ring-4 ring-white",
+                            active ? "bg-[#e0492c]" : "bg-[var(--border-strong)]",
+                          )}
+                        />
+                        <span
+                          className={cn(
+                            "text-[11px] font-semibold tracking-tight",
+                            active ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]",
+                          )}
+                        >
+                          {stage.label}
+                          {active && (
+                            <span className="ml-1 text-[var(--text-muted)]">{stage.projects.length}</span>
+                          )}
+                        </span>
+                      </div>
+                      <ul className="mt-3.5 space-y-2">
+                        {stage.projects.slice(0, 4).map((project) => {
+                          const age = daysWaiting(project);
+                          return (
+                            <li key={project.id}>
+                              <Link
+                                href={stage.href(project)}
+                                className="group block rounded-xl bg-white px-3 py-2.5 shadow-[var(--shadow-card)] ring-1 ring-black/[0.04] transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-panel)] active:translate-y-0"
+                              >
+                                <span className="block truncate text-[13px] font-semibold text-[var(--text-primary)]">
+                                  {project.name}
+                                </span>
+                                <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
+                                  <Clock3 className="size-3 shrink-0" aria-hidden />
+                                  {age === 0 ? "today" : `${age}d here`}
+                                  {age > 2 && (
+                                    <span
+                                      className={cn(
+                                        "font-semibold text-[#e0492c]",
+                                        age <= 5 && "opacity-70",
+                                      )}
+                                    >
+                                      — needs a look
+                                    </span>
+                                  )}
+                                </span>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                        {stage.projects.length > 4 && (
+                          <li>
+                            <Link
+                              href="/projects"
+                              className="block px-3 text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                            >
+                              +{stage.projects.length - 4} more
+                            </Link>
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </section>
 
-      {/* Agency: urgent comments + overdue items */}
-      {isAgencySide && (signals.urgent.length > 0 || signals.overdue.length > 0) && (
-        <Card>
-          <CardHeader
-            title={
-              <span className="inline-flex items-center gap-2">
-                <AlertCircle className="size-4 text-rose-500" aria-hidden />
-                Urgent & overdue
-              </span>
-            }
-          />
-          <CardBody className="divide-y divide-slate-100 p-0">
-            {[...signals.urgent, ...signals.overdue].slice(0, 6).map(({ project, comment }) => (
-              <div key={comment.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm text-slate-800">{comment.message}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    {project.name} · {formatRelative(comment.createdAt)}
-                    {comment.dueDate &&
-                      ` · due ${new Date(comment.dueDate).toLocaleDateString()}`}
-                  </p>
-                </div>
-                <Link href={`/projects/${project.id}/overview`}>
-                  <Button variant="outline" size="sm">
-                    Open
-                  </Button>
-                </Link>
-              </div>
-            ))}
-          </CardBody>
-        </Card>
-      )}
-
-      <section aria-labelledby="recent-projects-heading">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      {/* Needs a response: urgent threads, overdue and assigned tasks. */}
+      {attention.length > 0 && (
+        <section
+          id="attention"
+          aria-labelledby="attention-heading"
+          className="overflow-hidden rounded-[1.6rem] bg-[var(--surface-secondary)] p-1.5 shadow-[var(--shadow-panel)] ring-1 ring-black/[0.04]"
+        >
+          <div className="overflow-hidden rounded-[1.2rem] bg-white">
           <h2
-            id="recent-projects-heading"
-            className="inline-flex items-center gap-2 text-base font-semibold text-slate-900"
+            id="attention-heading"
+            className="flex items-center gap-2 px-6 py-4 text-base font-semibold tracking-tight text-[var(--text-primary)]"
           >
-            <Clock className="size-4 text-slate-400" aria-hidden />
-            {isAgencySide ? "Projects" : "Recently edited"}
+            <AlertCircle className="size-4 text-[#e0492c]" aria-hidden />
+            Needs a response
+          </h2>
+          <ul className="divide-y divide-[var(--border-default)]">
+            {attention.map(({ project, comment, kind }) => (
+              <li key={comment.id}>
+                <Link
+                  href={`/projects/${project.id}/agency-review?comment=${comment.id}`}
+                  className="flex cursor-pointer items-center gap-3 px-6 py-3.5 transition-colors hover:bg-[var(--info-soft)] focus-visible:bg-[var(--info-soft)]"
+                >
+                  {kind === "task" ? (
+                    <CheckSquare className="size-4 shrink-0 text-[var(--info)]" aria-hidden />
+                  ) : kind === "question" ? (
+                    <MessageSquare className="size-4 shrink-0 text-[var(--info)]" aria-hidden />
+                  ) : (
+                    <AlertCircle
+                      className={cn(
+                        "size-4 shrink-0",
+                        kind === "urgent" ? "text-[#e0492c]" : "text-amber-500",
+                      )}
+                      aria-hidden
+                    />
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm text-[var(--text-primary)]">
+                      {comment.message.replace(/^\[Question for .*?\]\s*/, "")}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-[var(--text-muted)]">
+                      {project.name}
+                      {kind === "overdue" && comment.dueDate
+                        ? ` · was due ${new Date(comment.dueDate).toLocaleDateString()}`
+                        : ` · ${formatRelative(comment.createdAt)}`}
+                    </span>
+                  </span>
+                  <ArrowRight className="size-4 shrink-0 text-[var(--text-muted)]" aria-hidden />
+                </Link>
+              </li>
+            ))}
+          </ul>
+          </div>
+        </section>
+      )}
+
+      {/* All projects */}
+      <section aria-labelledby="all-projects-heading" className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2
+            id="all-projects-heading"
+            className="text-base font-semibold tracking-tight text-[var(--text-primary)]"
+          >
+            All projects
           </h2>
           <div className="flex items-center gap-2">
-            {isAgencySide && (
-              <>
-                <Select
-                  aria-label="Filter by status"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as ProjectStatus | "all")}
-                  className="h-8 w-44 text-xs"
-                >
-                  <option value="all">All statuses</option>
-                  {Object.entries(PROJECT_STATUS_META).map(([value, meta]) => (
-                    <option key={value} value={value}>
-                      {meta.label}
-                    </option>
-                  ))}
-                </Select>
-                <Select
-                  aria-label="Filter by website type"
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                  className="h-8 w-40 text-xs"
-                >
-                  <option value="all">All types</option>
-                  {websiteTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </Select>
-              </>
-            )}
-            <Link
-              href="/projects"
-              className="text-sm font-medium whitespace-nowrap text-indigo-600 hover:text-indigo-800"
+            <Select
+              aria-label="Filter by status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as ProjectStatus | "all")}
+              className="h-8 w-44 text-xs"
             >
-              View all
-            </Link>
+              <option value="all">All statuses</option>
+              {Object.entries(PROJECT_STATUS_META).map(([value, meta]) => (
+                <option key={value} value={value}>
+                  {meta.label}
+                </option>
+              ))}
+            </Select>
+            <Select
+              aria-label="Filter by website type"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="h-8 w-40 text-xs"
+            >
+              <option value="all">All types</option>
+              {websiteTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </Select>
           </div>
         </div>
-        {recent.length === 0 ? (
+        {filtered.length === 0 ? (
           <EmptyState
             icon={FolderKanban}
             title={visible.length === 0 ? "No projects yet" : "Nothing matches these filters"}
             description={
               visible.length === 0
-                ? "Create your first website blueprint — a guided wizard will walk you through it in a few minutes."
-                : "Try different filters."
+                ? "Create your first blueprint — the guided setup takes a few minutes."
+                : "Try a different status or website type."
             }
             action={
               visible.length === 0 ? (
                 <Link href="/projects/new">
                   <Button>
                     <Sparkles className="size-4" aria-hidden />
-                    Create your first blueprint
+                    Create a blueprint
                   </Button>
                 </Link>
               ) : undefined
@@ -464,92 +631,22 @@ function AgencyDashboard() {
           />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {recent.map((project) => (
+            {filtered.slice(0, 6).map((project) => (
               <ProjectCard key={project.id} project={project} />
             ))}
           </div>
         )}
-      </section>
-
-      {!isAgencySide && visible.length > 0 && (
-        <Card>
-          <CardBody className="flex flex-wrap items-center gap-3">
-            <CheckCircle2 className="size-5 text-emerald-500" aria-hidden />
-            <p className="flex-1 text-sm text-slate-600">
-              Everything you build is saved automatically in this browser. When you&apos;re
-              happy with a blueprint, submit it from the project&apos;s review page.
-            </p>
-          </CardBody>
-        </Card>
-      )}
-    </div>
-  );
-}
-
-function SignalTile({
-  icon: Icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: typeof CheckSquare;
-  label: string;
-  value: number;
-  tone: "slate" | "amber" | "indigo" | "rose" | "emerald";
-}) {
-  const tones: Record<string, string> = {
-    slate: "text-slate-400",
-    amber: "text-amber-500",
-    indigo: "text-indigo-500",
-    rose: "text-rose-500",
-    emerald: "text-emerald-500",
-  };
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <Icon className={`size-5 ${tones[tone]}`} aria-hidden />
-      <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-900">{value}</p>
-      <p className="mt-0.5 text-xs text-slate-500">{label}</p>
-    </div>
-  );
-}
-
-function QueueCard({
-  title,
-  description,
-  projects,
-  cta,
-  href,
-}: {
-  title: string;
-  description: string;
-  projects: Project[];
-  cta: string;
-  href: (p: Project) => string;
-}) {
-  return (
-    <Card>
-      <CardHeader title={`${title} (${projects.length})`} description={description} />
-      <CardBody className="divide-y divide-slate-100 p-0">
-        {projects.length === 0 ? (
-          <p className="px-5 py-5 text-sm text-slate-500">Nothing here right now.</p>
-        ) : (
-          projects.map((project) => (
-            <div key={project.id} className="flex items-center gap-3 px-5 py-3">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-slate-900">{project.name}</p>
-                <p className="text-xs text-slate-500">
-                  {project.companyName} · updated {formatRelative(project.lastEditedAt)}
-                </p>
-              </div>
-              <Link href={href(project)}>
-                <Button variant="outline" size="sm">
-                  {cta}
-                </Button>
-              </Link>
-            </div>
-          ))
+        {filtered.length > 6 && (
+          <p className="text-sm">
+            <Link
+              href="/projects"
+              className="font-medium text-[var(--text-secondary)] underline decoration-[var(--border-strong)] underline-offset-4 hover:text-[var(--text-primary)]"
+            >
+              View all {filtered.length} projects
+            </Link>
+          </p>
         )}
-      </CardBody>
-    </Card>
+      </section>
+    </div>
   );
 }

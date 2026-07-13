@@ -1,18 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Star, Trash2, UserPlus, Users } from "lucide-react";
+import { ShieldOff, Star, Trash2, UserPlus, Users } from "lucide-react";
 import { ACCESS_LEVEL_LABELS, ROLE_LABELS } from "@/config/labels";
 import { ALL_MOCK_USERS } from "@/data/users";
 import { canManageMembers } from "@/lib/permissions";
+import { notifyUsers } from "@/lib/collab-service";
 import { withActivity } from "@/lib/project-utils";
 import { useProject } from "@/hooks/use-project";
 import { selectProjectMembers, useMembersStore } from "@/stores/members-store";
 import { useProjectsStore } from "@/stores/projects-store";
 import { useSessionStore } from "@/stores/session-store";
-import { useAccessRequestsStore, accessLevelForRequest } from "@/stores/access-requests-store";
+import { approvedLevelsFor, useAccessRequestsStore } from "@/stores/access-requests-store";
 import { toast } from "@/stores/ui-store";
-import type { ProjectAccessLevel, ProjectMember, UserRole } from "@/types";
+import type { AccessRequestLevel, ProjectAccessLevel, ProjectMember, UserRole } from "@/types";
 import { cn } from "@/utils/cn";
 import { formatRelative } from "@/utils/dates";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +28,12 @@ const ASSIGNABLE_ROLES: UserRole[] = [
   "agency-developer",
   "agency-pm",
 ];
+
+const LEVEL_LABEL: Record<AccessRequestLevel, string> = {
+  page: "add or edit pages",
+  content: "edit page content",
+  builder: "build and arrange sections",
+};
 
 /** Project members: mock people with role, access level, and primary contact. */
 export default function MembersPage() {
@@ -44,6 +51,7 @@ export default function MembersPage() {
   );
   const hydrateRequests = useAccessRequestsStore((s) => s.hydrate);
   const decideRequest = useAccessRequestsStore((s) => s.decide);
+  const revokeAccess = useAccessRequestsStore((s) => s.revoke);
 
   const [addOpen, setAddOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<ProjectMember | null>(null);
@@ -68,6 +76,23 @@ export default function MembersPage() {
     });
   };
 
+  const revokeMemberAccess = (member: ProjectMember) => {
+    // Clear both grant sources: an explicit "edit" member level and any
+    // approved capability requests. Either alone re-unlocks the editor.
+    if (member.accessLevel === "edit") {
+      void store.updateMember(projectId, member.id, { accessLevel: "comment" });
+    }
+    revokeAccess(projectId, member.userId, user.id, "Access revoked by the agency");
+    void notifyUsers([member.userId], user.id, {
+      projectId,
+      type: "general",
+      title: "Edit access turned off",
+      message:
+        "The agency turned off your editing access on this project. You can still view and comment — request access again if you need it.",
+    });
+    toast(`${member.name}'s edit access revoked`, "info");
+  };
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       {canManage && pendingRequests.length > 0 && (
@@ -75,8 +100,29 @@ export default function MembersPage() {
           <CardHeader title={`Access requests (${pendingRequests.length})`} description="Review customer requests before granting additional editor permissions." />
           <CardBody className="space-y-3">
             {pendingRequests.map((request) => {
-              const requester = members.find((member) => member.userId === request.requesterId);
-              return <div key={request.id} className="rounded-xl border border-amber-200 bg-amber-50/60 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-semibold text-slate-900">{request.requesterName} requested {request.level === "page" ? "page access" : request.level === "content" ? "content editing" : "builder access"}</p><p className="mt-1 text-sm text-slate-600">{request.reason}</p><p className="mt-1 text-xs text-slate-500">{request.pageId ? project.pages.find((page) => page.id === request.pageId)?.name : "Project-wide"}</p></div><div className="flex gap-2"><Button size="sm" onClick={() => { decideRequest(request.id, "approved", user.id, "Access granted"); if (requester) void store.updateMember(projectId, requester.id, { accessLevel: accessLevelForRequest(request.level) as ProjectAccessLevel }); toast("Access approved", "success"); }}>Approve</Button><Button variant="outline" size="sm" onClick={() => { decideRequest(request.id, "declined", user.id, "Please discuss this change with the agency first."); toast("Request declined", "info"); }}>Decline</Button></div></div></div>;
+              const askedFrom = request.pageId ? project.pages.find((page) => page.id === request.pageId)?.name : null;
+              const approve = () => {
+                decideRequest(request.id, "approved", user.id, "Access granted");
+                void notifyUsers([request.requesterId], user.id, {
+                  projectId,
+                  type: "general",
+                  title: "Access approved",
+                  message: `The agency approved your request to ${LEVEL_LABEL[request.level]}.`,
+                });
+                toast("Access approved", "success");
+              };
+              const decline = () => {
+                const response = "Please discuss this change with the agency first.";
+                decideRequest(request.id, "declined", user.id, response);
+                void notifyUsers([request.requesterId], user.id, {
+                  projectId,
+                  type: "general",
+                  title: "Access request declined",
+                  message: `Your request to ${LEVEL_LABEL[request.level]} was declined. ${response}`,
+                });
+                toast("Request declined", "info");
+              };
+              return <div key={request.id} className="rounded-xl border border-amber-200 bg-amber-50/60 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-semibold text-slate-900">{request.requesterName} requested to {LEVEL_LABEL[request.level]}</p><p className="mt-1 text-sm text-slate-600">{request.reason}</p><p className="mt-1 text-xs text-slate-500">Unlocks this capability for the customer{askedFrom ? ` · asked from ${askedFrom}` : ""}</p></div><div className="flex gap-2"><Button size="sm" onClick={approve}>Approve</Button><Button variant="outline" size="sm" onClick={decline}>Decline</Button></div></div></div>;
             })}
           </CardBody>
         </Card>
@@ -186,6 +232,19 @@ export default function MembersPage() {
                       <Star className="size-4" aria-hidden />
                     </Button>
                   )}
+                  {member.role === "customer" &&
+                    (member.accessLevel === "edit" ||
+                      approvedLevelsFor(requests, projectId, member.userId).length > 0) && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Revoke ${member.name}'s edit access`}
+                        title="Revoke edit access"
+                        onClick={() => revokeMemberAccess(member)}
+                      >
+                        <ShieldOff className="size-4 text-amber-500" aria-hidden />
+                      </Button>
+                    )}
                   <Button
                     variant="ghost"
                     size="icon-sm"

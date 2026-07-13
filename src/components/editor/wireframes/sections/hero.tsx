@@ -336,3 +336,24 @@ export function HeroMinimal({ section }: SectionComponentProps) {
     </div>
   );
 }
+
+// Arched hero — soft rounded-top image mask (organic / wellness path).
+export function HeroArch({ section }: SectionComponentProps) {
+  return (
+    <Split
+      layout={section.layout}
+      media={
+        <div className="overflow-hidden rounded-t-full pt-2">
+          <ImagePh
+            image={imageOf(section.content, "image")}
+            ratio="aspect-[4/5]"
+            label="Hero image"
+            className="rounded-t-full"
+          />
+        </div>
+      }
+    >
+      <HeroText section={section} />
+    </Split>
+  );
+}

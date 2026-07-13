@@ -1,6 +1,8 @@
-import type { PageStatus, PageType, ProjectPage } from "@/types";
+import { getPageTemplate } from "@/data/page-templates";
+import type { PageSection, PageStatus, PageTemplate, PageType, ProjectPage } from "@/types";
 import { createId, nowIso } from "@/utils/id";
 import { normalisePageOrder } from "./project-utils";
+import { createSectionByVariationId } from "./sections";
 
 export interface PageFormValues {
   name: string;
@@ -10,6 +12,26 @@ export interface PageFormValues {
   parentId: string | null;
   inMainNav: boolean;
   footerOnly: boolean;
+  /** Optional page template to start from (instantiates its sections). */
+  templateId?: string | null;
+}
+
+/** Instantiate a template's sections with fresh ids and applied overrides. */
+export function sectionsFromTemplate(template: PageTemplate): PageSection[] {
+  const sections: PageSection[] = [];
+  template.sections.forEach((entry, index) => {
+    const section = createSectionByVariationId(entry.variationId, {
+      contentOverrides: entry.contentOverrides,
+      order: index,
+    });
+    if (!section) return;
+    sections.push({
+      ...section,
+      layout: { ...section.layout, ...entry.layoutOverrides },
+      style: { ...section.style, ...entry.styleOverrides },
+    });
+  });
+  return sections;
 }
 
 /** Build a full ProjectPage record from form values. */
@@ -19,6 +41,7 @@ export function buildPage(
   order: number,
 ): ProjectPage {
   const now = nowIso();
+  const template = values.templateId ? getPageTemplate(values.templateId) : undefined;
   return {
     id: createId(),
     projectId,
@@ -31,7 +54,7 @@ export function buildPage(
     footerOnly: values.footerOnly,
     parentId: values.footerOnly ? null : values.parentId,
     order,
-    sections: [],
+    sections: template ? sectionsFromTemplate(template) : [],
     createdAt: now,
     updatedAt: now,
   };

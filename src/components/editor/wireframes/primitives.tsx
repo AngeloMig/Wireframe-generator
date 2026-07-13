@@ -52,7 +52,7 @@ export const InlineEditProvider = EditCtx.Provider;
 
 /** Merge onto editable elements alongside the spread from useEditableText. */
 export const EDITABLE_TEXT_CLASS =
-  "-mx-0.5 cursor-text rounded-sm px-0.5 outline-none transition-shadow hover:ring-1 hover:ring-indigo-300/70 focus:ring-2 focus:ring-indigo-500";
+  "-mx-0.5 cursor-text rounded-sm px-0.5 outline-none transition-shadow hover:ring-1 hover:ring-[#f5c000]/60 focus:ring-2 focus:ring-[#eab308]";
 
 /**
  * Spread onto a text element to make it editable in place. Commits on blur;

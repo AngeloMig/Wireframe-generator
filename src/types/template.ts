@@ -21,6 +21,8 @@ export interface PageTemplate {
   styles: VisualStyle[];
   sections: PageTemplateSection[];
   isActive: boolean;
+  /** True for templates the user saved from their own work (vs built-in). */
+  isCustom?: boolean;
   createdAt: string;
   updatedAt: string;
 }

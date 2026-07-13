@@ -60,7 +60,8 @@ export function CanvasSection({
   isSelected,
   isCollapsed,
   dropEdge,
-  readOnly,
+  canEditContent,
+  canEditStructure,
   actions,
   commentMode = false,
   marker = null,
@@ -76,7 +77,10 @@ export function CanvasSection({
   isCollapsed: boolean;
   /** Shows the insertion indicator while a library item hovers this section. */
   dropEdge: DropEdge;
-  readOnly: boolean;
+  /** May edit the words/images in place. */
+  canEditContent: boolean;
+  /** May reorder, duplicate, delete, hide, lock, or swap the section. */
+  canEditStructure: boolean;
   actions: CanvasSectionActions;
   /** Comment mode: clicking targets the section with a composer instead of editing. */
   commentMode?: boolean;
@@ -86,25 +90,31 @@ export function CanvasSection({
   onContextComment?: (sectionId: string, x: number, y: number) => void;
 }) {
   const approvalLocked = Boolean(section.approvalLocked);
+  // Nav and footer are pinned to the page's top/bottom: they render in place
+  // and never drag (the store also re-normalizes order on every write).
+  const pinned = section.sectionType === "navigation" || section.sectionType === "footer";
+  // Any hands-on interaction (selecting, focusing) is possible if the user can
+  // do either kind of edit; the two capabilities then gate what they can do.
+  const interactive = canEditContent || canEditStructure;
 
   // Inline text editing is available exactly when the section itself is
   // editable; locked/approved sections and comment mode stay hands-off.
   const inlineEdit = useMemo<InlineEditContextValue | null>(
     () =>
-      readOnly || commentMode || section.isLocked || approvalLocked
+      !canEditContent || commentMode || section.isLocked || approvalLocked
         ? null
         : { onEdit: (path, value) => actions.onInlineEdit(section.id, path, value) },
-    [readOnly, commentMode, section.isLocked, approvalLocked, section.id, actions],
+    [canEditContent, commentMode, section.isLocked, approvalLocked, section.id, actions],
   );
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
     data: { type: "section" },
-    disabled: readOnly || section.isLocked || approvalLocked || commentMode,
+    disabled: !canEditStructure || pinned || section.isLocked || approvalLocked || commentMode,
   });
 
   const toolbarButton =
-    "flex size-7 cursor-pointer items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-30";
+    "flex size-7 cursor-pointer items-center justify-center rounded-[10px] text-slate-500 transition-[background-color,color,transform] duration-150 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-black/[0.05] hover:text-slate-800 active:scale-[0.92] disabled:cursor-not-allowed disabled:opacity-30";
 
   return (
     <div
@@ -117,7 +127,7 @@ export function CanvasSection({
         <div
           aria-hidden
           className={cn(
-            "absolute right-0 left-0 z-30 h-1 rounded-full bg-indigo-500",
+            "absolute right-0 left-0 z-30 h-1 rounded-full bg-[#f2b90d]",
             dropEdge === "top" ? "-top-1.5" : "-bottom-1.5",
           )}
         />
@@ -143,7 +153,7 @@ export function CanvasSection({
           // Comment placement is intentionally right-click only. A normal
           // click keeps the canvas calm while the user scans existing pins.
           if (commentMode) return;
-          else if (!readOnly) actions.onSelect(section.id);
+          else if (interactive) actions.onSelect(section.id);
         }}
         onContextMenu={(e) => {
           if (!onContextComment) return;
@@ -156,7 +166,7 @@ export function CanvasSection({
             if (commentMode) {
               // Use the context menu to place an exact comment pin.
               return;
-            } else if (!readOnly) {
+            } else if (interactive) {
               e.preventDefault();
               actions.onSelect(section.id);
             }
@@ -165,7 +175,7 @@ export function CanvasSection({
         data-canvas-section={section.id}
         className={cn(
           "group relative cursor-pointer outline-none",
-          (!readOnly || commentMode) && "focus-visible:ring-2 focus-visible:ring-indigo-400",
+          (interactive || commentMode) && "focus-visible:ring-2 focus-visible:ring-[#eab308]",
         )}
       >
         <div
@@ -176,8 +186,8 @@ export function CanvasSection({
                 ? "border-amber-500"
                 : "border-transparent group-hover:border-amber-400/80"
               : isSelected
-                ? "border-indigo-600"
-                : "border-transparent group-hover:border-indigo-300/70",
+                ? "border-[#f2b90d]"
+                : "border-transparent group-hover:border-[#f5c000]/50",
           )}
           aria-hidden
         />
@@ -210,8 +220,8 @@ export function CanvasSection({
           </button>
         )}
 
-        {/* Drag handle */}
-        {!readOnly && !commentMode && !section.isLocked && !approvalLocked && (
+        {/* Drag handle — pinned nav/footer sections don't get one. */}
+        {canEditStructure && !pinned && !commentMode && !section.isLocked && !approvalLocked && (
           <button
             type="button"
             {...attributes}
@@ -219,7 +229,7 @@ export function CanvasSection({
             aria-label={`Reorder ${name}. Use the toolbar arrows for keyboard reordering.`}
             onClick={(e) => e.stopPropagation()}
             className={cn(
-              "absolute top-2 left-2 z-20 flex size-7 cursor-grab items-center justify-center rounded bg-white/95 text-slate-400 shadow-sm transition-opacity active:cursor-grabbing",
+              "absolute top-2 left-2 z-20 flex size-8 cursor-grab items-center justify-center rounded-xl bg-white/90 text-slate-500 shadow-[0_2px_10px_rgb(0_0_0/0.12)] ring-1 ring-black/[0.06] backdrop-blur-sm transition-opacity active:cursor-grabbing",
               isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100",
             )}
           >
@@ -267,9 +277,15 @@ export function CanvasSection({
       </div>
 
       {/* Floating toolbar */}
-      {isSelected && !readOnly && !commentMode && (
+      {isSelected && canEditStructure && !commentMode && (
         <div
-          className="absolute -top-4 right-3 z-30 flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white p-0.5 shadow-md"
+          className={cn(
+            "absolute right-3 z-30 flex items-center gap-0.5 rounded-2xl bg-white/85 p-1 shadow-[inset_0_1px_0_rgb(255_255_255/0.6),0_10px_30px_rgb(0_0_0/0.14)] ring-1 ring-black/[0.06] backdrop-blur-md",
+            // The page wrapper clips overflowing children to its rounded
+            // corners, so the FIRST section's toolbar must sit inside the
+            // page instead of hanging above it (it was getting cut off).
+            index === 0 ? "top-2" : "-top-5",
+          )}
           role="toolbar"
           aria-label={`${name} actions`}
         >

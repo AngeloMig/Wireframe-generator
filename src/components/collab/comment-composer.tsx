@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { CheckSquare, Eye, EyeOff, Paperclip, Send, X } from "lucide-react";
 import { canCreateComment } from "@/lib/permissions";
-import { notifyUsers } from "@/lib/collab-service";
+import { notifyNewComment, notifyUsers } from "@/lib/collab-service";
 import { withActivity } from "@/lib/project-utils";
 import { useCommentsStore } from "@/stores/comments-store";
 import { useProjectsStore } from "@/stores/projects-store";
@@ -160,6 +160,16 @@ export function CommentComposer({
           actionUrl: `/projects/${project.id}/overview`,
         });
       }
+
+      // Notify the other side so a plain comment (no @mention, no assignee)
+      // still reaches someone. Mentions/assignees may double-up — minor
+      // redundancy, not a miss.
+      await notifyNewComment(project, user, {
+        visibility,
+        message: trimmed,
+        pageId,
+        sectionId,
+      });
 
       toast(isActionItem ? "Action item created" : "Comment added", "success");
       setMessage("");

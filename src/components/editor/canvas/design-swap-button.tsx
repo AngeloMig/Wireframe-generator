@@ -83,7 +83,7 @@ export function DesignSwapButton({
                   className={cn(
                     "flex cursor-pointer flex-col gap-1 rounded-lg border p-1.5 text-left transition-colors",
                     isCurrent
-                      ? "border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600"
+                      ? "border-[#f2b90d] bg-[#f7d34e]/20 ring-1 ring-[#f2b90d]"
                       : "border-slate-200 bg-white hover:border-slate-300",
                   )}
                 >
@@ -91,7 +91,7 @@ export function DesignSwapButton({
                   <span
                     className={cn(
                       "truncate text-[11px] font-medium",
-                      isCurrent ? "text-indigo-900" : "text-slate-600",
+                      isCurrent ? "text-[#5c4600]" : "text-slate-600",
                     )}
                   >
                     {variation.name}

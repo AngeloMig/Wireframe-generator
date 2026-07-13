@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
-import { Archivo, Inter, Spline_Sans_Mono } from "next/font/google";
+import { Geist, Outfit, Spline_Sans_Mono } from "next/font/google";
 import { APP_CONFIG } from "@/config/app";
 import "./globals.css";
 
-const inter = Inter({
+// Body face — clean neutral grotesque with more character than Inter.
+const geist = Geist({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-geist",
 });
 
-// Display face for page titles — technical-grotesque, set tight.
-const archivo = Archivo({
+// Display face for page titles and panel headers — rounded geometric,
+// matching the editor's soft "spatial UI" language.
+const outfit = Outfit({
   subsets: ["latin"],
-  variable: "--font-archivo",
+  variable: "--font-outfit",
 });
 
 // Drafting-table lettering: eyebrows, labels, title-block details.
@@ -34,7 +36,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${archivo.variable} ${splineMono.variable}`}
+      className={`${geist.variable} ${outfit.variable} ${splineMono.variable}`}
     >
       <body className="font-sans">{children}</body>
     </html>

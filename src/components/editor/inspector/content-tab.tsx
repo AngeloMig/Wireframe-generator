@@ -124,7 +124,7 @@ function ScalarFieldWithSuggestions({
                 key={suggestion}
                 type="button"
                 onClick={() => onSet(suggestion)}
-                className="max-w-full cursor-pointer truncate rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-left text-[11px] text-indigo-800 transition-colors hover:bg-indigo-100"
+                className="max-w-full cursor-pointer truncate rounded-full border border-[#f2b90d]/40 bg-[#f7d34e]/20 px-2 py-0.5 text-left text-[11px] text-[#5c4600] transition-colors hover:bg-[#f7d34e]/35"
                 title={suggestion}
               >
                 {suggestion}
@@ -159,7 +159,7 @@ export function ScalarField({
           type="checkbox"
           checked={value === true}
           onChange={(e) => onSet(e.target.checked)}
-          className="size-4 rounded border-slate-300 accent-indigo-600"
+          className="size-4 rounded border-slate-300 accent-[#1a2028]"
         />
         {field.label}
       </label>

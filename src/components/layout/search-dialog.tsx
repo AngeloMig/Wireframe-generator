@@ -21,6 +21,7 @@ import {
   type SearchResult,
   type SearchResultKind,
 } from "@/lib/global-search";
+import { projectsForUser } from "@/lib/org";
 import { canViewInternalNotes } from "@/lib/permissions";
 import { useProjectsStore } from "@/stores/projects-store";
 import { useSessionStore } from "@/stores/session-store";
@@ -56,8 +57,13 @@ export function SearchButton() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const router = useRouter();
-  const projects = useProjectsStore((s) => s.projects);
+  const allProjects = useProjectsStore((s) => s.projects);
   const user = useSessionStore((s) => s.user);
+  // Search never crosses the agency wall — scope before querying.
+  const projects = useMemo(
+    () => projectsForUser(allProjects, user),
+    [allProjects, user],
+  );
 
   // Debounced global search across all collaboration records.
   useEffect(() => {

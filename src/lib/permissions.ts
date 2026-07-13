@@ -1,4 +1,5 @@
 import type {
+  AccessRequestLevel,
   CommentVisibility,
   Project,
   ProjectAccessLevel,
@@ -96,31 +97,97 @@ export function canEditProjectContent(role: UserRole, status: ProjectStatus): bo
 }
 
 /**
- * Whether the editor should allow content changes. Two independent gates,
- * BOTH required:
+ * The three independent things a customer can be allowed to do in the editor.
+ * `page` (add/manage pages) has no self-serve surface yet — the agency handles
+ * page creation — so it does NOT unlock the canvas on its own.
+ */
+export interface EditorCapabilities {
+  /** Edit the words and images on existing sections, in place. */
+  content: boolean;
+  /** Add, remove, reorder, duplicate, swap, hide, or lock sections. */
+  builder: boolean;
+  /** Add pages / change page settings (agency-fulfilled for now). */
+  page: boolean;
+}
+
+const NO_CAPABILITIES: EditorCapabilities = { content: false, builder: false, page: false };
+const ALL_CAPABILITIES: EditorCapabilities = { content: true, builder: true, page: true };
+
+/**
+ * Which editor capabilities a user holds right now. Two gates as before —
+ * BOTH required — but the second one is now granular:
  *   1. The status must be an editable phase (canEditProjectContent) — submitting
  *      for review or entering approval pauses editing, and no access grant
  *      overrides that.
- *   2. The customer must hold edit rights (owner/no member record, an "edit"
- *      member, or an approved access request). Access grants only unlock a
- *      customer DURING an already-editable phase; they never bypass the lock.
- * Extracted as a pure function so this rule is unit-tested and can't silently
- * regress (it did once — an access grant was OR'd past the status gate).
+ *   2. What the user may do. Agency/admin and full-edit customers (owner or an
+ *      "edit" member) get everything; other customers get exactly the levels the
+ *      agency has approved. Access grants only unlock DURING an editable phase;
+ *      they never bypass the status lock.
+ */
+export function grantedCapabilities(
+  role: UserRole,
+  status: ProjectStatus,
+  access: { memberAccess?: ProjectAccessLevel; approvedLevels?: AccessRequestLevel[] } = {},
+): EditorCapabilities {
+  if (!canEditProjectContent(role, status)) return NO_CAPABILITIES;
+  if (role !== "customer") return ALL_CAPABILITIES;
+  // Owner (no member record) or an explicit "edit" member has the full set.
+  if (!access.memberAccess || access.memberAccess === "edit") return ALL_CAPABILITIES;
+  const levels = new Set(access.approvedLevels ?? []);
+  return {
+    content: levels.has("content"),
+    builder: levels.has("builder"),
+    page: levels.has("page"),
+  };
+}
+
+/** True when the user can perform any self-serve edit on the canvas. */
+export function canEditAnything(caps: EditorCapabilities): boolean {
+  return caps.content || caps.builder;
+}
+
+/**
+ * Whether the editor should allow ANY content changes. Kept as a thin boolean
+ * over grantedCapabilities so existing call sites and unit tests are stable
+ * (this rule regressed once — an access grant was OR'd past the status gate).
  */
 export function canEditInEditor(
   role: UserRole,
   status: ProjectStatus,
   access: { memberAccess?: ProjectAccessLevel; approvedAccessRequest?: boolean } = {},
 ): boolean {
-  if (!canEditProjectContent(role, status)) return false;
-  if (role !== "customer") return true;
-  return !access.memberAccess || access.memberAccess === "edit" || Boolean(access.approvedAccessRequest);
+  const caps = grantedCapabilities(role, status, {
+    memberAccess: access.memberAccess,
+    // A generic "an access request was approved" maps to the full set, matching
+    // the pre-capability behaviour callers of this boolean still expect.
+    approvedLevels: access.approvedAccessRequest ? ["content", "builder", "page"] : [],
+  });
+  return canEditAnything(caps);
 }
 
 /** Explains why editing is unavailable — shown next to disabled controls. */
-export function editRestrictionReason(role: UserRole, status: ProjectStatus): string | null {
+export function editRestrictionReason(
+  role: UserRole,
+  status: ProjectStatus,
+  /** The customer holds an access grant, so the ONLY thing blocking them is the
+   *  status. Lets the banner say "you have access, but…" instead of implying
+   *  they were never allowed — otherwise an approved request looks ignored. */
+  hasAccessGrant = false,
+): string | null {
   if (canEditProjectContent(role, status)) return null;
   if (role === "customer") {
+    if (hasAccessGrant) {
+      switch (status) {
+        case "ready-for-review":
+        case "agency-reviewing":
+          return "You have edit access — but editing is paused while the agency reviews your blueprint. It reopens when they respond.";
+        case "awaiting-approval":
+        case "partially-approved":
+          return "You have edit access — but the blueprint is in approval. Approve it or request changes to keep editing.";
+        default:
+          break;
+      }
+    }
     switch (status) {
       case "ready-for-review":
         return "Your blueprint has been submitted — the agency is reviewing it. You can comment, but editing is paused until the agency responds.";

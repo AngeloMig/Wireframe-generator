@@ -80,17 +80,17 @@ export function PageSelector({
                 }}
                 className={cn(
                   "flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors",
-                  isCurrent ? "bg-indigo-50" : "hover:bg-slate-100",
+                  isCurrent ? "bg-[#f7d34e]/25" : "hover:bg-black/[0.05]",
                 )}
               >
                 <span className="flex size-4 shrink-0 items-center justify-center">
-                  {isCurrent && <Check className="size-3.5 text-indigo-600" aria-hidden />}
+                  {isCurrent && <Check className="size-3.5 text-[#a07800]" aria-hidden />}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span
                     className={cn(
                       "block truncate text-[13px]",
-                      isCurrent ? "font-semibold text-indigo-900" : "font-medium text-slate-700",
+                      isCurrent ? "font-semibold text-[#5c4600]" : "font-medium text-slate-700",
                     )}
                   >
                     {p.name}

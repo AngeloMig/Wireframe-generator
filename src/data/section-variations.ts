@@ -1182,6 +1182,591 @@ const ecommerceVariations: SectionVariation[] = [
 // Aggregate + lookups
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Design-path kits — each website design direction gets signature sections.
+// Most are data-only variants of existing components; seven are new layouts
+// (bento, spec table, pull quote, gallery, scroll story, code, arched hero).
+// The path name lives in tags so the library search surfaces whole kits.
+// ---------------------------------------------------------------------------
+
+const designPaths: SectionVariation[] = [
+  // --- Modern SaaS ----------------------------------------------------------
+  defineVariation({
+    id: "hero-saas",
+    sectionType: "hero",
+    componentKey: "hero-product",
+    name: "SaaS Product Hero",
+    description: "Centered pitch above a large product screenshot — the classic software landing opener.",
+    tags: ["saas", "modern", "product"],
+    supportedPageTypes: ["homepage", "landing", "pricing", "custom"],
+    defaultStyle: { ...BASE_STYLE, background: "muted", spacing: "spacious" },
+    contentDefaults: {
+      eyebrow: "New: version 2.0",
+      heading: "The faster way to run your work",
+      description: "One workspace for planning, tracking, and shipping — without the busywork.",
+      buttonLabel: "Start free trial",
+      secondaryButtonLabel: "Book a demo",
+    },
+  }),
+  defineVariation({
+    id: "content-bento",
+    sectionType: "content",
+    name: "Feature Bento",
+    description: "One large feature tile with supporting tiles around it — a modern product-page staple.",
+    tags: ["saas", "technical", "modern", "features"],
+    supportedPageTypes: ["homepage", "landing", "services", "pricing", "custom"],
+    contentDefaults: {
+      eyebrow: "Everything included",
+      heading: "Built for the whole team",
+      items: [
+        { title: "Real-time collaboration", description: "Work together without stepping on each other." },
+        { title: "Automations", description: "Repetitive work runs itself." },
+        { title: "Integrations", description: "Plays well with your stack." },
+        { title: "Reporting", description: "Numbers your leadership will read." },
+        { title: "Permissions", description: "The right access for every role." },
+      ],
+    },
+  }),
+  defineVariation({
+    id: "content-spec-table",
+    sectionType: "content",
+    name: "Comparison Table",
+    description: "Feature-by-feature comparison rows — us versus the alternative.",
+    tags: ["saas", "technical", "corporate", "comparison"],
+    supportedPageTypes: ["homepage", "landing", "pricing", "services", "custom"],
+    contentDefaults: {
+      eyebrow: "Why switch",
+      heading: "See how we compare",
+      items: [
+        { title: "Unlimited projects", description: "No per-seat surprises" },
+        { title: "Priority support", description: "Real humans, under an hour" },
+        { title: "Version history", description: "Every change, forever" },
+        { title: "Approvals built in", description: "No email ping-pong" },
+      ],
+    },
+  }),
+  defineVariation({
+    id: "svc-pricing-tiers",
+    sectionType: "services",
+    componentKey: "svc-pricing",
+    name: "Pricing Tiers",
+    description: "Three plans side by side with a highlighted recommendation.",
+    tags: ["saas", "pricing", "modern"],
+    supportedPageTypes: ["homepage", "pricing", "landing", "services", "custom"],
+    defaultLayout: { ...BASE_LAYOUT, columns: 3, alignment: "center" },
+    defaultStyle: { ...BASE_STYLE, background: "muted", spacing: "spacious" },
+  }),
+  defineVariation({
+    id: "marquee-integrations",
+    sectionType: "marquee",
+    componentKey: "marquee-row",
+    name: "Integration Logos",
+    description: "A quiet strip of the tools you connect with.",
+    tags: ["saas", "technical", "logos"],
+    contentDefaults: {
+      items: [
+        { type: "logo", label: "Slack" }, { type: "logo", label: "Figma" }, { type: "logo", label: "GitHub" },
+        { type: "logo", label: "Notion" }, { type: "logo", label: "Linear" }, { type: "logo", label: "Zapier" },
+      ],
+    },
+  }),
+
+  // --- Minimalist / Swiss ----------------------------------------------------
+  defineVariation({
+    id: "hero-swiss",
+    sectionType: "hero",
+    componentKey: "hero-minimal",
+    name: "Swiss Minimal Hero",
+    description: "A single oversized statement, hard left, and a great deal of air.",
+    tags: ["minimal", "swiss", "typographic"],
+    defaultLayout: { ...BASE_LAYOUT, alignment: "left", contentWidth: "narrow" },
+    defaultStyle: { ...BASE_STYLE, spacing: "spacious" },
+    contentDefaults: {
+      heading: "Less, but better.",
+      description: "We design objects and interfaces with everything unnecessary removed.",
+    },
+  }),
+  defineVariation({
+    id: "content-quote",
+    sectionType: "content",
+    name: "Pull Quote",
+    description: "One oversized quotation with a small attribution rule.",
+    tags: ["minimal", "editorial", "luxury", "quote"],
+    supportedPageTypes: ["homepage", "about", "landing", "case-study", "custom"],
+    defaultLayout: { ...BASE_LAYOUT, alignment: "center", contentWidth: "narrow" },
+    defaultStyle: { ...BASE_STYLE, spacing: "spacious" },
+    contentDefaults: {
+      description: "Design is not just what it looks like. Design is how it works.",
+      attribution: "A very satisfied customer",
+    },
+  }),
+  defineVariation({
+    id: "content-manifesto",
+    sectionType: "content",
+    componentKey: "content-intro",
+    name: "Manifesto Block",
+    description: "A narrow column of conviction — what you believe, stated plainly.",
+    tags: ["minimal", "swiss", "editorial"],
+    defaultLayout: { ...BASE_LAYOUT, alignment: "center", contentWidth: "narrow" },
+    defaultStyle: { ...BASE_STYLE, spacing: "spacious" },
+    contentDefaults: {
+      eyebrow: "Our belief",
+      heading: "Good design is as little design as possible",
+      description: "Every element earns its place. What remains is what matters.",
+      buttonLabel: "",
+    },
+  }),
+
+  // --- Editorial / Magazine ---------------------------------------------------
+  defineVariation({
+    id: "content-article-grid",
+    sectionType: "content",
+    componentKey: "content-blog",
+    name: "Article Grid",
+    description: "A three-column story grid with category tags, like a magazine front page.",
+    tags: ["editorial", "blog", "magazine"],
+    supportedPageTypes: ["homepage", "blog", "landing", "custom"],
+    defaultLayout: { ...BASE_LAYOUT, columns: 3 },
+    contentDefaults: {
+      eyebrow: "The journal",
+      heading: "Latest stories",
+      posts: [
+        { title: "The craft issue: process over polish", category: "Features" },
+        { title: "Studio visit: where the work happens", category: "Interviews" },
+        { title: "Field notes from the season", category: "Notes" },
+      ],
+    },
+  }),
+  defineVariation({
+    id: "content-featured-story",
+    sectionType: "content",
+    componentKey: "content-image-text",
+    name: "Featured Story",
+    description: "A lead story splash: wide image beside a strong standfirst.",
+    tags: ["editorial", "magazine", "feature"],
+    defaultLayout: { ...BASE_LAYOUT, imagePosition: "left", contentWidth: "wide" },
+    defaultStyle: { ...BASE_STYLE, spacing: "spacious" },
+    contentDefaults: {
+      eyebrow: "Cover story",
+      heading: "The long read worth your coffee",
+      description: "Set the scene in two sentences — why this story, why now.",
+      buttonLabel: "Read the story",
+    },
+  }),
+
+  // --- Bold / Brutalist -------------------------------------------------------
+  defineVariation({
+    id: "hero-brutalist",
+    sectionType: "hero",
+    componentKey: "hero-minimal",
+    name: "Brutalist Statement",
+    description: "Giant type on a dark slab. No image, no apology.",
+    tags: ["bold", "brutalist", "typographic"],
+    defaultLayout: { ...BASE_LAYOUT, alignment: "left", contentWidth: "wide" },
+    defaultStyle: { ...BASE_STYLE, background: "dark", spacing: "spacious", cardRadius: "none", buttonStyle: "outline" },
+    contentDefaults: {
+      heading: "WE MAKE LOUD THINGS.",
+      description: "Websites, drops, campaigns. Zero beige.",
+      buttonLabel: "SEE THE WORK",
+    },
+  }),
+  defineVariation({
+    id: "marquee-shout",
+    sectionType: "marquee",
+    componentKey: "marquee-row",
+    name: "Shout Ticker",
+    description: "An all-caps statement on repeat, edge to edge.",
+    tags: ["bold", "brutalist", "ticker"],
+    defaultStyle: { ...BASE_STYLE, background: "dark", cardRadius: "none" },
+    contentDefaults: {
+      items: [
+        { type: "text", label: "NEW DROP" }, { type: "text", label: "★" }, { type: "text", label: "NO BEIGE" },
+        { type: "text", label: "★" }, { type: "text", label: "SHIP LOUD" }, { type: "text", label: "★" },
+      ],
+    },
+  }),
+  defineVariation({
+    id: "content-manifesto-list",
+    sectionType: "content",
+    componentKey: "content-values",
+    name: "Numbered Manifesto",
+    description: "Rules of the house in one bold column.",
+    tags: ["bold", "brutalist", "list"],
+    defaultLayout: { ...BASE_LAYOUT, columns: 1, contentWidth: "narrow" },
+    defaultStyle: { ...BASE_STYLE, border: "both", cardRadius: "none" },
+    contentDefaults: {
+      eyebrow: "House rules",
+      heading: "How we work",
+      items: [
+        { title: "01 — Say it plainly", description: "If it needs a footnote, cut it." },
+        { title: "02 — Ship the bold version", description: "The safe version bores everyone." },
+        { title: "03 — Details are the design", description: "Sweat them." },
+      ],
+    },
+  }),
+  defineVariation({
+    id: "cta-brutalist",
+    sectionType: "cta",
+    componentKey: "cta-stat-banner",
+    name: "Slab CTA",
+    description: "A hard-edged dark band with one demand.",
+    tags: ["bold", "brutalist"],
+    defaultStyle: { ...BASE_STYLE, background: "dark", cardRadius: "none", spacing: "spacious" },
+  }),
+
+  // --- Animated / Interactive -------------------------------------------------
+  defineVariation({
+    id: "content-scroll-story",
+    sectionType: "content",
+    name: "Scroll Story",
+    description: "Pinned frames that reveal on scroll — annotated so developers know the motion intent.",
+    tags: ["animated", "interactive", "scroll", "motion"],
+    supportedPageTypes: ["homepage", "landing", "product", "custom"],
+    contentDefaults: {
+      eyebrow: "How it works",
+      heading: "Three moments, one scroll",
+      items: [
+        { title: "The hook", description: "Product appears and pins while copy changes." },
+        { title: "The proof", description: "Numbers count up as they enter the viewport." },
+        { title: "The close", description: "CTA slides in once the story is told." },
+      ],
+    },
+  }),
+  defineVariation({
+    id: "hero-motion",
+    sectionType: "hero",
+    componentKey: "hero-video",
+    name: "Motion Hero",
+    description: "Full-width video opener with a short overlaid claim.",
+    tags: ["animated", "video", "motion"],
+    defaultStyle: { ...BASE_STYLE, background: "dark", spacing: "spacious" },
+  }),
+
+  // --- Luxury / Premium -------------------------------------------------------
+  defineVariation({
+    id: "content-gallery",
+    sectionType: "content",
+    name: "Lookbook Gallery",
+    description: "A staggered image grid that lets photography breathe.",
+    tags: ["luxury", "portfolio", "organic", "gallery"],
+    supportedPageTypes: ["homepage", "portfolio", "about", "collection", "custom"],
+    defaultLayout: { ...BASE_LAYOUT, columns: 4 },
+    defaultStyle: { ...BASE_STYLE, spacing: "spacious" },
+    contentDefaults: {
+      eyebrow: "The collection",
+      heading: "Autumn, in eight frames",
+      items: [
+        { title: "Look 01" }, { title: "Look 02" }, { title: "Look 03" }, { title: "Look 04" },
+        { title: "Look 05" }, { title: "Look 06" }, { title: "Look 07" }, { title: "Look 08" },
+      ],
+    },
+  }),
+  defineVariation({
+    id: "hero-luxury",
+    sectionType: "hero",
+    componentKey: "hero-fullbg",
+    name: "Luxury Full-Image Hero",
+    description: "A full-bleed photograph with a few quiet words at its center.",
+    tags: ["luxury", "premium", "elegant"],
+    defaultLayout: { ...BASE_LAYOUT, alignment: "center" },
+    defaultStyle: { ...BASE_STYLE, background: "image", spacing: "spacious", buttonStyle: "outline" },
+    contentDefaults: {
+      eyebrow: "Since 1962",
+      heading: "Quietly exceptional",
+      description: "",
+      buttonLabel: "Discover the house",
+    },
+  }),
+  defineVariation({
+    id: "svc-heritage",
+    sectionType: "services",
+    componentKey: "svc-timeline",
+    name: "Heritage Timeline",
+    description: "Milestones of the house, told slowly down the page.",
+    tags: ["luxury", "heritage", "timeline"],
+    defaultStyle: { ...BASE_STYLE, spacing: "spacious" },
+  }),
+  defineVariation({
+    id: "cta-appointment",
+    sectionType: "cta",
+    componentKey: "cta-contact-form",
+    name: "Private Appointment",
+    description: "A narrow, unhurried request form for consultations and fittings.",
+    tags: ["luxury", "booking", "elegant"],
+    defaultLayout: { ...BASE_LAYOUT, alignment: "center", contentWidth: "narrow" },
+    defaultStyle: { ...BASE_STYLE, background: "muted", spacing: "spacious" },
+  }),
+
+  // --- Playful / Illustrated --------------------------------------------------
+  defineVariation({
+    id: "hero-playful",
+    sectionType: "hero",
+    componentKey: "hero-centered",
+    name: "Playful Hero",
+    description: "Big friendly headline on a brand-colour splash, rounded everywhere.",
+    tags: ["playful", "illustrated", "fun"],
+    defaultLayout: { ...BASE_LAYOUT, alignment: "center" },
+    defaultStyle: { ...BASE_STYLE, background: "brand", cardRadius: "large", buttonStyle: "soft", spacing: "spacious" },
+    contentDefaults: {
+      eyebrow: "Hi there 👋",
+      heading: "Learning that doesn't feel like homework",
+      description: "Five minutes a day. Genuinely fun. Slightly addictive.",
+      buttonLabel: "Start playing",
+    },
+  }),
+  defineVariation({
+    id: "faq-bubbles",
+    sectionType: "faq",
+    componentKey: "faq-cards",
+    name: "Chat Bubble FAQ",
+    description: "Questions and answers styled like a friendly conversation.",
+    tags: ["playful", "conversational"],
+    defaultLayout: { ...BASE_LAYOUT, columns: 2 },
+    defaultStyle: { ...BASE_STYLE, background: "muted", cardRadius: "large" },
+  }),
+  defineVariation({
+    id: "content-badge-stats",
+    sectionType: "content",
+    componentKey: "content-stats",
+    name: "Badge Stats",
+    description: "Happy numbers in rounded badge tiles.",
+    tags: ["playful", "stats"],
+    defaultLayout: { ...BASE_LAYOUT, columns: 4, alignment: "center" },
+    defaultStyle: { ...BASE_STYLE, background: "muted", cardRadius: "large" },
+  }),
+  defineVariation({
+    id: "marquee-stickers",
+    sectionType: "marquee",
+    componentKey: "marquee-row",
+    name: "Sticker Parade",
+    description: "A rolling row of playful word-stickers.",
+    tags: ["playful", "ticker"],
+    defaultStyle: { ...BASE_STYLE, background: "brand", cardRadius: "large" },
+    contentDefaults: {
+      items: [
+        { type: "text", label: "hooray" }, { type: "text", label: "★ 4.9" }, { type: "text", label: "no ads" },
+        { type: "text", label: "kid-approved" }, { type: "text", label: "5 min/day" },
+      ],
+    },
+  }),
+
+  // --- Corporate / Trust ------------------------------------------------------
+  defineVariation({
+    id: "content-leadership",
+    sectionType: "content",
+    componentKey: "content-team",
+    name: "Leadership Grid",
+    description: "The people accountable, four across with roles.",
+    tags: ["corporate", "team", "trust"],
+    defaultLayout: { ...BASE_LAYOUT, columns: 4 },
+  }),
+  defineVariation({
+    id: "marquee-certifications",
+    sectionType: "marquee",
+    componentKey: "marquee-row",
+    name: "Certifications Strip",
+    description: "Accreditations and memberships in a quiet proof row.",
+    tags: ["corporate", "trust", "logos"],
+    defaultStyle: { ...BASE_STYLE, background: "muted" },
+    contentDefaults: {
+      items: [
+        { type: "logo", label: "ISO 27001" }, { type: "logo", label: "SOC 2" }, { type: "logo", label: "GDPR" },
+        { type: "logo", label: "Chamber member" }, { type: "logo", label: "Est. 1998" },
+      ],
+    },
+  }),
+  defineVariation({
+    id: "content-proof-stats",
+    sectionType: "content",
+    componentKey: "content-stats",
+    name: "Proof Points",
+    description: "The four numbers a procurement team wants to see.",
+    tags: ["corporate", "stats", "trust"],
+    defaultLayout: { ...BASE_LAYOUT, columns: 4, alignment: "center" },
+    defaultStyle: { ...BASE_STYLE, border: "both" },
+    contentDefaults: {
+      stats: [
+        { value: "27 yrs", label: "In business" },
+        { value: "400+", label: "Clients served" },
+        { value: "98%", label: "Retention" },
+        { value: "$2.4B", label: "Managed" },
+      ],
+    },
+  }),
+
+  // --- Organic / Wellness -----------------------------------------------------
+  defineVariation({
+    id: "hero-arch",
+    sectionType: "hero",
+    name: "Arched Hero",
+    description: "A soft arched image beside calm, unhurried copy.",
+    tags: ["organic", "wellness", "soft"],
+    defaultLayout: { ...BASE_LAYOUT, imagePosition: "right" },
+    defaultStyle: { ...BASE_STYLE, background: "muted", spacing: "spacious", cardRadius: "large", buttonStyle: "soft" },
+    contentDefaults: {
+      eyebrow: "Take a breath",
+      heading: "Care that meets you where you are",
+      description: "Thoughtful treatments, small rituals, real rest.",
+      buttonLabel: "Book a visit",
+    },
+  }),
+  defineVariation({
+    id: "svc-rituals",
+    sectionType: "services",
+    componentKey: "svc-process",
+    name: "Ritual Steps",
+    description: "Your process as a gentle three-step ritual.",
+    tags: ["organic", "wellness", "process"],
+    defaultStyle: { ...BASE_STYLE, background: "muted", spacing: "spacious", cardRadius: "large" },
+  }),
+  defineVariation({
+    id: "faq-ingredients",
+    sectionType: "faq",
+    componentKey: "faq-accordion",
+    name: "Ingredients & Care FAQ",
+    description: "Soft accordion for what's-inside and how-to-care questions.",
+    tags: ["organic", "wellness"],
+    defaultStyle: { ...BASE_STYLE, background: "muted", cardRadius: "large", spacing: "spacious" },
+  }),
+
+  // --- Dark / Tech ------------------------------------------------------------
+  defineVariation({
+    id: "hero-tech",
+    sectionType: "hero",
+    componentKey: "hero-centered",
+    name: "Dark Tech Hero",
+    description: "Dark-mode opener with a single glowing claim.",
+    tags: ["technical", "dark", "developer"],
+    defaultLayout: { ...BASE_LAYOUT, alignment: "center" },
+    defaultStyle: { ...BASE_STYLE, background: "dark", spacing: "spacious", buttonStyle: "outline" },
+    contentDefaults: {
+      eyebrow: "v3.0 — now generally available",
+      heading: "Infrastructure that gets out of the way",
+      description: "Deploy in seconds. Scale without meetings.",
+      buttonLabel: "npm install",
+      secondaryButtonLabel: "Read the docs",
+    },
+  }),
+  defineVariation({
+    id: "content-code",
+    sectionType: "content",
+    name: "Code Snippet",
+    description: "Copy beside a mock editor window — show developers the API, not adjectives.",
+    tags: ["technical", "developer", "dark"],
+    supportedPageTypes: ["homepage", "landing", "services", "custom"],
+    contentDefaults: {
+      eyebrow: "Developer first",
+      heading: "Three lines to production",
+      description: "A typed SDK, sensible defaults, and docs that respect your time.",
+      buttonLabel: "Explore the API",
+    },
+  }),
+
+  // --- Detail pages: product, collection, blog -------------------------------
+  defineVariation({
+    id: "ecom-product-detail",
+    sectionType: "ecommerce",
+    name: "Product Detail",
+    description: "Gallery, price, options, and an add-to-cart buy box — the heart of a product page.",
+    tags: ["product", "ecommerce", "pdp"],
+    supportedPageTypes: ["product", "landing", "custom"],
+    contentDefaults: {
+      eyebrow: "New arrival",
+      heading: "Aria Lounge Chair",
+      price: "$890",
+      description: "Sculpted oak frame with a wool-blend cushion. Made in small batches, built for decades.",
+      buttonLabel: "Add to cart",
+      items: [
+        { title: "Oak", price: "", description: "" },
+        { title: "Walnut", price: "", description: "" },
+        { title: "Black stain", price: "", description: "" },
+      ],
+    },
+  }),
+  defineVariation({
+    id: "ecom-filter-grid",
+    sectionType: "ecommerce",
+    name: "Collection Browser",
+    description: "Filter rail beside a sortable product grid — the standard collection layout.",
+    tags: ["collection", "ecommerce", "filters"],
+    supportedPageTypes: ["collection", "product", "custom"],
+    contentDefaults: {
+      eyebrow: "Collection",
+      heading: "Living room",
+      items: [
+        { title: "Aria lounge chair", price: "$890", description: "" },
+        { title: "Fjord dining table", price: "$1,450", description: "" },
+        { title: "Nook side table", price: "$320", description: "" },
+        { title: "Haven sofa", price: "$2,100", description: "" },
+        { title: "Ledge shelf", price: "$540", description: "" },
+        { title: "Arc floor lamp", price: "$260", description: "" },
+      ],
+    },
+  }),
+  defineVariation({
+    id: "content-article-header",
+    sectionType: "content",
+    name: "Article Header",
+    description: "Category, headline, byline, and lead image — how every post opens.",
+    tags: ["blog", "editorial", "article"],
+    supportedPageTypes: ["blog-article", "blog", "case-study", "custom"],
+    defaultLayout: { ...BASE_LAYOUT, alignment: "center", contentWidth: "wide" },
+    contentDefaults: {
+      eyebrow: "Guides",
+      heading: "A headline that earns the click",
+      description: "One standfirst sentence that sets up the story and why it matters.",
+      attribution: "Jamie Chen",
+      buttonLabel: "",
+    },
+  }),
+  defineVariation({
+    id: "content-prose",
+    sectionType: "content",
+    name: "Article Body",
+    description: "Reading-width prose with a subhead and an inline image — the body of a post.",
+    tags: ["blog", "editorial", "article"],
+    supportedPageTypes: ["blog-article", "case-study", "about", "custom"],
+    defaultLayout: { ...BASE_LAYOUT, contentWidth: "narrow" },
+    contentDefaults: {
+      heading: "A section subheading",
+      description: "The opening paragraph appears here in full — everything after is shown as placeholder text the writer will replace.",
+      buttonLabel: "",
+    },
+  }),
+  defineVariation({
+    id: "content-author",
+    sectionType: "content",
+    name: "Author Bio",
+    description: "Who wrote it, with a short bio and a follow action.",
+    tags: ["blog", "editorial", "article"],
+    supportedPageTypes: ["blog-article", "blog", "about", "custom"],
+    defaultLayout: { ...BASE_LAYOUT, contentWidth: "narrow" },
+    contentDefaults: {
+      attribution: "Jamie Chen",
+      description: "Senior editor. Writes about craft, process, and the people behind good work.",
+      buttonLabel: "",
+    },
+  }),
+  defineVariation({
+    id: "content-post-list",
+    sectionType: "content",
+    name: "Post List",
+    description: "Dated article rows, magazine-index style — denser than the card grid.",
+    tags: ["blog", "editorial", "index"],
+    supportedPageTypes: ["blog", "homepage", "custom"],
+    contentDefaults: {
+      eyebrow: "Archive",
+      heading: "All stories",
+      posts: [
+        { title: "The craft issue: process over polish", category: "Features" },
+        { title: "Studio visit: where the work happens", category: "Interviews" },
+        { title: "Field notes from the season", category: "Notes" },
+        { title: "What we shipped this quarter", category: "News" },
+      ],
+    },
+  }),
+];
+
 export const SECTION_VARIATIONS: SectionVariation[] = [
   ...navigation,
   ...hero,
@@ -1193,6 +1778,7 @@ export const SECTION_VARIATIONS: SectionVariation[] = [
   ...footerVariations,
   ...contentVariations,
   ...ecommerceVariations,
+  ...designPaths,
 ];
 
 const BY_ID = new Map(SECTION_VARIATIONS.map((v) => [v.id, v]));

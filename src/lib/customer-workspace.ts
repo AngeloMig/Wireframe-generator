@@ -19,6 +19,7 @@ const CUSTOMER_PROJECT_SEGMENTS = new Set(["editor", "review", "revisions"]);
 /** Whether a customer may stay on this path; false triggers a redirect home. */
 export function isCustomerAllowedPath(pathname: string): boolean {
   if (pathname === "/dashboard") return true;
+  if (pathname === "/inbox") return true;
   const match = pathname.match(/^\/projects\/([^/]+)\/([^/]+)/);
   if (!match) return false;
   return CUSTOMER_PROJECT_SEGMENTS.has(match[2]);

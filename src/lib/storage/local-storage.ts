@@ -68,4 +68,5 @@ export const STORAGE_KEYS = {
   themeOverrides: "theme-overrides",
   editorTourDone: "editor-tour-done",
   accessRequests: "access-requests",
+  customTemplates: "custom-templates",
 } as const;

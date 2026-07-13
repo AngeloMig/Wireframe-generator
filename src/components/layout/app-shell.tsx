@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Inbox, Menu, X } from "lucide-react";
 import { APP_CONFIG } from "@/config/app";
 import { isCustomerAllowedPath } from "@/lib/customer-workspace";
+import { projectsForUser } from "@/lib/org";
+import { isInboxRead } from "@/lib/inbox-read-state";
+import { useCommentsStore } from "@/stores/comments-store";
 import { useNotificationsStore } from "@/stores/notifications-store";
 import { useProjectsStore } from "@/stores/projects-store";
 import { useSessionStore } from "@/stores/session-store";
@@ -30,6 +34,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isLoggedIn = useSessionStore((s) => s.isLoggedIn);
   const hydrateSession = useSessionStore((s) => s.hydrate);
   const projectsHydrated = useProjectsStore((s) => s.hydrated);
+  const projects = useProjectsStore((s) => s.projects);
+  const commentsByProject = useCommentsStore((s) => s.byProject);
+  const loadComments = useCommentsStore((s) => s.load);
+  const [readVersion, setReadVersion] = useState(0);
   const hydrateProjects = useProjectsStore((s) => s.hydrate);
   const hydrateNotifications = useNotificationsStore((s) => s.hydrate);
   const mobileNavOpen = useUiStore((s) => s.mobileNavOpen);
@@ -48,6 +56,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [sessionHydrated, isLoggedIn, router]);
 
   const isCustomer = useSessionStore((s) => s.user.role === "customer");
+  const user = useSessionStore((s) => s.user);
+  const accessibleProjects = useMemo(() => projectsForUser(projects, user), [projects, user]);
+  const unreadMessages = useMemo(() => { void readVersion; return accessibleProjects.reduce((total, project) => {
+    const comments = commentsByProject[project.id] ?? [];
+    return total + comments.filter((comment) => comment.status !== "resolved" && comment.authorId !== user.id && !isInboxRead(user.id, comment.id)).length;
+  }, 0); }, [accessibleProjects, commentsByProject, user.id, readVersion]);
+
+  useEffect(() => {
+    for (const project of accessibleProjects) void loadComments(project.id);
+  }, [accessibleProjects, loadComments]);
+
+  useEffect(() => {
+    const onReadStateChange = () => setReadVersion((value) => value + 1);
+    window.addEventListener("inbox-read-state-changed", onReadStateChange);
+    return () => window.removeEventListener("inbox-read-state-changed", onReadStateChange);
+  }, []);
 
   // Customers get a focused, editor-only workspace: any screen outside their
   // allowed set (home, editor, review, revisions) bounces back home.
@@ -78,7 +102,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 {APP_CONFIG.name}
               </span>
             </div>
-            <UserMenu />
+            <div className="flex items-center gap-1">
+              <Link href="/inbox" className="relative"><Button variant="ghost" size="icon" aria-label={unreadMessages ? `Open inbox, ${unreadMessages} unread` : "Open inbox"}><Inbox className="size-4.5" aria-hidden /></Button>{unreadMessages > 0 && <span aria-hidden className="absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-[var(--info)] text-[9px] font-semibold text-white">{unreadMessages > 9 ? "9+" : unreadMessages}</span>}</Link>
+              <NotificationsPanel />
+              <UserMenu />
+            </div>
           </header>
         )}
         <main className={inEditor ? "min-w-0 flex-1" : "flex-1 px-4 py-8 sm:px-6"}>

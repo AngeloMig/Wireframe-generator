@@ -127,7 +127,7 @@ export function VariationPreview({
                 onClick={() => setDevice(id)}
                 className={cn(
                   "flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                  device === id ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800",
+                  device === id ? "bg-[#f7d34e] text-[#5c4600] shadow-sm" : "text-slate-500 hover:text-slate-800",
                 )}
               >
                 <Icon className="size-3.5" aria-hidden />
@@ -153,7 +153,7 @@ export function VariationPreview({
                 onClick={() => setMode(id)}
                 className={cn(
                   "cursor-pointer rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                  mode === id ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800",
+                  mode === id ? "bg-[#f7d34e] text-[#5c4600] shadow-sm" : "text-slate-500 hover:text-slate-800",
                 )}
               >
                 {label}

@@ -146,6 +146,10 @@ export function NewProjectWizard() {
         name: data.info.projectName,
         companyName: data.info.companyName,
         websiteType: data.info.industry || "Website",
+        // New projects belong to the creating staff member's agency; customers
+        // creating their own stay owners under the default agency.
+        organization: user.role === "customer" ? undefined : user.organization,
+        ownerId: user.role === "customer" ? user.id : undefined,
         questionnaire: {
           companyName: data.info.companyName,
           existingUrl: data.info.existingUrl,

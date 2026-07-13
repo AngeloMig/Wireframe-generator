@@ -1,3 +1,4 @@
+import { APP_CONFIG } from "@/config/app";
 import type { CreateProjectInput, Project } from "@/types";
 import { createId, nowIso } from "@/utils/id";
 import { readJson, STORAGE_KEYS, writeJson } from "../storage/local-storage";
@@ -36,7 +37,8 @@ export class LocalProjectRepository implements ProjectRepository {
       companyName: input.companyName,
       websiteType: input.websiteType,
       status: "draft",
-      ownerId: "user-customer-1",
+      organization: input.organization ?? APP_CONFIG.agencyName,
+      ownerId: input.ownerId ?? "user-customer-1",
       questionnaire: input.questionnaire,
       pages: input.pages.map((page) => ({
         ...page,

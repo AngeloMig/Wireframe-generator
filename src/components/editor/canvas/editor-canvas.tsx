@@ -32,7 +32,8 @@ export function EditorCanvas({
   dropTarget,
   isLibraryDragging,
   actions,
-  readOnly = false,
+  canEditContent = false,
+  canEditStructure = false,
   commentMode = false,
   markers,
   onMarkerSelect,
@@ -44,8 +45,10 @@ export function EditorCanvas({
   dropTarget: DropTarget | null;
   isLibraryDragging: boolean;
   actions: CanvasSectionActions;
-  /** Extra read-only state on top of preview mode (status restrictions). */
-  readOnly?: boolean;
+  /** May edit words/images in place (on top of preview/status gates). */
+  canEditContent?: boolean;
+  /** May add, reorder, or remove sections. */
+  canEditStructure?: boolean;
   commentMode?: boolean;
   markers?: Map<string, SectionCommentMarker>;
   onMarkerSelect?: (sectionId: string) => void;
@@ -107,7 +110,8 @@ export function EditorCanvas({
   return (
     <div
       ref={scrollRef}
-      className="h-full flex-1 overflow-auto bg-[#e9ece8] p-6 sm:p-8"
+      data-editor-canvas
+      className="relative z-10 h-full flex-1 overflow-auto p-6 sm:p-8"
       onClick={() => select(null)}
       onContextMenu={(e) => {
         if (!onContextComment) return;
@@ -142,7 +146,7 @@ export function EditorCanvas({
               {ordered.length === 0 ? (
                 <EmptyCanvas
                   isLibraryDragging={isLibraryDragging}
-                  onInsertStarter={!readOnly && !commentMode ? onInsertStarter : undefined}
+                  onInsertStarter={canEditStructure && !commentMode ? onInsertStarter : undefined}
                 />
               ) : (
                 <SortableContext
@@ -165,7 +169,8 @@ export function EditorCanvas({
                         dropEdge={
                           dropTarget?.sectionId === section.id ? dropTarget.edge : null
                         }
-                        readOnly={isPreview || readOnly}
+                        canEditContent={!isPreview && canEditContent}
+                        canEditStructure={!isPreview && canEditStructure}
                         actions={actions}
                         commentMode={commentMode}
                         marker={markers?.get(section.id) ?? null}
@@ -178,13 +183,13 @@ export function EditorCanvas({
               )}
 
               {/* Append zone: drop here to add a section at the end. */}
-              {!isPreview && !readOnly && !commentMode && ordered.length > 0 && (
+              {!isPreview && canEditStructure && !commentMode && ordered.length > 0 && (
                 <div
                   ref={setAppendRef}
                   className={cn(
                     "flex h-20 items-center justify-center border-t border-dashed border-slate-200 text-xs text-slate-400 transition-colors",
-                    isLibraryDragging && "border-indigo-300 bg-indigo-50/60 text-indigo-500",
-                    isOverAppend && "border-indigo-500 bg-indigo-50",
+                    isLibraryDragging && "border-[#f2b90d]/60 bg-[#f7d34e]/15 text-[#a07800]",
+                    isOverAppend && "border-[#f2b90d] bg-[#f7d34e]/25",
                   )}
                 >
                   {isLibraryDragging
@@ -262,8 +267,8 @@ function EmptyCanvas({
       ref={setNodeRef}
       className={cn(
         "flex min-h-96 flex-col items-center justify-center gap-3 p-10 text-center transition-colors",
-        isLibraryDragging && "bg-indigo-50/60",
-        isOver && "bg-indigo-50",
+        isLibraryDragging && "bg-[#f7d34e]/15",
+        isOver && "bg-[#f7d34e]/25",
       )}
     >
       <div className="flex size-12 items-center justify-center rounded-full bg-slate-100">

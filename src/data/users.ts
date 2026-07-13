@@ -1,7 +1,16 @@
 import { APP_CONFIG } from "@/config/app";
 import type { AppUser, UserRole } from "@/types";
 
-/** Mock users for simulated role switching — no real authentication. */
+/**
+ * Demo organizations (agencies). Multi-tenant preview: each agency has its
+ * own staff and customers; only the platform admin sees across them.
+ */
+export const AGENCY_ORGS = {
+  northshore: APP_CONFIG.agencyName,
+  southpaw: "Southpaw Studio",
+} as const;
+
+/** Mock users for simulated sign-in — no real authentication. */
 export const MOCK_USERS: AppUser[] = [
   {
     id: "user-customer-1",
@@ -15,43 +24,135 @@ export const MOCK_USERS: AppUser[] = [
   },
   {
     id: "user-agency-1",
-    name: "Maya Lindqvist",
-    email: "maya@northshore.studio",
+    name: "Alo",
+    email: "alo@northshore.studio",
     role: "agency-designer",
-    initials: "ML",
+    initials: "AL",
     avatarColor: "bg-emerald-500",
-    title: "Lead Designer",
+    title: "Designer",
     organization: APP_CONFIG.agencyName,
   },
   {
     id: "user-agency-2",
-    name: "Devon Carter",
-    email: "devon@northshore.studio",
+    name: "Macky",
+    email: "macky@northshore.studio",
     role: "agency-developer",
-    initials: "DC",
+    initials: "MK",
     avatarColor: "bg-sky-500",
-    title: "Senior Developer",
+    title: "Developer",
     organization: APP_CONFIG.agencyName,
   },
   {
     id: "user-agency-3",
-    name: "Priya Raman",
-    email: "priya@northshore.studio",
+    name: "Noel",
+    email: "noel@northshore.studio",
     role: "agency-pm",
-    initials: "PR",
+    initials: "NO",
     avatarColor: "bg-amber-500",
     title: "Project Manager",
     organization: APP_CONFIG.agencyName,
   },
   {
+    id: "user-agency-6",
+    name: "Grant",
+    email: "grant@northshore.studio",
+    role: "agency-pm",
+    initials: "GR",
+    avatarColor: "bg-rose-500",
+    title: "Project Manager",
+    organization: APP_CONFIG.agencyName,
+  },
+  {
+    id: "user-agency-7",
+    name: "Phia",
+    email: "phia@northshore.studio",
+    role: "agency-designer",
+    initials: "PH",
+    avatarColor: "bg-violet-500",
+    title: "Designer",
+    organization: APP_CONFIG.agencyName,
+  },
+  {
+    id: "user-agency-8",
+    name: "Pokyo",
+    email: "pokyo@northshore.studio",
+    role: "agency-developer",
+    initials: "PO",
+    avatarColor: "bg-teal-500",
+    title: "Developer",
+    organization: APP_CONFIG.agencyName,
+  },
+  {
+    id: "user-agency-9",
+    name: "Kier",
+    email: "kier@northshore.studio",
+    role: "agency-designer",
+    initials: "KI",
+    avatarColor: "bg-fuchsia-500",
+    title: "Designer",
+    organization: APP_CONFIG.agencyName,
+  },
+  {
+    id: "user-agency-10",
+    name: "Kajebe",
+    email: "kajebe@northshore.studio",
+    role: "agency-developer",
+    initials: "KA",
+    avatarColor: "bg-orange-500",
+    title: "Developer",
+    organization: APP_CONFIG.agencyName,
+  },
+  // --- Southpaw Studio (second demo agency) --------------------------------
+  {
+    id: "user-sp-designer",
+    name: "Noa Kimura",
+    email: "noa@southpaw.studio",
+    role: "agency-designer",
+    initials: "NK",
+    avatarColor: "bg-fuchsia-500",
+    title: "Design Lead",
+    organization: AGENCY_ORGS.southpaw,
+  },
+  {
+    id: "user-sp-developer",
+    name: "Ruben Alvarez",
+    email: "ruben@southpaw.studio",
+    role: "agency-developer",
+    initials: "RA",
+    avatarColor: "bg-cyan-600",
+    title: "Developer",
+    organization: AGENCY_ORGS.southpaw,
+  },
+  {
+    id: "user-sp-pm",
+    name: "Greta Volkova",
+    email: "greta@southpaw.studio",
+    role: "agency-pm",
+    initials: "GV",
+    avatarColor: "bg-orange-500",
+    title: "Project Manager",
+    organization: AGENCY_ORGS.southpaw,
+  },
+  {
+    id: "user-sp-customer",
+    name: "Owen Reyes",
+    email: "owen@summitpeak.example.com",
+    role: "customer",
+    initials: "OR",
+    avatarColor: "bg-lime-600",
+    title: "Owner, Summit Peak Outfitters",
+    organization: "Summit Peak Outfitters",
+  },
+  // --- Platform -------------------------------------------------------------
+  {
     id: "user-admin-1",
     name: "Sam Okafor",
-    email: "sam@northshore.studio",
+    email: "sam@blueprintbuilder.app",
     role: "admin",
     initials: "SO",
     avatarColor: "bg-slate-700",
     title: "Platform Administrator",
-    organization: APP_CONFIG.agencyName,
+    organization: "Blueprint Builder",
   },
 ];
 
@@ -66,26 +167,6 @@ export const MOCK_MEMBER_POOL: AppUser[] = [
     avatarColor: "bg-rose-500",
     title: "Marketing Lead, Nordhaus",
     organization: "Nordhaus Furniture",
-  },
-  {
-    id: "user-agency-4",
-    name: "Tom Becker",
-    email: "tom@northshore.studio",
-    role: "agency-designer",
-    initials: "TB",
-    avatarColor: "bg-violet-500",
-    title: "UI Designer",
-    organization: APP_CONFIG.agencyName,
-  },
-  {
-    id: "user-agency-5",
-    name: "Ines Fournier",
-    email: "ines@northshore.studio",
-    role: "agency-developer",
-    initials: "IF",
-    avatarColor: "bg-teal-500",
-    title: "Frontend Developer",
-    organization: APP_CONFIG.agencyName,
   },
 ];
 

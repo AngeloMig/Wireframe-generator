@@ -57,7 +57,7 @@ export function LayoutTab({
                   className={cn(
                     "flex cursor-pointer flex-col gap-1.5 rounded-lg border p-1.5 text-left transition-colors",
                     isCurrent
-                      ? "border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600"
+                      ? "border-[#f2b90d] bg-[#f7d34e]/20 ring-1 ring-[#f2b90d]"
                       : "border-slate-200 bg-white hover:border-slate-300",
                   )}
                 >
@@ -65,7 +65,7 @@ export function LayoutTab({
                   <span
                     className={cn(
                       "truncate text-[11px] font-medium",
-                      isCurrent ? "text-indigo-900" : "text-slate-600",
+                      isCurrent ? "text-[#5c4600]" : "text-slate-600",
                     )}
                   >
                     {variation.name}
@@ -156,7 +156,7 @@ export function LayoutTab({
           type="checkbox"
           checked={!section.isHidden}
           onChange={(e) => onChange((s) => ({ ...s, isHidden: !e.target.checked }))}
-          className="size-4 rounded border-slate-300 accent-indigo-600"
+          className="size-4 rounded border-slate-300 accent-[#1a2028]"
         />
         Section is visible on the page
       </label>
@@ -192,7 +192,7 @@ export function SegmentedControl({
             className={cn(
               "flex-1 cursor-pointer rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors",
               value === option.value
-                ? "bg-white text-indigo-700 shadow-sm"
+                ? "bg-[#f7d34e] text-[#5c4600] shadow-sm"
                 : "text-slate-500 hover:text-slate-800",
             )}
           >

@@ -6,6 +6,7 @@ import {
   ArchiveRestore,
   CheckCircle2,
   CheckSquare,
+  Clock3,
   EyeOff,
   Link2,
   MoreHorizontal,
@@ -28,6 +29,7 @@ import {
 } from "@/lib/permissions";
 
 import { withActivity } from "@/lib/project-utils";
+import { conversationStatusLabel } from "@/lib/conversation-status";
 import { nowIso } from "@/utils/id";
 import { useCommentsStore } from "@/stores/comments-store";
 import { useProjectsStore } from "@/stores/projects-store";
@@ -72,6 +74,7 @@ function MemberChip({ member, fallback }: { member?: ProjectMember; fallback?: s
   );
 }
 
+
 /**
  * One comment conversation: message, badges, replies, and every
  * permission-gated action (reply, edit, delete, resolve, assign, priority,
@@ -100,6 +103,7 @@ export function CommentCard({
   const [editText, setEditText] = useState(comment.message);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
 
   const author = members.find((m) => m.userId === comment.authorId);
   const assignee = members.find((m) => m.userId === comment.assignedToId);
@@ -115,6 +119,7 @@ export function CommentCard({
     : undefined;
 
   const statusMeta = COMMENT_STATUS_META[comment.status];
+  const statusLabel = conversationStatusLabel(comment.status, author?.role);
   const priorityMeta = COMMENT_PRIORITY_META[comment.priority];
   const isInternal = comment.visibility === "agency";
   const isResolved = comment.status === "resolved";
@@ -139,6 +144,9 @@ export function CommentCard({
         authorId: user.id,
         message: trimmed,
         mentions: replyMentions,
+      });
+      await store.updateComment(project.id, comment.id, {
+        status: user.role === "customer" ? "open" : "in-progress",
       });
       updateProject(
         project.id,
@@ -313,12 +321,38 @@ export function CommentCard({
               {comment.completedAt ? "Done" : "Action item"}
             </Badge>
           )}
-          <Badge className={statusMeta.badgeClass}>{statusMeta.label}</Badge>
+          <Badge className={statusMeta.badgeClass}>{statusLabel}</Badge>
           {comment.priority !== "normal" && (
             <Badge className={priorityMeta.badgeClass}>{priorityMeta.label}</Badge>
           )}
+          <Select
+            aria-label="Conversation status"
+            value={comment.status}
+            className="h-7 w-auto min-w-28 text-[11px]"
+            onChange={(event) => {
+              void store.updateComment(project.id, comment.id, {
+                status: event.target.value as ProjectComment["status"],
+                ...(event.target.value === "resolved" ? { resolvedAt: nowIso(), resolvedById: user.id } : {}),
+              });
+            }}
+          >
+            <option value="open">{user.role === "customer" ? "Open" : "Waiting for agency"}</option>
+            <option value="in-progress">{user.role === "customer" ? "Waiting for customer" : "In progress"}</option>
+            <option value="reopened">Reopened</option>
+            <option value="resolved">Resolved</option>
+          </Select>
         </div>
 
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setReplying(true)}
+            className="hidden sm:inline-flex"
+          >
+            <Reply className="size-3.5" aria-hidden />
+            Reply
+          </Button>
         <DropdownMenu
           align="end"
           className="w-56"
@@ -439,6 +473,7 @@ export function CommentCard({
             </>
           )}
         </DropdownMenu>
+        </div>
       </header>
 
       {(page || comment.deletedSection) && (
@@ -585,6 +620,27 @@ export function CommentCard({
           })}
         </ol>
       )}
+
+      <div className="mt-3 border-t border-slate-100 pt-2.5">
+        <button
+          type="button"
+          onClick={() => setShowTimeline((value) => !value)}
+          className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-800"
+          aria-expanded={showTimeline}
+        >
+          <Clock3 className="size-3.5" aria-hidden />
+          {showTimeline ? "Hide activity" : "View activity"}
+        </button>
+        {showTimeline && (
+          <ol className="mt-2 space-y-2 border-l border-slate-200 pl-3 text-xs text-slate-500">
+            <li><span className="font-medium text-slate-700">Conversation created</span> · {formatRelative(comment.createdAt)}</li>
+            {comment.replies.map((reply) => (
+              <li key={`timeline-${reply.id}`}><span className="font-medium text-slate-700">Reply added</span> · {formatRelative(reply.createdAt)}</li>
+            ))}
+            <li><span className="font-medium text-slate-700">Status: {statusLabel}</span> · {formatRelative(comment.updatedAt)}</li>
+          </ol>
+        )}
+      </div>
 
       {replying ? (
         <div className="mt-3 space-y-2">

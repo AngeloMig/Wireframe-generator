@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { PAGE_STATUS_META, PAGE_TYPE_LABELS } from "@/config/labels";
+import { PAGE_TEMPLATES } from "@/data/page-templates";
 import type { PageFormValues } from "@/lib/pages";
 import type { PageStatus, PageType, ProjectPage } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ const pageSchema = z.object({
   parentId: z.string(),
   inMainNav: z.boolean(),
   footerOnly: z.boolean(),
+  templateId: z.string(),
 });
 
 type PageFormShape = z.infer<typeof pageSchema>;
@@ -31,6 +33,7 @@ const DEFAULT_VALUES: PageFormShape = {
   parentId: "",
   inMainNav: true,
   footerOnly: false,
+  templateId: "",
 };
 
 /** Add/edit dialog for a project page. Pass `page` to edit an existing one. */
@@ -71,12 +74,19 @@ export function PageDialog({
             parentId: page.parentId ?? "",
             inMainNav: page.inMainNav,
             footerOnly: page.footerOnly,
+            templateId: "",
           }
         : DEFAULT_VALUES,
     );
   }, [open, page, reset]);
 
   const footerOnly = watch("footerOnly");
+  const selectedType = watch("type");
+
+  // Templates that fit the chosen page type — shown only when creating.
+  const templateOptions = page
+    ? []
+    : PAGE_TEMPLATES.filter((t) => t.isActive && t.pageType === selectedType);
 
   // A page that already has children can't be nested (two levels max), and
   // valid parents are top-level, non-footer pages other than the page itself.
@@ -97,6 +107,7 @@ export function PageDialog({
       parentId: values.parentId || null,
       inMainNav: values.inMainNav,
       footerOnly: values.footerOnly,
+      templateId: values.templateId || null,
     });
     onClose();
   });
@@ -109,7 +120,7 @@ export function PageDialog({
       description={
         page
           ? "Update this page's details and navigation settings."
-          : "New pages start empty — you'll add sections in the editor."
+          : "Start from a ready-made template for the page type, or empty."
       }
       footer={
         <>
@@ -151,6 +162,19 @@ export function PageDialog({
               ))}
           </Select>
         </div>
+        {templateOptions.length > 0 && (
+          <div>
+            <Label htmlFor="page-template">Start from</Label>
+            <Select id="page-template" {...register("templateId")}>
+              <option value="">Empty page</option>
+              {templateOptions.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name} ({template.sections.length} sections)
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
         <div>
           <Label htmlFor="page-status">Page status</Label>
           <Select id="page-status" {...register("status")}>

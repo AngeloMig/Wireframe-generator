@@ -175,6 +175,8 @@ export interface Project extends Timestamps {
   companyName: string;
   status: ProjectStatus;
   websiteType: string;
+  /** The agency (organization) this project belongs to — multi-tenant wall. */
+  organization: string;
   ownerId: string;
   questionnaire: ProjectQuestionnaire;
   pages: ProjectPage[];
@@ -194,6 +196,10 @@ export interface CreateProjectInput {
   name: string;
   companyName: string;
   websiteType: string;
+  /** Owning agency; defaults to the demo agency when omitted. */
+  organization?: string;
+  /** Customer the project is created for; defaults to the demo customer. */
+  ownerId?: string;
   questionnaire: ProjectQuestionnaire;
   pages: Omit<ProjectPage, "projectId" | "createdAt" | "updatedAt">[];
 }

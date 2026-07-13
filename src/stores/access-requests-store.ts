@@ -12,6 +12,8 @@ interface AccessRequestsState {
   refresh: () => void;
   createRequest: (input: Omit<AccessRequest, "id" | "createdAt" | "status">) => AccessRequest;
   decide: (id: string, status: "approved" | "declined", decidedById: string, response?: string) => void;
+  /** Revoke every capability a requester currently holds on a project. */
+  revoke: (projectId: string, requesterId: string, decidedById: string, response?: string) => void;
 }
 
 export const useAccessRequestsStore = create<AccessRequestsState>((set, get) => ({
@@ -38,11 +40,33 @@ export const useAccessRequestsStore = create<AccessRequestsState>((set, get) => 
     writeJson(STORAGE_KEYS.accessRequests, next);
     set({ requests: next });
   },
+  revoke: (projectId, requesterId, decidedById, response) => {
+    // Flip the requester's still-active grants (approved or pending) to
+    // "revoked" so grantedCapabilities drops them and the editor re-locks.
+    const next = get().requests.map((request) =>
+      request.projectId === projectId &&
+      request.requesterId === requesterId &&
+      (request.status === "approved" || request.status === "pending")
+        ? { ...request, status: "revoked" as const, decidedById, response, decidedAt: nowIso() }
+        : request,
+    );
+    writeJson(STORAGE_KEYS.accessRequests, next);
+    set({ requests: next });
+  },
 }));
 
-export function accessLevelForRequest(level: AccessRequestLevel) {
-  // An approved page request must unlock the editor for the requester. The
-  // page-specific restriction is the next permission layer; the current
-  // member model stores the project-level edit gate.
-  return level === "page" || level === "content" || level === "builder" ? "edit" : "comment";
+/** The capability levels a requester currently holds (approved, not revoked). */
+export function approvedLevelsFor(
+  requests: AccessRequest[],
+  projectId: string,
+  requesterId: string,
+): AccessRequestLevel[] {
+  return requests
+    .filter(
+      (request) =>
+        request.projectId === projectId &&
+        request.requesterId === requesterId &&
+        request.status === "approved",
+    )
+    .map((request) => request.level);
 }

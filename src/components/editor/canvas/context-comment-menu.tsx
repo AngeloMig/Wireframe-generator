@@ -56,7 +56,7 @@ export function ContextCommentMenu({
       ref={ref}
       role="menu"
       aria-label="Comment options"
-      className="fixed z-[60] w-56 rounded-xl border border-slate-200 bg-white p-1 shadow-[var(--shadow-panel)]"
+      className="fixed z-[60] w-56 rounded-2xl bg-white/85 p-1.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.6),0_12px_36px_rgb(0_0_0/0.16)] ring-1 ring-black/[0.06] backdrop-blur-md"
       style={{ left, top }}
     >
       {menu.sectionId && (
@@ -67,7 +67,7 @@ export function ContextCommentMenu({
             onCommentSection(menu.sectionId as string);
             onClose();
           }}
-          className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+          className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-[13px] text-slate-700 hover:bg-black/[0.05] hover:text-slate-900"
         >
           <MessageSquarePlus className="size-4 shrink-0 text-slate-400" aria-hidden />
           <span className="min-w-0 flex-1 truncate">
@@ -82,7 +82,7 @@ export function ContextCommentMenu({
           onCommentHere();
           onClose();
         }}
-        className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] font-semibold text-[var(--primary)] hover:bg-[var(--primary-soft)]"
+        className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-[13px] font-semibold text-[#5c4600] hover:bg-[#f7d34e]/40"
       >
         <Pin className="size-4 shrink-0" aria-hidden />
         Comment here
@@ -94,7 +94,7 @@ export function ContextCommentMenu({
           onCommentPage();
           onClose();
         }}
-        className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+        className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-[13px] text-slate-700 hover:bg-black/[0.05] hover:text-slate-900"
       >
         <FileText className="size-4 shrink-0 text-slate-400" aria-hidden />
         Comment on this page

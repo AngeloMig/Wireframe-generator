@@ -146,7 +146,7 @@ export function LibraryItem({
 /** Compact card rendered in the DragOverlay while dragging from the library. */
 export function LibraryDragPreview({ variation }: { variation: SectionVariation }) {
   return (
-    <div className="flex w-64 items-center gap-2.5 rounded-lg border border-indigo-300 bg-white p-2 shadow-lg">
+    <div className="flex w-64 items-center gap-2.5 rounded-2xl bg-white/90 p-2 shadow-[0_12px_36px_rgb(0_0_0/0.16)] ring-1 ring-[#f2b90d]/60 backdrop-blur-md">
       <SectionThumbnail variation={variation} />
       <p className="text-xs font-semibold text-slate-900">{variation.name}</p>
     </div>
