@@ -146,6 +146,27 @@ export async function notifyCustomer(
 }
 
 /**
+ * Where a notification about a comment should land, per recipient role:
+ * agency folk review threads in the review queue (which supports ?comment=
+ * deep links); customers live in the editor, focused on the right section.
+ * Never link a customer to an agency-only route — they just bounce home.
+ */
+export function commentDeepLink(
+  role: UserRole,
+  projectId: string,
+  target: { commentId?: string; pageId?: string; sectionId?: string } = {},
+): string {
+  if (role === "customer") {
+    const params = new URLSearchParams();
+    if (target.pageId) params.set("page", target.pageId);
+    if (target.sectionId) params.set("section", target.sectionId);
+    const query = params.toString();
+    return `/projects/${projectId}/editor${query ? `?${query}` : ""}`;
+  }
+  return `/projects/${projectId}/agency-review${target.commentId ? `?comment=${target.commentId}` : ""}`;
+}
+
+/**
  * Notify the OTHER side when a new top-level comment is posted, so a plain
  * comment (no @mention, no assignee) still reaches someone. Every comment
  * entry point should call this — routing lives here so no caller can forget it.
@@ -156,11 +177,13 @@ export async function notifyNewComment(
   comment: {
     visibility: CommentVisibility;
     message: string;
+    commentId?: string;
     pageId?: string;
     sectionId?: string;
   },
 ): Promise<void> {
   const fromAgency = isAgencyUser(actor.role);
+  const toAgency = !fromAgency || comment.visibility === "agency";
   const notice: NotificationInput = {
     projectId: project.id,
     pageId: comment.pageId,
@@ -168,10 +191,10 @@ export async function notifyNewComment(
     type: "general",
     title: fromAgency ? "New comment from the agency" : "New comment",
     message: `${actor.name} commented on “${project.name}”: ${comment.message.slice(0, 80)}`,
-    actionUrl: `/projects/${project.id}/overview`,
+    actionUrl: commentDeepLink(toAgency ? "agency-pm" : "customer", project.id, comment),
   };
   // Customer → agency; agency customer-visible → customer; agency-only → team.
-  if (!fromAgency || comment.visibility === "agency") {
+  if (toAgency) {
     await notifyAgency(project, actor.id, notice);
   } else {
     await notifyCustomer(project, actor.id, notice);
@@ -195,7 +218,7 @@ export async function notifyCustomerEditing(project: Project, actor: Actor): Pro
     type: "general",
     title: "Customer is editing",
     message: `${actor.name} is making changes to “${project.name}”.`,
-    actionUrl: `/projects/${project.id}/overview`,
+    actionUrl: `/projects/${project.id}/activity`,
   };
   for (const userId of new Set(agencyIds)) {
     await notificationRepository.upsertNotification({ ...notice, userId });
@@ -598,7 +621,7 @@ export async function approvePage(
     type: "general",
     title: "Page approved",
     message: `${actor.name} approved ${page.name} on “${project.name}”.`,
-    actionUrl: `/projects/${project.id}/overview`,
+    actionUrl: `/projects/${project.id}/review`,
   });
 }
 

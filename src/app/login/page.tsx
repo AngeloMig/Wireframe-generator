@@ -76,15 +76,16 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--app-background)] lg:flex-row">
-      {/* Identity panel: the drafting table. */}
-      <div className="relative flex flex-col justify-between overflow-hidden bg-[#e7f3fc] px-8 py-8 text-[var(--text-primary)] lg:w-[46%] lg:px-12 lg:py-10">
+      {/* Identity panel: the drafting table — same warm neutral as the app's
+          workspaces, with a faint grid instead of the old blueprint blue. */}
+      <div className="relative flex flex-col justify-between overflow-hidden bg-[var(--surface-secondary)] px-8 py-8 text-[var(--text-primary)] lg:w-[46%] lg:px-12 lg:py-10">
         {/* Drafting grid */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.12]"
+          className="pointer-events-none absolute inset-0"
           style={{
             backgroundImage:
-              "linear-gradient(to right, #3d78a1 1px, transparent 1px), linear-gradient(to bottom, #3d78a1 1px, transparent 1px)",
+              "linear-gradient(to right, rgba(26,32,40,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(26,32,40,0.05) 1px, transparent 1px)",
             backgroundSize: "28px 28px",
           }}
         />
@@ -103,7 +104,7 @@ export default function LoginPage() {
 
         {/* The blueprint assembles itself. */}
         <div className="relative mx-auto my-10 w-full max-w-sm lg:my-0" aria-hidden>
-          <div className="rounded-lg bg-white p-4 shadow-[0_24px_60px_rgb(0_0_0/0.35)]">
+          <div className="rounded-[1.25rem] bg-white p-4 shadow-[0_18px_45px_rgb(38_57_74/0.16)] ring-1 ring-black/[0.05]">
             {/* nav */}
             <div
               className="animate-draft-rise flex items-center justify-between"
@@ -170,7 +171,7 @@ export default function LoginPage() {
         </div>
 
         {/* Title block, like the corner of an engineering drawing. */}
-        <div className="relative hidden border-t border-[#b9d2e4] pt-4 lg:block">
+        <div className="relative hidden border-t border-black/[0.08] pt-4 lg:block">
           <dl className="flex gap-8 font-mono text-[10px] tracking-[0.14em] uppercase">
             <div>
               <dt className="text-[var(--text-muted)]">Project</dt>
@@ -195,10 +196,10 @@ export default function LoginPage() {
       {/* Seat picker */}
       <div className="flex flex-1 items-center justify-center px-4 py-10 sm:px-8">
         <div className="w-full max-w-md">
-          <p className="font-mono text-[11px] tracking-[0.18em] text-[var(--text-muted)] uppercase">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e0492c]/10 px-2.5 py-0.5 text-[10px] font-semibold tracking-[0.14em] text-[#e0492c] uppercase">
             Prototype — no account needed
-          </p>
-          <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight text-[var(--text-primary)]">
+          </span>
+          <h1 className="font-display mt-3 text-3xl font-semibold tracking-tight text-[var(--text-primary)] sm:text-4xl">
             Pull up a seat at the drafting table
           </h1>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">
@@ -218,13 +219,13 @@ export default function LoginPage() {
                       <button
                         key={user.id}
                         type="button"
-                        className="group flex w-full cursor-pointer items-center gap-4 rounded-xl border border-[var(--border-default)] bg-white p-3.5 text-left shadow-[var(--shadow-card)] transition-colors hover:border-[var(--border-strong)]"
+                        className="group flex w-full cursor-pointer items-center gap-4 rounded-[1.1rem] bg-white p-3.5 text-left shadow-[var(--shadow-card)] ring-1 ring-black/[0.04] transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-panel)] active:translate-y-0 active:scale-[0.99]"
                         onClick={() => {
                           login(user.id);
                           router.push("/dashboard");
                         }}
                       >
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-secondary)] text-[var(--text-secondary)] transition-colors group-hover:bg-[var(--drafting-ink)] group-hover:text-white">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-secondary)] text-[var(--text-secondary)] ring-1 ring-black/[0.04] transition-colors group-hover:bg-[var(--drafting-ink)] group-hover:text-white">
                           <Icon className="size-4.5" strokeWidth={1.75} aria-hidden />
                         </div>
                         <div className="min-w-0 flex-1">

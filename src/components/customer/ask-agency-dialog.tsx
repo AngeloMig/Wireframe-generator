@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { LifeBuoy, Send } from "lucide-react";
 import { APP_CONFIG } from "@/config/app";
-import { notifyNewComment, notifyUsers } from "@/lib/collab-service";
+import { commentDeepLink, notifyNewComment, notifyUsers } from "@/lib/collab-service";
 import { useCommentsStore } from "@/stores/comments-store";
 import { selectProjectMembers, useMembersStore } from "@/stores/members-store";
 import { useSessionStore } from "@/stores/session-store";
@@ -58,7 +58,7 @@ export function AskAgencyDialog({
         return member ? message.includes(`@${member.name}`) : false;
       });
       const fullMessage = `[Question for ${APP_CONFIG.agencyName}] ${trimmed}`;
-      await createComment({
+      const created = await createComment({
         projectId: project.id,
         pageId: page.id,
         sectionId: sectionId ?? undefined,
@@ -72,18 +72,23 @@ export function AskAgencyDialog({
       await notifyNewComment(project, user, {
         visibility: "customer",
         message: fullMessage,
+        commentId: created.id,
         pageId: page.id,
         sectionId: sectionId ?? undefined,
       });
-      if (activeMentions.length > 0) {
-        await notifyUsers(activeMentions, user.id, {
+      for (const id of new Set(activeMentions)) {
+        await notifyUsers([id], user.id, {
           projectId: project.id,
           pageId: page.id,
           sectionId: sectionId ?? undefined,
           type: "mention",
           title: "You were mentioned",
           message: `${user.name} mentioned you on “${project.name}”: ${trimmed.slice(0, 80)}`,
-          actionUrl: `/projects/${project.id}/overview`,
+          actionUrl: commentDeepLink(
+            members.find((m) => m.userId === id)?.role ?? "customer",
+            project.id,
+            { commentId: created.id, pageId: page.id, sectionId: sectionId ?? undefined },
+          ),
         });
       }
       toast("Message sent", "success", "Your agency will get back to you here.");

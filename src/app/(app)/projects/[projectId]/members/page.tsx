@@ -89,6 +89,7 @@ export default function MembersPage() {
       title: "Edit access turned off",
       message:
         "The agency turned off your editing access on this project. You can still view and comment — request access again if you need it.",
+      actionUrl: `/projects/${projectId}/editor`,
     });
     toast(`${member.name}'s edit access revoked`, "info");
   };
@@ -108,6 +109,7 @@ export default function MembersPage() {
                   type: "general",
                   title: "Access approved",
                   message: `The agency approved your request to ${LEVEL_LABEL[request.level]}.`,
+                  actionUrl: `/projects/${projectId}/editor`,
                 });
                 toast("Access approved", "success");
               };
@@ -119,6 +121,7 @@ export default function MembersPage() {
                   type: "general",
                   title: "Access request declined",
                   message: `Your request to ${LEVEL_LABEL[request.level]} was declined. ${response}`,
+                  actionUrl: `/projects/${projectId}/editor`,
                 });
                 toast("Request declined", "info");
               };

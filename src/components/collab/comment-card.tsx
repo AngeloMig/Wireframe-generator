@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { COMMENT_PRIORITY_META, COMMENT_STATUS_META, SECTION_TYPE_LABELS } from "@/config/labels";
 import { getVariation } from "@/data/section-variations";
-import { notifyUsers } from "@/lib/collab-service";
+import { commentDeepLink, notifyUsers } from "@/lib/collab-service";
 import {
   canAssignComments,
   canChangeCommentPriority,
@@ -153,16 +153,24 @@ export function CommentCard({
         (p) => withActivity(p, "comment-replied", "Replied to a comment", user),
         { immediate: true },
       );
+      // Per-recipient links: agency → the thread in the review queue,
+      // customers → the editor (they can't open agency routes).
       const notifyIds = [comment.authorId, ...replyMentions];
-      await notifyUsers(notifyIds, user.id, {
-        projectId: project.id,
-        pageId: comment.pageId,
-        sectionId: comment.sectionId,
-        type: "comment-reply",
-        title: "New reply",
-        message: `${user.name} replied: ${trimmed.slice(0, 80)}`,
-        actionUrl: `/projects/${project.id}/overview`,
-      });
+      for (const id of new Set(notifyIds)) {
+        await notifyUsers([id], user.id, {
+          projectId: project.id,
+          pageId: comment.pageId,
+          sectionId: comment.sectionId,
+          type: "comment-reply",
+          title: "New reply",
+          message: `${user.name} replied: ${trimmed.slice(0, 80)}`,
+          actionUrl: commentDeepLink(
+            members.find((m) => m.userId === id)?.role ?? "customer",
+            project.id,
+            { commentId: comment.id, pageId: comment.pageId, sectionId: comment.sectionId },
+          ),
+        });
+      }
       setReplyText("");
       setReplyMentions([]);
       setReplying(false);
@@ -226,7 +234,11 @@ export function CommentCard({
           type: "general",
           title: "Action item completed",
           message: `${user.name} completed: ${comment.message.slice(0, 80)}`,
-          actionUrl: `/projects/${project.id}/overview`,
+          actionUrl: commentDeepLink(
+            members.find((m) => m.userId === comment.authorId)?.role ?? "customer",
+            project.id,
+            { commentId: comment.id, pageId: comment.pageId, sectionId: comment.sectionId },
+          ),
         });
         toast("Action item completed", "success");
       }
@@ -425,7 +437,11 @@ export function CommentCard({
                             type: "comment-assigned",
                             title: "Comment assigned to you",
                             message: `${user.name} assigned you: ${comment.message.slice(0, 80)}`,
-                            actionUrl: `/projects/${project.id}/overview`,
+                            actionUrl: commentDeepLink(
+                              members.find((m) => m.userId === value)?.role ?? "customer",
+                              project.id,
+                              { commentId: comment.id, pageId: comment.pageId, sectionId: comment.sectionId },
+                            ),
                           });
                         }
                       });

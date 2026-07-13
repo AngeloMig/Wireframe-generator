@@ -8,6 +8,8 @@ import type { PageSection, ProjectPage, ProjectSnapshot } from "@/types";
  */
 
 export interface SectionComparison {
+  /** The section's id, so UIs can badge the live section in place. */
+  sectionId?: string;
   sectionName: string;
   kind: "added" | "removed" | "changed" | "reordered";
   details: string[];
@@ -116,6 +118,7 @@ function comparePage(before: ProjectPage, after: ProjectPage): PageComparison {
     const prior = beforeById.get(section.id);
     if (!prior) {
       sections.push({
+        sectionId: section.id,
         sectionName: sectionDisplayName(section),
         kind: "added",
         details: ["Section added"],
@@ -124,12 +127,18 @@ function comparePage(before: ProjectPage, after: ProjectPage): PageComparison {
     }
     const details = compareSections(prior, section);
     if (details.length > 0) {
-      sections.push({ sectionName: sectionDisplayName(section), kind: "changed", details });
+      sections.push({
+        sectionId: section.id,
+        sectionName: sectionDisplayName(section),
+        kind: "changed",
+        details,
+      });
     }
   }
   for (const section of before.sections) {
     if (!afterById.has(section.id)) {
       sections.push({
+        sectionId: section.id,
         sectionName: sectionDisplayName(section),
         kind: "removed",
         details: ["Section removed"],

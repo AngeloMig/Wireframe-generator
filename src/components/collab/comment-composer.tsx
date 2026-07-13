@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { CheckSquare, Eye, EyeOff, Paperclip, Send, X } from "lucide-react";
 import { canCreateComment } from "@/lib/permissions";
-import { notifyNewComment, notifyUsers } from "@/lib/collab-service";
+import { commentDeepLink, notifyNewComment, notifyUsers } from "@/lib/collab-service";
 import { withActivity } from "@/lib/project-utils";
 import { useCommentsStore } from "@/stores/comments-store";
 import { useProjectsStore } from "@/stores/projects-store";
@@ -105,7 +105,7 @@ export function CommentComposer({
         return member ? message.includes(`@${member.name}`) : false;
       });
 
-      await createComment({
+      const created = await createComment({
         projectId: project.id,
         pageId,
         sectionId,
@@ -123,6 +123,23 @@ export function CommentComposer({
         dueDate: dueDate || undefined,
       });
 
+      // Each recipient gets a link that works for THEIR role — agency folk
+      // land on the thread in the review queue, customers in the editor.
+      const linkFor = (userId: string) =>
+        commentDeepLink(
+          members.find((m) => m.userId === userId)?.role ?? "customer",
+          project.id,
+          { commentId: created.id, pageId, sectionId },
+        );
+      const notifyEach = async (
+        ids: string[],
+        input: Omit<Parameters<typeof notifyUsers>[2], "actionUrl">,
+      ) => {
+        for (const id of new Set(ids)) {
+          await notifyUsers([id], user.id, { ...input, actionUrl: linkFor(id) });
+        }
+      };
+
       updateProject(
         project.id,
         (p) =>
@@ -139,25 +156,23 @@ export function CommentComposer({
 
       // Notify mentioned members + assignee.
       if (activeMentions.length > 0) {
-        await notifyUsers(activeMentions, user.id, {
+        await notifyEach(activeMentions, {
           projectId: project.id,
           pageId,
           sectionId,
           type: "mention",
           title: "You were mentioned",
           message: `${user.name} mentioned you on “${project.name}”: ${trimmed.slice(0, 80)}`,
-          actionUrl: `/projects/${project.id}/overview`,
         });
       }
       if (assignedToId) {
-        await notifyUsers([assignedToId], user.id, {
+        await notifyEach([assignedToId], {
           projectId: project.id,
           pageId,
           sectionId,
           type: "comment-assigned",
           title: isActionItem ? "Action item assigned to you" : "Comment assigned to you",
           message: `${user.name} assigned you: ${trimmed.slice(0, 80)}`,
-          actionUrl: `/projects/${project.id}/overview`,
         });
       }
 
@@ -167,6 +182,7 @@ export function CommentComposer({
       await notifyNewComment(project, user, {
         visibility,
         message: trimmed,
+        commentId: created.id,
         pageId,
         sectionId,
       });

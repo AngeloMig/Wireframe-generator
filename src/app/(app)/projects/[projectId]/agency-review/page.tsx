@@ -44,6 +44,7 @@ import {
 import { useProject } from "@/hooks/use-project";
 import { useCollabUiStore } from "@/stores/collab-ui-store";
 import { selectProjectVersions, useVersionsStore } from "@/stores/versions-store";
+import { compareSnapshots, type SectionComparison } from "@/lib/version-compare";
 import { selectProjectComments, useCommentsStore } from "@/stores/comments-store";
 import { useProjectsStore } from "@/stores/projects-store";
 import { useSessionStore } from "@/stores/session-store";
@@ -97,6 +98,24 @@ export default function AgencyReviewPage() {
   const previousVersion = latestSubmission
     ? sortedVersions.find((v) => v.versionNumber < latestSubmission.versionNumber)
     : undefined;
+  // What the customer changed in this round, keyed by section id — badges the
+  // review list in place. Only computed while the round is actually under
+  // review, so old deltas don't linger on approved projects.
+  const roundChanges = useMemo(() => {
+    const map = new Map<string, SectionComparison>();
+    const reviewing =
+      project?.status === "ready-for-review" || project?.status === "agency-reviewing";
+    if (!reviewing || !latestSubmission || !previousVersion) return map;
+    const comparison = compareSnapshots(previousVersion.snapshot, latestSubmission.snapshot);
+    for (const pageComparison of comparison.pages) {
+      for (const sectionComparison of pageComparison.sections) {
+        if (sectionComparison.sectionId && sectionComparison.kind !== "removed") {
+          map.set(sectionComparison.sectionId, sectionComparison);
+        }
+      }
+    }
+    return map;
+  }, [project?.status, latestSubmission, previousVersion]);
   const loadComments = useCommentsStore((s) => s.load);
   const comments = useCommentsStore((s) => selectProjectComments(s, projectId));
 
@@ -336,6 +355,7 @@ export default function AgencyReviewPage() {
                   section.reviewStatus,
                   user.role,
                 );
+                const change = roundChanges.get(section.id);
                 return (
                   <div
                     key={section.id}
@@ -345,6 +365,24 @@ export default function AgencyReviewPage() {
                     <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-2.5">
                       <span className="text-sm font-semibold text-slate-800">{name}</span>
                       <Badge className={statusMeta.badgeClass}>{statusMeta.label}</Badge>
+                      {change && (
+                        <span
+                          title={change.details.join(" · ")}
+                          className={cn(
+                            "inline-flex max-w-64 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
+                            change.kind === "added"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-amber-50 text-amber-800",
+                          )}
+                        >
+                          <GitCompareArrows className="size-3 shrink-0" aria-hidden />
+                          <span className="truncate">
+                            {change.kind === "added"
+                              ? "New this round"
+                              : change.details.slice(0, 2).join(" · ") || "Changed"}
+                          </span>
+                        </span>
+                      )}
                       {section.notes.customerNote && (
                         <span className="text-xs text-slate-500">Customer note ↓</span>
                       )}

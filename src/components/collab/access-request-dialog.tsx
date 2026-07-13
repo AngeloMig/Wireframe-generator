@@ -168,6 +168,7 @@ export function AccessRequestDialog({
                     type: "general",
                     title: "Access request",
                     message: `${user.name} requested more editing access on ${project.name}.`,
+                    actionUrl: `/projects/${project.id}/members`,
                   });
                 })();
                 toast(
