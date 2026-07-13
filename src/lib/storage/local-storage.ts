@@ -69,4 +69,5 @@ export const STORAGE_KEYS = {
   editorTourDone: "editor-tour-done",
   accessRequests: "access-requests",
   customTemplates: "custom-templates",
+  customSections: "custom-sections",
 } as const;

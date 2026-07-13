@@ -2,22 +2,26 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  Bookmark,
   ChevronLeft,
   ChevronRight,
   Clock,
+  Plus,
   Search,
   SearchX,
   Sparkles,
   Star,
+  Trash2,
 } from "lucide-react";
 import { SECTION_TYPE_LABELS } from "@/config/labels";
 import { getSectionTypeDefinition } from "@/data/section-schemas";
-import { SECTION_TYPE_ORDER, SECTION_VARIATIONS } from "@/data/section-variations";
+import { getVariation, SECTION_TYPE_ORDER, SECTION_VARIATIONS } from "@/data/section-variations";
 import {
   activeVariations,
   recentlyUsedVariationIds,
   recommendedVariations,
 } from "@/lib/editor-utils";
+import { useCustomSectionsStore, type SavedSection } from "@/stores/custom-sections-store";
 import { useFavoritesStore } from "@/stores/favorites-store";
 import type { ProjectPage, SectionType, SectionVariation, WebsiteGoal } from "@/types";
 import { cn } from "@/utils/cn";
@@ -36,11 +40,14 @@ export function SectionLibrary({
   goals,
   onAdd,
   onPreview,
+  onInsertSaved,
 }: {
   page: ProjectPage;
   goals: WebsiteGoal[];
   onAdd: (variation: SectionVariation) => void;
   onPreview: (variation: SectionVariation) => void;
+  /** Insert a section saved to the team's pattern library. */
+  onInsertSaved?: (saved: SavedSection) => void;
 }) {
   const [query, setQuery] = useState("");
   const [openType, setOpenType] = useState<SectionType | null>(null);
@@ -50,6 +57,11 @@ export function SectionLibrary({
   const toggleFavorite = useFavoritesStore((s) => s.toggleFavorite);
   const hydrateFavorites = useFavoritesStore((s) => s.hydrate);
   useEffect(() => hydrateFavorites(), [hydrateFavorites]);
+
+  const savedSections = useCustomSectionsStore((s) => s.sections);
+  const hydrateSaved = useCustomSectionsStore((s) => s.hydrate);
+  const removeSaved = useCustomSectionsStore((s) => s.removeSection);
+  useEffect(() => hydrateSaved(), [hydrateSaved]);
 
   // Start from the static list (identical on server and client), then apply
   // locally-stored admin overrides after mount to avoid hydration mismatches.
@@ -195,6 +207,50 @@ export function SectionLibrary({
         {/* Category overview */}
         {!isSearching && !openType && (
           <>
+            {onInsertSaved && savedSections.length > 0 && (
+              <LibraryGroup
+                title="Your sections"
+                icon={<Bookmark className="size-3.5 text-[var(--info)]" aria-hidden />}
+              >
+                {savedSections.map((saved) => {
+                  const variation = getVariation(saved.variationId);
+                  return (
+                    <div
+                      key={saved.id}
+                      className="flex items-center gap-2.5 rounded-xl border border-[var(--border-default)] bg-white p-2.5 shadow-[var(--shadow-subtle)]"
+                    >
+                      {variation && <SectionThumbnail variation={variation} />}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-semibold text-slate-900">
+                          {saved.name}
+                        </span>
+                        <span className="block text-[11px] text-slate-400">
+                          {SECTION_TYPE_LABELS[saved.sectionType]} · saved with content
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`Delete ${saved.name} from your sections`}
+                        title="Remove from your sections"
+                        onClick={() => removeSaved(saved.id)}
+                        className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-slate-300 hover:bg-rose-50 hover:text-rose-500"
+                      >
+                        <Trash2 className="size-3.5" aria-hidden />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Insert ${saved.name}`}
+                        onClick={() => onInsertSaved(saved)}
+                        className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md bg-[var(--primary-soft)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white"
+                      >
+                        <Plus className="size-3.5" aria-hidden />
+                      </button>
+                    </div>
+                  );
+                })}
+              </LibraryGroup>
+            )}
+
             {favorites.length > 0 && (
               <LibraryGroup
                 title="Favorites"

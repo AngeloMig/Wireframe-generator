@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Eye,
+  History,
   LifeBuoy,
   Keyboard,
   Maximize,
   MessageSquare,
   Monitor,
+  MoreHorizontal,
   PencilRuler,
   Plus,
   Redo2,
@@ -71,6 +73,7 @@ export function EditorToolbar({
   onThemeReset,
   canEditOverride,
   canBuildSections,
+  canManagePages,
 }: {
   project: Project;
   page: ProjectPage;
@@ -89,6 +92,8 @@ export function EditorToolbar({
   canEditOverride?: boolean;
   /** May add/arrange sections — gates the "Add section" affordance. */
   canBuildSections?: boolean;
+  /** Holds the `page` capability — may add pages from the page switcher. */
+  canManagePages?: boolean;
 }) {
   const router = useRouter();
   const user = useSessionStore((s) => s.user);
@@ -105,6 +110,7 @@ export function EditorToolbar({
   const [askOpen, setAskOpen] = useState(false);
   const [accessRequestOpen, setAccessRequestOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const device = useEditorStore((s) => s.device);
   const setDevice = useEditorStore((s) => s.setDevice);
   const mode = useEditorStore((s) => s.mode);
@@ -146,7 +152,16 @@ export function EditorToolbar({
         <span className="hidden max-w-36 truncate text-sm font-semibold text-slate-900 xl:block">
           {project.name}
         </span>
-        <PageSelector project={project} page={page} onSelectPage={onSelectPage} />
+        <PageSelector
+          project={project}
+          page={page}
+          onSelectPage={onSelectPage}
+          canManagePages={canManagePages ?? !isCustomer}
+          onAddPage={() => router.push(`/projects/${project.id}/sitemap`)}
+          onRequestPageAccess={
+            isCustomer ? () => setAccessRequestOpen(true) : undefined
+          }
+        />
         <div className="hidden lg:block">
           <PageStatusBadge status={page.status} />
         </div>
@@ -284,25 +299,68 @@ export function EditorToolbar({
 
       {/* Right: comment mode + preview + submit */}
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Keyboard shortcuts"
-          onClick={() => setShortcutsOpen((open) => !open)}
-        >
-          <Keyboard className="size-4" aria-hidden />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Copy preview link"
-          onClick={() => {
-            void navigator.clipboard?.writeText(window.location.href);
-            toast("Preview link copied", "success");
-          }}
-        >
-          <Share2 className="size-4" aria-hidden />
-        </Button>
+        <div className="relative">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="More editor options"
+            aria-expanded={moreOpen}
+            aria-haspopup="menu"
+            onClick={() => setMoreOpen((open) => !open)}
+          >
+            <MoreHorizontal className="size-4" aria-hidden />
+          </Button>
+          {moreOpen && (
+            <>
+              <button
+                type="button"
+                aria-label="Close menu"
+                className="fixed inset-0 z-40 cursor-default"
+                onClick={() => setMoreOpen(false)}
+              />
+              <div
+                role="menu"
+                aria-label="More editor options"
+                className="absolute top-9 right-0 z-50 w-56 rounded-xl border border-[var(--border-default)] bg-white p-1 shadow-[var(--shadow-panel)]"
+              >
+                <Link
+                  href={`/projects/${project.id}/versions`}
+                  role="menuitem"
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium text-slate-700 hover:bg-black/[0.05]"
+                  onClick={() => setMoreOpen(false)}
+                >
+                  <History className="size-4 text-slate-400" aria-hidden />
+                  Version history
+                </Link>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium text-slate-700 hover:bg-black/[0.05]"
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(window.location.href);
+                    toast("Preview link copied", "success");
+                    setMoreOpen(false);
+                  }}
+                >
+                  <Share2 className="size-4 text-slate-400" aria-hidden />
+                  Copy preview link
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium text-slate-700 hover:bg-black/[0.05]"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    setShortcutsOpen(true);
+                  }}
+                >
+                  <Keyboard className="size-4 text-slate-400" aria-hidden />
+                  Keyboard shortcuts
+                </button>
+              </div>
+            </>
+          )}
+        </div>
         <Button
           variant={commentMode ? "secondary" : "outline"}
           size="sm"

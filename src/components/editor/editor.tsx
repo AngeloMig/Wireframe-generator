@@ -18,7 +18,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { MessageCircle, PencilRuler, X } from "lucide-react";
+import { Layers, Lightbulb, MessageCircle, PencilRuler, Settings2, X } from "lucide-react";
 import { getVariation } from "@/data/section-variations";
 import { brandTheme, setContentValue } from "@/lib/editor-utils";
 import {
@@ -34,6 +34,8 @@ import { useCollabUiStore } from "@/stores/collab-ui-store";
 import { selectProjectComments, useCommentsStore } from "@/stores/comments-store";
 import { selectProjectMembers, useMembersStore } from "@/stores/members-store";
 import { approvedLevelsFor, useAccessRequestsStore } from "@/stores/access-requests-store";
+import { useCustomSectionsStore, type SavedSection } from "@/stores/custom-sections-store";
+import { selectProjectSuggestions, useSuggestionsStore } from "@/stores/suggestions-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { useSessionStore } from "@/stores/session-store";
 import { toast } from "@/stores/ui-store";
@@ -43,11 +45,12 @@ import type {
   Project,
   ProjectPage,
   SectionVariation,
+  SectionVariationSuggestion,
 } from "@/types";
 import { createId } from "@/utils/id";
 import { CanvasCommentPopover } from "./canvas/canvas-comment-popover";
 import { EditorTour } from "@/components/customer/editor-tour";
-import { SuggestionBanner } from "@/components/collab/suggestion-banner";
+import { SuggestionDialog } from "@/components/collab/suggestion-banner";
 import { CANVAS_APPEND_ID, EditorCanvas, type DropTarget } from "./canvas/editor-canvas";
 import { ContextCommentMenu, type ContextMenuState } from "./canvas/context-comment-menu";
 import { CommandPalette } from "./command-palette";
@@ -95,6 +98,19 @@ export function Editor({
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
   const [previewVariation, setPreviewVariation] = useState<SectionVariation | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [reviewingSuggestion, setReviewingSuggestion] =
+    useState<SectionVariationSuggestion | null>(null);
+  // Small screens: the structure and inspector panels open as bottom sheets.
+  const [mobilePanel, setMobilePanel] = useState<"structure" | "inspector" | null>(null);
+  // The working-copy explainer never changes, so one read is enough for life.
+  const [workingCopyDismissed, setWorkingCopyDismissed] = useState(true);
+  useEffect(() => {
+    setWorkingCopyDismissed(window.localStorage.getItem("wb:working-copy-dismissed") === "1");
+  }, []);
+  const dismissWorkingCopy = () => {
+    window.localStorage.setItem("wb:working-copy-dismissed", "1");
+    setWorkingCopyDismissed(true);
+  };
 
   const user = useSessionStore((s) => s.user);
   const isCustomer = user.role === "customer";
@@ -113,6 +129,9 @@ export function Editor({
   const refreshAccessRequests = useAccessRequestsStore((s) => s.refresh);
   const updateComment = useCommentsStore((s) => s.updateComment);
   const comments = useCommentsStore((s) => selectProjectComments(s, project.id));
+  const loadSuggestions = useSuggestionsStore((s) => s.load);
+  const suggestions = useSuggestionsStore((s) => selectProjectSuggestions(s, project.id));
+  const addSavedSection = useCustomSectionsStore((s) => s.addSection);
 
   useEffect(() => {
     openPage(page.id);
@@ -128,12 +147,13 @@ export function Editor({
 
   useEffect(() => {
     void loadComments(project.id);
+    void loadSuggestions(project.id);
     // Access decisions can be made by an agency user and then viewed by the
     // customer in the same browser session, so always refresh membership here.
     void refreshMembers(project.id);
     hydrateAccessRequests();
     refreshAccessRequests();
-  }, [project.id, loadComments, refreshMembers, hydrateAccessRequests, refreshAccessRequests]);
+  }, [project.id, loadComments, loadSuggestions, refreshMembers, hydrateAccessRequests, refreshAccessRequests]);
 
   // Leaving the editor exits comment mode so other pages start clean.
   useEffect(() => () => setCommentMode(false), [setCommentMode]);
@@ -289,27 +309,33 @@ export function Editor({
 
   // Sections still waiting on someone: open feedback threads, incomplete
   // action items, or content flags on the section itself. Shown as amber
-  // dots in the structure rail.
-  const attentionIds = useMemo(() => {
-    const ids = new Set<string>();
+  // dots in the structure rail, with the reasons as the tooltip.
+  const attentionReasons = useMemo(() => {
+    const map = new Map<string, string[]>();
+    const add = (id: string, reason: string) => {
+      const list = map.get(id) ?? [];
+      if (!list.includes(reason)) list.push(reason);
+      map.set(id, list);
+    };
     for (const section of ordered) {
-      if (
-        section.reviewStatus === "content-needed" ||
-        section.reviewStatus === "image-needed" ||
-        section.reviewStatus === "revisions-requested"
-      ) {
-        ids.add(section.id);
-      }
+      if (section.reviewStatus === "content-needed") add(section.id, "Needs content");
+      if (section.reviewStatus === "image-needed") add(section.id, "Needs an image");
+      if (section.reviewStatus === "revisions-requested") add(section.id, "Changes requested");
     }
     for (const comment of comments) {
       if (!comment.sectionId || comment.pageId !== page.id) continue;
       if (user.role === "customer" && comment.visibility !== "customer") continue;
-      const openThread = comment.status === "open" || comment.status === "reopened";
-      const openTask = comment.isActionItem && !comment.completedAt;
-      if (openThread || openTask) ids.add(comment.sectionId);
+      if (comment.isActionItem && !comment.completedAt) add(comment.sectionId, "Open task");
+      else if (comment.status === "open" || comment.status === "reopened")
+        add(comment.sectionId, "Open feedback");
     }
-    return ids;
+    return map;
   }, [ordered, comments, page.id, user.role]);
+
+  const pendingSuggestions = useMemo(
+    () => suggestions.filter((s) => s.status === "pending" && s.pageId === page.id),
+    [suggestions, page.id],
+  );
 
   const missingSections = useMemo(
     () => ordered.filter((section) => ["content-needed", "image-needed", "revisions-requested"].includes(section.reviewStatus)),
@@ -400,6 +426,45 @@ export function Editor({
       }, 80);
     },
     [applySections, project.id, select, selectedSectionId],
+  );
+
+  const insertSavedSection = useCallback(
+    (saved: SavedSection) => {
+      const section = { ...structuredClone(saved.snapshot), id: createId() };
+      applySections(
+        project.id,
+        (sections) => {
+          const next = [...sections].sort((a, b) => a.order - b.order);
+          const selectedIndex = selectedSectionId
+            ? next.findIndex((s) => s.id === selectedSectionId)
+            : -1;
+          const at = selectedIndex === -1 ? next.length : selectedIndex + 1;
+          next.splice(at, 0, section);
+          return next;
+        },
+        { activity: { type: "section-added", message: `${saved.name} added from saved sections` } },
+      );
+      select(section.id, "content");
+      setTimeout(() => {
+        document
+          .querySelector(`[data-canvas-section="${section.id}"]`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 80);
+    },
+    [applySections, project.id, select, selectedSectionId],
+  );
+
+  const saveSectionToLibrary = useCallback(
+    (section: PageSection) => {
+      const variation = getVariation(section.variationId);
+      addSavedSection(variation?.name ?? "Section", section);
+      toast(
+        "Saved to your sections",
+        "success",
+        "Find it under Add section, in the Your sections group.",
+      );
+    },
+    [addSavedSection],
   );
 
   const moveSection = useCallback(
@@ -670,14 +735,8 @@ export function Editor({
         onThemeReset={resetTheme}
         canEditOverride={contentEditable}
         canBuildSections={canBuildSections}
+        canManagePages={caps.page}
       />
-
-      {mode === "styled" && (
-        <p className="border-b border-amber-200 bg-amber-50 px-4 py-1.5 text-center text-xs text-amber-800">
-          This preview represents the selected direction and is not the final website
-          design.
-        </p>
-      )}
 
       {commentMode && (
         <p
@@ -706,7 +765,7 @@ export function Editor({
         </p>
       )}
 
-      {isCustomer && contentEditable && !commentMode && !isPreview && (
+      {isCustomer && contentEditable && !commentMode && !isPreview && !workingCopyDismissed && (
         <p
           className="flex items-center justify-center gap-1.5 border-b border-[var(--focus-ring)]/30 bg-[var(--info-soft)] px-4 py-1.5 text-center text-xs text-[#1a4e8a]"
           aria-live="polite"
@@ -717,33 +776,54 @@ export function Editor({
             Your changes stay separate from the agency&apos;s main design until they
             review and approve them.
           </span>
+          <button
+            type="button"
+            aria-label="Dismiss this notice"
+            onClick={dismissWorkingCopy}
+            className="ml-1 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-[#1a4e8a]/60 hover:bg-[#1a4e8a]/10 hover:text-[#1a4e8a]"
+          >
+            <X className="size-3.5" aria-hidden />
+          </button>
         </p>
       )}
 
-      <SuggestionBanner project={project} page={page} />
-
-      {!commentMode && missingSections.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 border-b border-amber-200 bg-[#fff9ef] px-4 py-2.5 text-xs text-[#79572f]">
-          <span className="flex size-6 items-center justify-center rounded-full bg-[#f3b96c]/30 font-bold">{missingSections.length}</span>
-          <span className="font-semibold">{missingSections.length === 1 ? "One section needs attention" : `${missingSections.length} sections need attention`}</span>
-          <span className="hidden text-[#98734c] sm:inline">Add content or resolve requested changes before you submit.</span>
-          <button
-            type="button"
-            className="ml-auto rounded-lg bg-[#f3b96c]/25 px-2.5 py-1 font-semibold text-[#79572f] hover:bg-[#f3b96c]/40"
-            onClick={() => {
-              const target = missingSections[0];
-              select(target.id);
-              document.querySelector(`[data-canvas-section="${target.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-            }}
-          >
-            Review first issue
-          </button>
+      {/* One review-queue bar replaces the stacked suggestion + attention banners. */}
+      {!commentMode && !isPreview && (pendingSuggestions.length > 0 || missingSections.length > 0) && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-[#d7e5f0] bg-[#f3f9fd] px-4 py-1.5 text-xs">
+          <span className="font-semibold text-[var(--text-primary)]">
+            {pendingSuggestions.length + missingSections.length} to review
+          </span>
+          {pendingSuggestions.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setReviewingSuggestion(pendingSuggestions[0])}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 font-medium text-violet-700 transition-colors hover:bg-violet-100"
+            >
+              <Lightbulb className="size-3" aria-hidden />
+              {pendingSuggestions.length === 1
+                ? "1 design suggestion"
+                : `${pendingSuggestions.length} design suggestions`}
+            </button>
+          )}
+          {missingSections.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                const target = missingSections[0];
+                select(target.id);
+                document
+                  .querySelector(`[data-canvas-section="${target.id}"]`)
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-medium text-amber-800 transition-colors hover:bg-amber-100"
+            >
+              {missingSections.length === 1
+                ? "1 section needs content"
+                : `${missingSections.length} sections need content`}
+            </button>
+          )}
         </div>
       )}
-
-      <div className="border-b border-[var(--border-default)] bg-[#fff9ef] px-4 py-2 text-center text-xs text-[#79572f] md:hidden">
-        You can review, comment, and make simple edits here. For arranging sections, a larger screen works best.
-      </div>
 
       <DndContext
         sensors={sensors}
@@ -760,7 +840,7 @@ export function Editor({
             rounded frosted cards (PicGen-style spatial UI). Soft ambient color
             blobs sit behind everything so the glass has something to blur —
             frosted panels over a flat color are indistinguishable from solid. */}
-        <div className="relative isolate flex min-h-0 flex-1 gap-3 bg-[#e9ece8] p-3">
+        <div className="relative isolate flex min-h-0 flex-1 gap-3 bg-[#e9ece8] p-3 pb-14 xl:pb-3">
           <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
             <div className="absolute -top-24 -left-24 size-[30rem] rounded-full bg-[#f7d34e]/40 blur-[110px]" />
             <div className="absolute top-1/4 -right-32 size-[32rem] rounded-full bg-[#7cc0f8]/35 blur-[120px]" />
@@ -785,7 +865,7 @@ export function Editor({
                   actions={canvasActions}
                   readOnly={!canBuildSections}
                   onAddSection={() => setLibraryOpen(true)}
-                  attentionIds={attentionIds}
+                  attentionReasons={attentionReasons}
                 />
               </div>
             </aside>
@@ -819,6 +899,10 @@ export function Editor({
                     if (isCustomer) setLibraryOpen(false);
                   }}
                   onPreview={(variation) => setPreviewVariation(variation)}
+                  onInsertSaved={(saved) => {
+                    insertSavedSection(saved);
+                    if (isCustomer) setLibraryOpen(false);
+                  }}
                 />
               </div>
             </aside>
@@ -865,8 +949,27 @@ export function Editor({
               aria-label="Section inspector"
               data-tour="inspector"
             >
-              <SectionInspector section={selectedSection} onChange={updateSelectedSection} />
+              <SectionInspector
+                section={selectedSection}
+                onChange={updateSelectedSection}
+                page={page}
+                attentionReasons={attentionReasons}
+                onSelectSection={(id) => {
+                  select(id);
+                  document
+                    .querySelector(`[data-canvas-section="${id}"]`)
+                    ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+                onAddSection={canBuildSections ? () => setLibraryOpen(true) : undefined}
+                onSaveToLibrary={!isCustomer && canBuildSections ? saveSectionToLibrary : undefined}
+              />
             </aside>
+          )}
+
+          {mode === "styled" && !isPreview && (
+            <p className="pointer-events-none absolute bottom-16 left-1/2 z-20 -translate-x-1/2 rounded-full bg-white/85 px-3 py-1 text-[11px] font-medium whitespace-nowrap text-amber-800 shadow-[var(--shadow-card)] ring-1 ring-amber-200 backdrop-blur xl:bottom-4">
+              Design direction preview, not the final website.
+            </p>
           )}
         </div>
 
@@ -881,6 +984,109 @@ export function Editor({
           )}
         </DragOverlay>
       </DndContext>
+
+      {/* Between lg and xl the inspector column is hidden — surface the panels
+          as bottom sheets there. (Below lg a dedicated mobile editor renders
+          instead of this component.) */}
+      {!isPreview && !commentMode && (
+        <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-center gap-2 border-t border-black/[0.06] bg-white/90 px-4 py-2 backdrop-blur-xl xl:hidden">
+          <button
+            type="button"
+            onClick={() => setMobilePanel("structure")}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--border-default)] bg-white px-3.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] shadow-[var(--shadow-subtle)] active:scale-[0.97] lg:hidden"
+          >
+            <Layers className="size-3.5" aria-hidden />
+            Structure
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobilePanel("inspector")}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--border-default)] bg-white px-3.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] shadow-[var(--shadow-subtle)] active:scale-[0.97]"
+          >
+            <Settings2 className="size-3.5" aria-hidden />
+            {selectedSection ? "Edit section" : "Page overview"}
+          </button>
+        </div>
+      )}
+
+      {mobilePanel && !isPreview && !commentMode && (
+        <div className="fixed inset-0 z-[80] xl:hidden" role="dialog" aria-modal="true" aria-label={mobilePanel === "structure" ? "Page structure" : "Section inspector"}>
+          <button
+            type="button"
+            aria-label="Close panel"
+            onClick={() => setMobilePanel(null)}
+            className="absolute inset-0 cursor-default bg-black/30"
+          />
+          <div className="absolute inset-x-0 bottom-0 flex h-[72dvh] flex-col overflow-hidden rounded-t-2xl bg-white shadow-[var(--shadow-overlay)]">
+            <div className="flex items-center justify-between border-b border-[var(--border-default)] px-4 py-3">
+              <p className="text-sm font-semibold text-[var(--text-primary)]">
+                {mobilePanel === "structure" ? "Structure" : selectedSection ? "Edit section" : "This page"}
+              </p>
+              <button
+                type="button"
+                aria-label="Close panel"
+                onClick={() => setMobilePanel(null)}
+                className="flex size-7 cursor-pointer items-center justify-center rounded-lg text-slate-500 hover:bg-black/[0.05]"
+              >
+                <X className="size-4" aria-hidden />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {mobilePanel === "structure" ? (
+                <StructurePanel
+                  sections={page.sections}
+                  selectedId={selectedSectionId}
+                  actions={{
+                    ...canvasActions,
+                    onSelect: (id) => {
+                      canvasActions.onSelect(id);
+                      setMobilePanel(null);
+                    },
+                  }}
+                  readOnly={!canBuildSections}
+                  onAddSection={() => {
+                    setMobilePanel(null);
+                    setLibraryOpen(true);
+                  }}
+                  attentionReasons={attentionReasons}
+                />
+              ) : (
+                <SectionInspector
+                  section={selectedSection}
+                  onChange={updateSelectedSection}
+                  page={page}
+                  attentionReasons={attentionReasons}
+                  onSelectSection={(id) => {
+                    select(id);
+                    setMobilePanel(null);
+                  }}
+                  onAddSection={
+                    canBuildSections
+                      ? () => {
+                          setMobilePanel(null);
+                          setLibraryOpen(true);
+                        }
+                      : undefined
+                  }
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reviewingSuggestion && (
+        <SuggestionDialog
+          project={project}
+          page={page}
+          suggestion={reviewingSuggestion}
+          authorName={
+            members.find((m) => m.userId === reviewingSuggestion.createdById)?.name ??
+            "The agency"
+          }
+          onClose={() => setReviewingSuggestion(null)}
+        />
+      )}
 
       {contextMenu && (
         <ContextCommentMenu

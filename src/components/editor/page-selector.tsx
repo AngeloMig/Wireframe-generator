@@ -1,23 +1,33 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, FileText } from "lucide-react";
+import { Check, ChevronDown, FileText, Lock, Plus } from "lucide-react";
 import type { Project, ProjectPage } from "@/types";
 import { cn } from "@/utils/cn";
 import { PageStatusBadge } from "@/components/ui/badge";
 
 /**
  * Toolbar page switcher: a popover instead of a bare <select>, so each page
- * can show its status and what still needs doing at a glance.
+ * can show its status and what still needs doing at a glance. The footer is
+ * the editor surface for the `page` capability: holders can add pages,
+ * customers without it can request that access.
  */
 export function PageSelector({
   project,
   page,
   onSelectPage,
+  canManagePages,
+  onAddPage,
+  onRequestPageAccess,
 }: {
   project: Project;
   page: ProjectPage;
   onSelectPage: (pageId: string) => void;
+  /** Holds the `page` capability — may add pages / change page settings. */
+  canManagePages?: boolean;
+  onAddPage?: () => void;
+  /** Customer without the `page` capability — offer to request it. */
+  onRequestPageAccess?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -112,6 +122,38 @@ export function PageSelector({
               </button>
             );
           })}
+          {(canManagePages && onAddPage) || onRequestPageAccess ? (
+            <div className="mt-1 border-t border-slate-100 pt-1">
+              {canManagePages && onAddPage ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    onAddPage();
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] font-semibold text-[var(--primary)] hover:bg-[var(--primary-soft)]"
+                >
+                  <Plus className="size-4" aria-hidden />
+                  Add a page
+                </button>
+              ) : (
+                onRequestPageAccess && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      onRequestPageAccess();
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] font-medium text-slate-500 hover:bg-black/[0.05]"
+                  >
+                    <Lock className="size-3.5" aria-hidden />
+                    Adding pages needs agency access
+                    <span className="ml-auto text-[11px] font-semibold text-[var(--focus-ring)]">Request</span>
+                  </button>
+                )
+              )}
+            </div>
+          ) : null}
         </div>
       )}
     </div>

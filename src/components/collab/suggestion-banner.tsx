@@ -81,7 +81,7 @@ export function SuggestionBanner({
   );
 }
 
-function SuggestionDialog({
+export function SuggestionDialog({
   project,
   page,
   suggestion,

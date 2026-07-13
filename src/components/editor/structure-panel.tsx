@@ -55,15 +55,19 @@ export function StructurePanel({
   actions,
   readOnly,
   onAddSection,
-  attentionIds,
+  attentionReasons,
 }: {
   sections: PageSection[];
   selectedId: string | null;
   actions: CanvasSectionActions;
   readOnly: boolean;
   onAddSection: () => void;
-  /** Sections with open feedback/tasks/content flags — shown as amber dots. */
-  attentionIds?: Set<string>;
+  /**
+   * Sections with open feedback/tasks/content flags, mapped to the human
+   * reasons ("Needs content", "1 open comment") — shown as amber dots with
+   * the reasons as the tooltip.
+   */
+  attentionReasons?: Map<string, string[]>;
 }) {
   const ordered = useMemo(
     () => [...sections].sort((a, b) => a.order - b.order),
@@ -131,7 +135,7 @@ export function StructurePanel({
             count={group.items.length}
             isSelected={section.id === selectedId}
             isInView={section.id === inViewId}
-            needsAttention={attentionIds?.has(section.id) ?? false}
+            attentionReasons={attentionReasons?.get(section.id)}
             readOnly={readOnly}
             sortable={group.sortable && !readOnly}
             actions={actions}
@@ -180,7 +184,7 @@ function StructureRow({
   count,
   isSelected,
   isInView,
-  needsAttention,
+  attentionReasons,
   readOnly,
   sortable,
   actions,
@@ -190,7 +194,7 @@ function StructureRow({
   count: number;
   isSelected: boolean;
   isInView: boolean;
-  needsAttention: boolean;
+  attentionReasons?: string[];
   readOnly: boolean;
   sortable: boolean;
   actions: CanvasSectionActions;
@@ -243,12 +247,12 @@ function StructureRow({
         <span className="min-w-0 flex-1 truncate">
           {variation?.name ?? SECTION_TYPE_LABELS[section.sectionType]}
         </span>
-        {needsAttention && (
+        {attentionReasons && attentionReasons.length > 0 && (
           <span
             className="size-1.5 shrink-0 rounded-full bg-amber-500"
             role="img"
-            aria-label="Needs your input"
-            title="Needs your input"
+            aria-label={attentionReasons.join(", ")}
+            title={attentionReasons.join(" · ")}
           />
         )}
         {locked && <Lock className="size-3 shrink-0 text-slate-400" aria-label="Locked" />}
