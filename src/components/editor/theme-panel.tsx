@@ -12,6 +12,34 @@ const COLOR_FIELDS: { key: "primary" | "secondary" | "accent"; label: string }[]
   { key: "accent", label: "Accent" },
 ];
 
+const PALETTE_PRESETS: {
+  name: string;
+  primary: string;
+  secondary: string;
+  accent: string;
+}[] = [
+  { name: "Indigo Ink", primary: "#4F46E5", secondary: "#0F172A", accent: "#F59E0B" },
+  { name: "Forest Study", primary: "#1F3A34", secondary: "#E8E2D9", accent: "#C47F45" },
+  { name: "Ocean Slate", primary: "#0F4C5C", secondary: "#E6EEF0", accent: "#FF6B35" },
+  { name: "Terracotta Clay", primary: "#B75C3B", secondary: "#F5EDE4", accent: "#2F5D62" },
+  { name: "Plum Velvet", primary: "#5B2A86", secondary: "#F4F0F8", accent: "#E8A33D" },
+  { name: "Midnight Coral", primary: "#1B263B", secondary: "#F1F3F5", accent: "#EF6461" },
+  { name: "Sage & Rust", primary: "#4A5D46", secondary: "#F2EFE9", accent: "#C1502E" },
+  { name: "Royal Gold", primary: "#1E3A5F", secondary: "#FAF6EE", accent: "#D4AF37" },
+  { name: "Blush Charcoal", primary: "#2B2B2B", secondary: "#F7E9E3", accent: "#E07A5F" },
+  { name: "Emerald Ink", primary: "#065F46", secondary: "#ECFDF5", accent: "#F59E0B" },
+  { name: "Crimson Slate", primary: "#7F1D1D", secondary: "#F8FAFC", accent: "#0EA5E9" },
+  { name: "Teal Sunset", primary: "#0F766E", secondary: "#FFF7ED", accent: "#F97316" },
+  { name: "Berry Cream", primary: "#6D28D9", secondary: "#FDF4FF", accent: "#EC4899" },
+  { name: "Navy Mustard", primary: "#1E293B", secondary: "#FFFBEB", accent: "#EAB308" },
+  { name: "Olive Brick", primary: "#3F3B24", secondary: "#FBEFE3", accent: "#A3402B" },
+  { name: "Steel Coral", primary: "#334155", secondary: "#F0F9FF", accent: "#FB7185" },
+  { name: "Deep Rose", primary: "#831843", secondary: "#FDF2F8", accent: "#FBBF24" },
+  { name: "Cobalt Peach", primary: "#1D4ED8", secondary: "#FFF1E6", accent: "#FB923C" },
+  { name: "Charcoal Mint", primary: "#18181B", secondary: "#ECFEFF", accent: "#2DD4BF" },
+  { name: "Espresso Cream", primary: "#3B2A20", secondary: "#FBF7F0", accent: "#C08A4E" },
+];
+
 /**
  * Styled-mode theme tweaks: brand colors, heading font, and corner style.
  * Adjustments preview instantly on the canvas and persist per project.
@@ -63,7 +91,7 @@ export function ThemePanelButton({
         <div
           role="dialog"
           aria-label="Theme settings"
-          className="absolute top-9 right-0 z-40 w-64 rounded-xl border border-slate-200 bg-white p-3 shadow-[var(--shadow-panel)]"
+          className="absolute top-9 right-0 z-40 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-[var(--shadow-panel)]"
         >
           <div className="mb-2.5 flex items-center justify-between">
             <p className="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
@@ -132,6 +160,34 @@ export function ThemePanelButton({
                 })
               }
             />
+          </div>
+
+          <div className="mt-3">
+            <p className="mb-1 text-xs font-medium text-slate-600">Suggested palettes</p>
+            <div className="grid grid-cols-5 gap-1.5">
+              {PALETTE_PRESETS.map((preset) => (
+                <button
+                  key={preset.name}
+                  type="button"
+                  title={preset.name}
+                  aria-label={`Apply ${preset.name} palette`}
+                  onClick={() =>
+                    onChange({
+                      primary: preset.primary,
+                      secondary: preset.secondary,
+                      accent: preset.accent,
+                    })
+                  }
+                  className="group flex size-8 cursor-pointer overflow-hidden rounded-md border border-slate-200 transition-transform hover:scale-105 hover:border-slate-400"
+                >
+                  <span className="h-full w-1/2" style={{ backgroundColor: preset.primary }} />
+                  <span className="flex h-full w-1/2 flex-col">
+                    <span className="h-1/2 w-full" style={{ backgroundColor: preset.secondary }} />
+                    <span className="h-1/2 w-full" style={{ backgroundColor: preset.accent }} />
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <p className="mt-3 text-[11px] leading-snug text-slate-400">

@@ -4,6 +4,7 @@ import { withActivity } from "@/lib/project-utils";
 import { nowIso } from "@/utils/id";
 import { notificationRepository } from "@/lib/repositories/local-notification-repository";
 import { revisionRequestRepository } from "@/lib/repositories/local-revision-repository";
+import { versionRepository } from "@/lib/repositories/local-version-repository";
 import { useApprovalsStore } from "@/stores/approvals-store";
 import { useCommentsStore } from "@/stores/comments-store";
 import { useMembersStore } from "@/stores/members-store";
@@ -18,6 +19,7 @@ import type {
   AppUser,
   CommentPriority,
   CommentVisibility,
+  PageSection,
   PageStatus,
   Project,
   ProjectPage,
@@ -69,6 +71,29 @@ export async function createVersion(
     trigger: input.trigger,
     snapshot: snapshotOf(project),
   });
+}
+
+/**
+ * The most recent version snapshot where this section was approved (or
+ * technically reviewed) — used to revert a section that a customer edited
+ * after it had already been signed off. Returns null when no such snapshot
+ * exists (e.g. a section the customer added that was never part of an
+ * approved version) — the caller should offer removing it instead.
+ */
+export async function findLastApprovedSection(
+  projectId: string,
+  pageId: string,
+  sectionId: string,
+): Promise<PageSection | null> {
+  const versions = await versionRepository.getProjectVersions(projectId);
+  for (const version of versions) {
+    const page = version.snapshot.pages.find((p) => p.id === pageId);
+    const section = page?.sections.find((s) => s.id === sectionId);
+    if (section && (section.reviewStatus === "approved" || section.reviewStatus === "technically-reviewed")) {
+      return section;
+    }
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -156,16 +181,26 @@ export async function notifyNewComment(
 /**
  * Tell the agency the customer is editing the blueprint. Meant to be throttled
  * by the caller (one leading-edge ping per cooldown window) so a burst of edits
- * doesn't turn into a burst of notifications.
+ * doesn't turn into a burst of notifications. Unlike other notifications, this
+ * one recurs for the same ongoing situation, so it upserts (refreshing an
+ * existing unread "Customer is editing" row) instead of stacking a new one
+ * every cooldown window.
  */
 export async function notifyCustomerEditing(project: Project, actor: Actor): Promise<void> {
-  await notifyAgency(project, actor.id, {
+  const agencyIds = (await memberIdsByRole(project.id, (r) => r !== "customer")).filter(
+    (id) => id !== actor.id,
+  );
+  const notice: NotificationInput = {
     projectId: project.id,
     type: "general",
     title: "Customer is editing",
     message: `${actor.name} is making changes to “${project.name}”.`,
     actionUrl: `/projects/${project.id}/overview`,
-  });
+  };
+  for (const userId of new Set(agencyIds)) {
+    await notificationRepository.upsertNotification({ ...notice, userId });
+  }
+  await useNotificationsStore.getState().refresh();
 }
 
 // ---------------------------------------------------------------------------

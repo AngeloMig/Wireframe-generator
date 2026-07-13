@@ -174,4 +174,9 @@ export interface PageSection {
   reviewStatus: SectionReviewStatus;
   /** Set while the section is locked after approval. */
   approvalLocked?: boolean;
+  /**
+   * Set alongside `reviewStatus: "agency-review-needed"` so the UI can say
+   * "added" vs "edited" without re-deriving it from version history.
+   */
+  pendingChange?: "added" | "edited";
 }

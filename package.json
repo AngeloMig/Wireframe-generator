@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "NEXT_DIST_DIR=.next-dev next dev -p 3000",
+    "dev:preview": "NEXT_DIST_DIR=.next-preview next dev -p 3001",
     "build": "NEXT_DIST_DIR=.next next build",
     "start": "next start",
     "lint": "eslint src",

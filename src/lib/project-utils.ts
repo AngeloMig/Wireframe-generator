@@ -1,4 +1,4 @@
-import type { ActivityEntry, ActivityType, AppUser, Project, ProjectPage } from "@/types";
+import type { ActivityEntry, ActivityType, AppUser, Project, ProjectPage, UserRole } from "@/types";
 import { createId, nowIso } from "@/utils/id";
 
 export interface ChecklistItem {
@@ -87,60 +87,169 @@ export interface RecommendedAction {
   label: string;
   description: string;
   href: string;
+  /** Short button label when it differs from the headline. */
+  cta?: string;
 }
 
-export function nextRecommendedAction(project: Project): RecommendedAction {
+/**
+ * The single next step for this project, from the VIEWER's seat. Every status
+ * maps to an explicit action for each side — no fall-through that tells an
+ * agency user to "keep refining" an approved blueprint, and no customer links
+ * to routes their role can't open (customers only reach editor/review/revisions).
+ */
+export function nextRecommendedAction(
+  project: Project,
+  role: UserRole = "customer",
+): RecommendedAction {
   const base = `/projects/${project.id}`;
-  if (project.status === "revisions-requested") {
-    return {
-      label: "Review requested revisions",
-      description: "The agency has asked for changes — read their feedback first.",
-      href: `${base}/review`,
-    };
-  }
-  if (project.status === "awaiting-approval") {
-    return {
-      label: "Review and approve",
-      description: "Your blueprint is ready for final approval.",
-      href: `${base}/review`,
-    };
-  }
-  const checklist = projectChecklist(project);
-  const firstMissing = checklist.find((i) => i.required && !i.done);
-  if (firstMissing) {
-    switch (firstMissing.id) {
-      case "homepage":
-      case "pages":
+  const agency = role !== "customer";
+
+  if (agency) {
+    switch (project.status) {
+      case "draft":
+      case "customer-editing":
         return {
-          label: "Set up your pages",
-          description: firstMissing.hint,
-          href: `${base}/sitemap`,
+          label: "The customer is drafting",
+          description: `${project.companyName} is building the blueprint. Watch Feedback for questions, or nudge them if it's gone quiet.`,
+          href: `${base}/activity`,
+          cta: "Open feedback",
         };
-      case "sections":
+      case "ready-for-review":
         return {
-          label: "Build your homepage",
-          description: firstMissing.hint,
-          href: `${base}/editor`,
+          label: "Start the review",
+          description: `${project.companyName} submitted the blueprint — give it a first pass in the review queue.`,
+          href: `${base}/agency-review`,
+          cta: "Start review",
         };
-      case "content":
+      case "agency-reviewing":
         return {
-          label: "Complete the questionnaire",
-          description: firstMissing.hint,
-          href: `${base}/questionnaire`,
+          label: "Continue the review",
+          description: "Pick up where the team left off in the review queue.",
+          href: `${base}/agency-review`,
+          cta: "Continue review",
+        };
+      case "revisions-requested":
+      case "customer-revising":
+        return {
+          label: "Waiting on customer revisions",
+          description: "You asked for changes — the customer is working on them. Their progress shows up in Feedback.",
+          href: `${base}/activity`,
+          cta: "Open feedback",
+        };
+      case "awaiting-approval":
+      case "partially-approved":
+        return {
+          label: "Waiting on customer approval",
+          description: "The blueprint is with the customer for sign-off. A nudge might help if it's been a while.",
+          href: `${base}/review`,
+          cta: "View approval",
+        };
+      case "approved":
+        return {
+          label: "Prepare the handoff",
+          description: "The customer approved the blueprint — export it for the build team.",
+          href: `${base}/handoff`,
+          cta: "Export handoff",
+        };
+      case "in-development":
+        return {
+          label: "Build in progress",
+          description: "Track what was promised against the approved blueprint in the handoff sheet.",
+          href: `${base}/handoff`,
+          cta: "Open handoff",
+        };
+      case "completed":
+        return {
+          label: "Project completed",
+          description: "Everything shipped. The handoff and version history stay available for reference.",
+          href: `${base}/handoff`,
+          cta: "Open handoff",
+        };
+      case "archived":
+        return {
+          label: "This project is archived",
+          description: "Restore it from the projects list to keep working.",
+          href: "/projects",
+          cta: "All projects",
         };
     }
   }
-  if (project.status === "customer-editing" || project.status === "draft") {
+
+  // Customer seat — checklist-driven while drafting, explicit elsewhere.
+  // Customers can only open editor / review / revisions.
+  switch (project.status) {
+    case "revisions-requested":
+      return {
+        label: "Review requested revisions",
+        description: "The agency has asked for changes — read their feedback first.",
+        href: `${base}/revisions`,
+        cta: "See revisions",
+      };
+    case "customer-revising":
+      return {
+        label: "Continue your revisions",
+        description: "Finish the requested changes and submit them back.",
+        href: `${base}/revisions`,
+        cta: "Continue revisions",
+      };
+    case "ready-for-review":
+    case "agency-reviewing":
+      return {
+        label: "The agency is reviewing",
+        description: "You'll hear back soon. You can still browse and comment meanwhile.",
+        href: `${base}/editor`,
+        cta: "Open blueprint",
+      };
+    case "awaiting-approval":
+    case "partially-approved":
+      return {
+        label: "Review and approve",
+        description: "Your blueprint is ready for final approval.",
+        href: `${base}/review`,
+        cta: "Review & approve",
+      };
+    case "approved":
+    case "in-development":
+    case "completed":
+      return {
+        label: "Your blueprint is approved",
+        description: "The agency is building it — you can revisit or download it anytime.",
+        href: `${base}/review`,
+        cta: "View blueprint",
+      };
+    case "archived":
+      return {
+        label: "This project is archived",
+        description: "Ask your agency to restore it if something needs to change.",
+        href: `${base}/review`,
+        cta: "View project",
+      };
+    default:
+      break;
+  }
+
+  const checklist = projectChecklist(project);
+  const firstMissing = checklist.find((i) => i.required && !i.done);
+  if (firstMissing) {
+    // Everything a customer fixes lives in the editor (pages via the page
+    // switcher, sections and content on the canvas).
     return {
-      label: "Submit for agency review",
-      description: "Everything required is in place — send it to the agency.",
-      href: `${base}/review`,
+      label:
+        firstMissing.id === "homepage" || firstMissing.id === "pages"
+          ? "Set up your pages"
+          : firstMissing.id === "sections"
+            ? "Build your homepage"
+            : "Fill in your content",
+      description: firstMissing.hint,
+      href: `${base}/editor`,
+      cta: "Open the editor",
     };
   }
   return {
-    label: "Keep refining your blueprint",
-    description: "Add detail to sections, notes, and content.",
+    label: "Submit for agency review",
+    description: "Everything required is in place — open the editor and hit Submit.",
     href: `${base}/editor`,
+    cta: "Open the editor",
   };
 }
 

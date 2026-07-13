@@ -1,5 +1,5 @@
 import type { Timestamps, UserRole } from "./common";
-import type { PageReviewStatus } from "./collaboration";
+import type { PageReviewStatus, PendingSectionRemoval } from "./collaboration";
 import type { PageSection, PageType } from "./section";
 
 export type ProjectStatus =
@@ -107,6 +107,8 @@ export interface ProjectPage extends Timestamps {
   /** Set while the page is locked (post-approval). */
   lockedAt?: string;
   lockedById?: string;
+  /** Sections the customer removed, kept as a trace until the agency acts on them. */
+  pendingRemovals?: PendingSectionRemoval[];
 }
 
 export type ActivityType =
@@ -128,6 +130,7 @@ export type ActivityType =
   | "revisions-requested"
   | "revisions-submitted"
   | "section-approved"
+  | "section-reverted"
   | "page-approved"
   | "project-approved"
   | "approval-revoked"

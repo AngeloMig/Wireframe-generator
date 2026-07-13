@@ -3,8 +3,8 @@
 import { create } from "zustand";
 import { normalizeSectionOrder } from "@/lib/sections";
 import { withActivity } from "@/lib/project-utils";
-import type { ActivityType, PageSection } from "@/types";
-import { nowIso } from "@/utils/id";
+import type { ActivityType, PageSection, PendingSectionRemoval } from "@/types";
+import { createId, nowIso } from "@/utils/id";
 import { useProjectsStore } from "./projects-store";
 import { useSessionStore } from "./session-store";
 
@@ -75,6 +75,10 @@ interface EditorState {
   ) => void;
   undo: (projectId: string) => void;
   redo: (projectId: string) => void;
+  /** Agency-side: bring a customer-removed section back onto the page. */
+  restoreRemovedSection: (projectId: string, removalId: string) => void;
+  /** Agency-side: dismiss a removal trace without restoring the section. */
+  dismissRemoval: (projectId: string, removalId: string) => void;
 }
 
 function readSections(projectId: string, pageId: string | null): PageSection[] | null {
@@ -84,11 +88,85 @@ function readSections(projectId: string, pageId: string | null): PageSection[] |
   return page ? page.sections : null;
 }
 
+/**
+ * A section's content/design fields changed between two revisions (deep
+ * comparison — updaters don't reliably preserve object identity on
+ * untouched fields).
+ */
+function sectionContentChanged(before: PageSection, after: PageSection): boolean {
+  return (
+    before.variationId !== after.variationId ||
+    JSON.stringify(before.content) !== JSON.stringify(after.content) ||
+    JSON.stringify(before.layout) !== JSON.stringify(after.layout) ||
+    JSON.stringify(before.style) !== JSON.stringify(after.style)
+  );
+}
+
+const SKIP_REVIEW_FLAG_STATUSES = new Set(["content-needed", "image-needed", "agency-review-needed"]);
+
+interface CustomerEditResult {
+  sections: PageSection[];
+  /** New removal traces for sections the customer just deleted. */
+  removals: PendingSectionRemoval[];
+}
+
+/**
+ * When a customer edits, adds, or removes a section on a project that's
+ * already been submitted at least once:
+ *  - edited/added sections flag as needing another look from the agency
+ *    (protects previously reviewed/approved content from silently drifting
+ *    out of sync with what the agency last saw), tagged with which kind of
+ *    change it was so the UI can say "added" vs "edited";
+ *  - removed sections leave a trace (full snapshot) instead of vanishing,
+ *    so the agency can see what disappeared and restore it.
+ */
+function flagCustomerEdits(
+  projectId: string,
+  prev: PageSection[],
+  next: PageSection[],
+): CustomerEditResult {
+  const user = useSessionStore.getState().user;
+  if (user.role !== "customer") return { sections: next, removals: [] };
+  const project = useProjectsStore.getState().projects.find((p) => p.id === projectId);
+  if (!project || project.status === "draft" || project.status === "customer-editing") {
+    return { sections: next, removals: [] };
+  }
+
+  const prevById = new Map(prev.map((section) => [section.id, section]));
+  const nextIds = new Set(next.map((section) => section.id));
+  let changed = false;
+  const flagged = next.map((section) => {
+    const before = prevById.get(section.id);
+    const needsFlag = !before || sectionContentChanged(before, section);
+    if (!needsFlag || SKIP_REVIEW_FLAG_STATUSES.has(section.reviewStatus)) return section;
+    changed = true;
+    return {
+      ...section,
+      reviewStatus: "agency-review-needed" as const,
+      approvalLocked: false,
+      pendingChange: before ? ("edited" as const) : ("added" as const),
+    };
+  });
+
+  const removals: PendingSectionRemoval[] = prev
+    .filter((section) => !nextIds.has(section.id))
+    .map((section) => ({
+      id: createId(),
+      sectionId: section.id,
+      removedAt: nowIso(),
+      removedById: user.id,
+      snapshot: section,
+    }));
+
+  return { sections: changed ? flagged : next, removals };
+}
+
 function writeSections(
   projectId: string,
   pageId: string,
   sections: PageSection[],
   activity?: ApplyOptions["activity"],
+  newRemovals: PendingSectionRemoval[] = [],
 ) {
   const user = useSessionStore.getState().user;
   useProjectsStore.getState().updateProject(projectId, (project) => {
@@ -104,6 +182,10 @@ function writeSections(
                 ...section,
                 order: index,
               })),
+              pendingRemovals:
+                newRemovals.length > 0
+                  ? [...(page.pendingRemovals ?? []), ...newRemovals]
+                  : page.pendingRemovals,
               status:
                 page.status === "draft" && sections.length > 0
                   ? ("content-needed" as const)
@@ -182,8 +264,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!pageId) return;
     const current = readSections(projectId, pageId);
     if (!current) return;
-    const next = updater(current);
-    if (next === current) return;
+    const updated = updater(current);
+    if (updated === current) return;
+    const { sections: next, removals } = flagCustomerEdits(projectId, current, updated);
 
     const now = Date.now();
     const coalesce =
@@ -197,7 +280,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       lastEditKey: options?.editKey ?? null,
       lastEditAt: now,
     });
-    writeSections(projectId, pageId, next, options?.activity);
+    writeSections(projectId, pageId, next, options?.activity, removals);
   },
 
   undo: (projectId) => {
@@ -228,5 +311,42 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       selectedSectionId: null,
     });
     writeSections(projectId, pageId, next);
+  },
+
+  restoreRemovedSection: (projectId, removalId) => {
+    const { pageId } = get();
+    if (!pageId) return;
+    useProjectsStore.getState().updateProject(projectId, (project) => ({
+      ...project,
+      pages: project.pages.map((page) => {
+        if (page.id !== pageId) return page;
+        const removal = (page.pendingRemovals ?? []).find((r) => r.id === removalId);
+        if (!removal) return page;
+        const restored: PageSection = { ...removal.snapshot, order: page.sections.length };
+        return {
+          ...page,
+          sections: normalizeSectionOrder([...page.sections, restored]).map((section, index) => ({
+            ...section,
+            order: index,
+          })),
+          pendingRemovals: (page.pendingRemovals ?? []).filter((r) => r.id !== removalId),
+          updatedAt: nowIso(),
+        };
+      }),
+      lastEditedAt: nowIso(),
+    }));
+  },
+
+  dismissRemoval: (projectId, removalId) => {
+    const { pageId } = get();
+    if (!pageId) return;
+    useProjectsStore.getState().updateProject(projectId, (project) => ({
+      ...project,
+      pages: project.pages.map((page) =>
+        page.id === pageId
+          ? { ...page, pendingRemovals: (page.pendingRemovals ?? []).filter((r) => r.id !== removalId) }
+          : page,
+      ),
+    }));
   },
 }));

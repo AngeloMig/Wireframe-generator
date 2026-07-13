@@ -16,6 +16,8 @@ interface NotificationsState {
   hydrate: () => Promise<void>;
   refresh: () => Promise<void>;
   add: (input: Omit<AppNotification, "id" | "createdAt" | "isRead">) => Promise<void>;
+  /** Like `add`, but refreshes a matching unread notification instead of adding another. */
+  upsert: (input: Omit<AppNotification, "id" | "createdAt" | "isRead">) => Promise<void>;
   markRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
   clear: (id: string) => Promise<void>;
@@ -43,6 +45,13 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   add: async (input) => {
     await notificationRepository.addNotification(input);
     // Only refresh if the notification targets the current user's inbox.
+    if (input.userId === currentUserId()) {
+      await get().refresh();
+    }
+  },
+
+  upsert: async (input) => {
+    await notificationRepository.upsertNotification(input);
     if (input.userId === currentUserId()) {
       await get().refresh();
     }

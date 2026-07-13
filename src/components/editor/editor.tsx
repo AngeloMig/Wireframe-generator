@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -27,7 +28,7 @@ import {
   type ThemeOverrides,
 } from "@/lib/theme-overrides";
 import { grantedCapabilities, canEditAnything, editRestrictionReason } from "@/lib/permissions";
-import { notifyCustomerEditing } from "@/lib/collab-service";
+import { findLastApprovedSection, notifyCustomerEditing } from "@/lib/collab-service";
 import { createSectionFromVariation, switchSectionVariation } from "@/lib/sections";
 import { cn } from "@/utils/cn";
 import { useCollabUiStore } from "@/stores/collab-ui-store";
@@ -91,6 +92,8 @@ export function Editor({
   const applySections = useEditorStore((s) => s.applySections);
   const undo = useEditorStore((s) => s.undo);
   const redo = useEditorStore((s) => s.redo);
+  const restoreRemovedSection = useEditorStore((s) => s.restoreRemovedSection);
+  const dismissRemoval = useEditorStore((s) => s.dismissRemoval);
   const canUndo = useEditorStore((s) => s.past.length > 0);
   const canRedo = useEditorStore((s) => s.future.length > 0);
 
@@ -321,6 +324,8 @@ export function Editor({
       if (section.reviewStatus === "content-needed") add(section.id, "Needs content");
       if (section.reviewStatus === "image-needed") add(section.id, "Needs an image");
       if (section.reviewStatus === "revisions-requested") add(section.id, "Changes requested");
+      if (section.reviewStatus === "agency-review-needed")
+        add(section.id, "Customer edited — needs review");
     }
     for (const comment of comments) {
       if (!comment.sectionId || comment.pageId !== page.id) continue;
@@ -563,6 +568,43 @@ export function Editor({
       },
     }),
     [applySections, comments, moveSection, ordered, project.id, select, toggleCollapsed, updateComment],
+  );
+
+  // Agency-only: restore a customer-edited section to the last version where
+  // it was approved. There's nothing to revert to for a section that was
+  // never part of an approved snapshot (e.g. one the customer just added).
+  const handleRevertSection = useCallback(
+    async (sectionId: string) => {
+      const restored = await findLastApprovedSection(project.id, page.id, sectionId);
+      if (!restored) {
+        toast(
+          "No approved version to revert to",
+          "info",
+          "This section was never part of an approved version — remove it instead if it shouldn't be here.",
+        );
+        return;
+      }
+      applySections(
+        project.id,
+        (sections) =>
+          sections.map((s) =>
+            s.id === sectionId
+              ? {
+                  ...s,
+                  content: restored.content,
+                  layout: restored.layout,
+                  style: restored.style,
+                  variationId: restored.variationId,
+                  reviewStatus: restored.reviewStatus,
+                  approvalLocked: true,
+                }
+              : s,
+          ),
+        { activity: { type: "section-reverted", message: "Section reverted to the last approved version" } },
+      );
+      toast("Section reverted", "success", "Restored to the last approved version.");
+    },
+    [applySections, page.id, project.id],
   );
 
   // ----- Drag and drop ------------------------------------------------------
@@ -871,42 +913,61 @@ export function Editor({
             </aside>
           )}
 
-          {!isPreview && !commentMode && canBuildSections && libraryOpen && (
-            <aside
-              className="hidden w-80 shrink-0 flex-col relative z-10 overflow-hidden rounded-[1.25rem] bg-white/70 shadow-[inset_0_1px_0_rgb(255_255_255/0.6),0_10px_30px_rgb(38_57_74/0.10)] ring-1 ring-black/[0.05] backdrop-blur-xl lg:flex xl:w-96"
-              aria-label="Section library"
-            >
-              <div className="flex items-start justify-between px-4 pt-4 pb-2">
-                <div>
-                  <p className="text-[15px] font-semibold tracking-tight text-[var(--text-primary)]">Add section</p>
-                  <p className="mt-0.5 text-xs text-[var(--text-muted)]">Drag onto the canvas, or click to insert</p>
-                </div>
+          {!isPreview &&
+            !commentMode &&
+            canBuildSections &&
+            libraryOpen &&
+            createPortal(
+              <div
+                className="fixed inset-0 z-[90] flex items-center justify-center p-4"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Section library"
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setLibraryOpen(false);
+                }}
+              >
                 <button
                   type="button"
                   aria-label="Close the section list"
+                  tabIndex={-1}
+                  className="absolute inset-0 animate-fade-in cursor-default bg-slate-900/40"
                   onClick={() => setLibraryOpen(false)}
-                  className="flex size-8 cursor-pointer items-center justify-center rounded-xl bg-black/[0.04] text-slate-500 transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-black/[0.08] hover:text-slate-900 active:scale-[0.94]"
-                >
-                  <X className="size-4" aria-hidden />
-                </button>
-              </div>
-              <div className="min-h-0 flex-1">
-                <SectionLibrary
-                  page={page}
-                  goals={project.questionnaire.goals}
-                  onAdd={(variation) => {
-                    insertVariation(variation);
-                    if (isCustomer) setLibraryOpen(false);
-                  }}
-                  onPreview={(variation) => setPreviewVariation(variation)}
-                  onInsertSaved={(saved) => {
-                    insertSavedSection(saved);
-                    if (isCustomer) setLibraryOpen(false);
-                  }}
                 />
-              </div>
-            </aside>
-          )}
+                <div className="relative flex h-[88vh] w-full max-w-[min(1280px,calc(100vw-32px))] animate-scale-in flex-col overflow-hidden rounded-[1.25rem] bg-white shadow-[var(--shadow-overlay)]">
+                  <div className="flex items-start justify-between border-b border-[var(--border-default)] px-4 py-3">
+                    <div>
+                      <p className="text-[15px] font-semibold tracking-tight text-[var(--text-primary)]">Add section</p>
+                      <p className="mt-0.5 text-xs text-[var(--text-muted)]">Drag onto the canvas, or click to insert</p>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="Close the section list"
+                      onClick={() => setLibraryOpen(false)}
+                      className="flex size-8 cursor-pointer items-center justify-center rounded-xl bg-black/[0.04] text-slate-500 transition-[background-color,transform] duration-150 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-black/[0.08] hover:text-slate-900 active:scale-[0.94]"
+                    >
+                      <X className="size-4" aria-hidden />
+                    </button>
+                  </div>
+                  <div className="min-h-0 flex-1">
+                    <SectionLibrary
+                      page={page}
+                      goals={project.questionnaire.goals}
+                      onAdd={(variation) => {
+                        insertVariation(variation);
+                        if (isCustomer) setLibraryOpen(false);
+                      }}
+                      onPreview={(variation) => setPreviewVariation(variation)}
+                      onInsertSaved={(saved) => {
+                        insertSavedSection(saved);
+                        if (isCustomer) setLibraryOpen(false);
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>,
+              document.body,
+            )}
 
           <EditorCanvas
             sections={page.sections}
@@ -953,6 +1014,7 @@ export function Editor({
                 section={selectedSection}
                 onChange={updateSelectedSection}
                 page={page}
+                projectId={project.id}
                 attentionReasons={attentionReasons}
                 onSelectSection={(id) => {
                   select(id);
@@ -962,6 +1024,9 @@ export function Editor({
                 }}
                 onAddSection={canBuildSections ? () => setLibraryOpen(true) : undefined}
                 onSaveToLibrary={!isCustomer && canBuildSections ? saveSectionToLibrary : undefined}
+                onRevertSection={handleRevertSection}
+                onRestoreRemoval={(removalId) => restoreRemovedSection(project.id, removalId)}
+                onDismissRemoval={(removalId) => dismissRemoval(project.id, removalId)}
               />
             </aside>
           )}
@@ -1055,6 +1120,7 @@ export function Editor({
                   section={selectedSection}
                   onChange={updateSelectedSection}
                   page={page}
+                  projectId={project.id}
                   attentionReasons={attentionReasons}
                   onSelectSection={(id) => {
                     select(id);
@@ -1068,6 +1134,9 @@ export function Editor({
                         }
                       : undefined
                   }
+                  onRevertSection={handleRevertSection}
+                  onRestoreRemoval={(removalId) => restoreRemovedSection(project.id, removalId)}
+                  onDismissRemoval={(removalId) => dismissRemoval(project.id, removalId)}
                 />
               )}
             </div>

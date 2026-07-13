@@ -102,6 +102,9 @@ import {
   EcomFilterGrid,
   EcomGrid,
   EcomProductDetail,
+  EcomReviews,
+  EcomUpsell,
+  EcomVariantSelector,
 } from "./sections/ecommerce";
 
 /**
@@ -219,6 +222,9 @@ export const sectionComponentRegistry: Record<SectionType, Record<string, Sectio
     "ecom-benefits": EcomBenefits,
     "ecom-product-detail": EcomProductDetail,
     "ecom-filter-grid": EcomFilterGrid,
+    "ecom-reviews": EcomReviews,
+    "ecom-variant-selector": EcomVariantSelector,
+    "ecom-upsell": EcomUpsell,
   },
 };
 

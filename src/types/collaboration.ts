@@ -4,6 +4,7 @@ import type {
   ProjectQuestionnaire,
   ProjectStatus,
 } from "./project";
+import type { PageSection } from "./section";
 
 /**
  * Collaboration, review, versioning, and approval records. All persistent —
@@ -182,6 +183,19 @@ export type SectionReviewStatus =
   | "ready-for-approval"
   | "approved"
   | "technically-reviewed";
+
+/**
+ * A section the customer removed from a page — kept as a trace (with a full
+ * snapshot) so the agency can see what disappeared and restore it, instead of
+ * it vanishing without a mark.
+ */
+export interface PendingSectionRemoval {
+  id: string;
+  sectionId: string;
+  removedAt: string;
+  removedById: string;
+  snapshot: PageSection;
+}
 
 // ---------------------------------------------------------------------------
 // Variation suggestions

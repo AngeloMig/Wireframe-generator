@@ -45,6 +45,15 @@ export interface NotificationRepository {
   addNotification(
     input: Omit<AppNotification, "id" | "createdAt" | "isRead">,
   ): Promise<AppNotification>;
+  /**
+   * Like `addNotification`, but if an unread notification already exists for
+   * the same recipient/project/type/title, refreshes it in place instead of
+   * inserting another row — for events that recur for the same underlying
+   * situation (e.g. "customer is editing") rather than one-off occurrences.
+   */
+  upsertNotification(
+    input: Omit<AppNotification, "id" | "createdAt" | "isRead">,
+  ): Promise<AppNotification>;
   markRead(id: string): Promise<void>;
   markAllRead(userId: string): Promise<void>;
   clearNotification(id: string): Promise<void>;

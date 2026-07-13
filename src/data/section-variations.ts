@@ -1176,6 +1176,65 @@ const ecommerceVariations: SectionVariation[] = [
     defaultLayout: { ...BASE_LAYOUT, alignment: "center", columns: 4, contentWidth: "wide", itemCount: 4 },
     defaultStyle: { ...BASE_STYLE, background: "muted", spacing: "compact" },
   }),
+  ecomV({
+    id: "ecom-reviews",
+    name: "Customer Reviews",
+    description: "An aggregate star rating with individual customer reviews for the product.",
+    tags: ["reviews", "ratings", "social proof"],
+    contentKeys: ["eyebrow", "heading", "rating", "ratingLabel", "items"],
+    contentDefaults: {
+      eyebrow: "Reviews",
+      heading: "What customers are saying",
+      buttonLabel: "",
+      rating: "4.8",
+      ratingLabel: "based on 1,240 reviews",
+      items: [
+        { title: "Sarah K.", price: "", rating: "5", description: "Beautifully made and arrived faster than expected." },
+        { title: "Jordan P.", price: "", rating: "5", description: "Exactly as described — great quality for the price." },
+        { title: "Liam D.", price: "", rating: "4", description: "Solid piece, though delivery took a little longer than quoted." },
+      ],
+    },
+    defaultLayout: { ...BASE_LAYOUT, alignment: "center", imagePosition: "none", columns: 3, contentWidth: "wide", itemCount: 3 },
+  }),
+  ecomV({
+    id: "ecom-variant-selector",
+    name: "Size & Options",
+    description: "A compact buy box with size options, quantity, and add to cart.",
+    tags: ["buy box", "variants", "pdp"],
+    supportedPageTypes: ["product", "landing", "custom"],
+    contentKeys: ["eyebrow", "heading", "price", "description", "buttonLabel", "buttonUrl", "items"],
+    contentDefaults: {
+      eyebrow: "",
+      heading: "Aria Lounge Chair",
+      price: "$890",
+      description: "Choose your size to see availability.",
+      buttonLabel: "Add to cart",
+      items: [
+        { title: "Small", price: "", description: "" },
+        { title: "Medium", price: "", description: "" },
+        { title: "Large", price: "", description: "" },
+      ],
+    },
+    defaultLayout: { ...BASE_LAYOUT, alignment: "left", imagePosition: "none", columns: 3, contentWidth: "normal", itemCount: 3 },
+  }),
+  ecomV({
+    id: "ecom-upsell",
+    name: "You May Also Like",
+    description: "A compact row of related or complementary products to encourage add-ons.",
+    tags: ["upsell", "cross-sell", "recommendations"],
+    contentDefaults: {
+      eyebrow: "You may also like",
+      heading: "Complete the look",
+      buttonLabel: "",
+      items: [
+        { title: "Nook side table", price: "$320", description: "" },
+        { title: "Ledge shelf", price: "$540", description: "" },
+        { title: "Arc floor lamp", price: "$260", description: "" },
+        { title: "Wool throw", price: "$95", description: "" },
+      ],
+    },
+    defaultLayout: { ...BASE_LAYOUT, alignment: "left", imagePosition: "top", columns: 4, contentWidth: "wide", itemCount: 4 },
+  }),
 ];
 
 // ---------------------------------------------------------------------------

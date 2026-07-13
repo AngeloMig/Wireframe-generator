@@ -30,6 +30,26 @@ export class LocalNotificationRepository implements NotificationRepository {
     return notification;
   }
 
+  async upsertNotification(
+    input: Omit<AppNotification, "id" | "createdAt" | "isRead">,
+  ): Promise<AppNotification> {
+    const items = this.read();
+    const existingIndex = items.findIndex(
+      (n) =>
+        !n.isRead &&
+        n.userId === input.userId &&
+        n.projectId === input.projectId &&
+        n.type === input.type &&
+        n.title === input.title,
+    );
+    if (existingIndex === -1) return this.addNotification(input);
+
+    const updated: AppNotification = { ...items[existingIndex], ...input, createdAt: nowIso() };
+    items[existingIndex] = updated;
+    writeJson(STORAGE_KEYS.notifications, items);
+    return updated;
+  }
+
   async markRead(id: string): Promise<void> {
     const items = this.read().map((n) => (n.id === id ? { ...n, isRead: true } : n));
     writeJson(STORAGE_KEYS.notifications, items);

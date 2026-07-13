@@ -10,3 +10,4 @@ next-env.d.ts
 # dev-server build output (NEXT_DIST_DIR)
 /.next-dev/
 /.next-verify/
+/.next-preview/

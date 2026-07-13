@@ -1,13 +1,18 @@
 "use client";
 
-import { AlertCircle, Bookmark, MousePointerClick, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AlertCircle, Bookmark, History, MousePointerClick, Plus, Trash2 } from "lucide-react";
 import { getSectionTypeDefinition } from "@/data/section-schemas";
 import { getVariation } from "@/data/section-variations";
 import { SECTION_TYPE_LABELS } from "@/config/labels";
+import { findLastApprovedSection } from "@/lib/collab-service";
+import { canRequestRevisions, canRestoreVersion } from "@/lib/permissions";
+import { compareSections } from "@/lib/version-compare";
 import type { InspectorTab } from "@/stores/editor-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { useSessionStore } from "@/stores/session-store";
-import type { PageSection, ProjectPage } from "@/types";
+import type { PageSection, PendingSectionRemoval, ProjectPage } from "@/types";
+import { formatRelative } from "@/utils/dates";
 import { cn } from "@/utils/cn";
 import { PageStatusBadge } from "@/components/ui/badge";
 import { ContentTab } from "./content-tab";
@@ -32,23 +37,36 @@ export function SectionInspector({
   section,
   onChange,
   page,
+  projectId,
   attentionReasons,
   onSelectSection,
   onAddSection,
   onSaveToLibrary,
+  onRevertSection,
+  onRestoreRemoval,
+  onDismissRemoval,
 }: {
   section: PageSection | null;
   onChange: SectionMutator;
   page?: ProjectPage;
+  /** Needed to look up the last approved snapshot for the "what changed" diff. */
+  projectId?: string;
   attentionReasons?: Map<string, string[]>;
   onSelectSection?: (sectionId: string) => void;
   onAddSection?: () => void;
   /** Agency-side: freeze this section into the reusable pattern library. */
   onSaveToLibrary?: (section: PageSection) => void;
+  /** Agency-side: restore this section to its last approved version. */
+  onRevertSection?: (sectionId: string) => void;
+  /** Agency-side: bring a customer-removed section back onto the page. */
+  onRestoreRemoval?: (removalId: string) => void;
+  /** Agency-side: dismiss a removal trace without restoring the section. */
+  onDismissRemoval?: (removalId: string) => void;
 }) {
   const inspectorTab = useEditorStore((s) => s.inspectorTab);
   const setInspectorTab = useEditorStore((s) => s.setInspectorTab);
-  const isCustomer = useSessionStore((s) => s.user.role === "customer");
+  const role = useSessionStore((s) => s.user.role);
+  const isCustomer = role === "customer";
 
   // Customers edit words and pick designs; the technical Settings tab is
   // agency-only. If a customer lands on it (persisted state), snap to Content.
@@ -56,14 +74,44 @@ export function SectionInspector({
   const activeTab =
     isCustomer && inspectorTab === "style" ? "content" : inspectorTab;
 
+  // Field-level "what changed" summary for a flagged, edited (not new)
+  // section — compares the live content against the last approved snapshot.
+  const [diff, setDiff] = useState<string[] | null>(null);
+  useEffect(() => {
+    setDiff(null);
+    if (
+      isCustomer ||
+      !projectId ||
+      !page ||
+      !section ||
+      section.reviewStatus !== "agency-review-needed" ||
+      section.pendingChange !== "edited"
+    ) {
+      return;
+    }
+    let cancelled = false;
+    findLastApprovedSection(projectId, page.id, section.id).then((approved) => {
+      if (cancelled || !approved) return;
+      // "Review status changed" is trivially true for every flagged section
+      // (approved → agency-review-needed) — the banner already says that.
+      setDiff(compareSections(approved, section).filter((line) => line !== "Review status changed"));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isCustomer, projectId, page, section]);
+
   if (!section) {
     if (page) {
       return (
         <PageOverviewPanel
           page={page}
+          isCustomer={isCustomer}
           attentionReasons={attentionReasons}
           onSelectSection={onSelectSection}
           onAddSection={onAddSection}
+          onRestoreRemoval={onRestoreRemoval}
+          onDismissRemoval={onDismissRemoval}
         />
       );
     }
@@ -132,6 +180,48 @@ export function SectionInspector({
           ))}
         </div>
       </div>
+      {!isCustomer && section.reviewStatus === "agency-review-needed" && (
+        <div className="flex flex-wrap items-start gap-2 border-b border-amber-200/70 bg-amber-50/60 px-4 py-2.5">
+          <AlertCircle className="mt-0.5 size-3.5 shrink-0 text-amber-700" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] leading-4 text-amber-800">
+              {section.pendingChange === "added"
+                ? "New section — added by the customer."
+                : "The customer edited this since it was last approved."}
+            </p>
+            {diff && diff.length > 0 && (
+              <ul className="mt-1 list-disc space-y-0.5 pl-4 text-[11px] leading-4 text-amber-700">
+                {diff.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="flex shrink-0 gap-1.5">
+            {canRestoreVersion(role) && onRevertSection && (
+              <button
+                type="button"
+                onClick={() => onRevertSection(section.id)}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-amber-300 bg-white px-2 py-1 text-[11px] font-semibold text-amber-800 transition-colors hover:bg-amber-100"
+              >
+                <History className="size-3" aria-hidden />
+                Revert
+              </button>
+            )}
+            {canRequestRevisions(role) && (
+              <button
+                type="button"
+                onClick={() =>
+                  onChange((s) => ({ ...s, reviewStatus: "approved", approvalLocked: true }))
+                }
+                className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-amber-800 px-2 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-amber-900"
+              >
+                Approve change
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto">
         {activeTab === "content" && (
           <ContentTab
@@ -151,17 +241,24 @@ export function SectionInspector({
 
 function PageOverviewPanel({
   page,
+  isCustomer,
   attentionReasons,
   onSelectSection,
   onAddSection,
+  onRestoreRemoval,
+  onDismissRemoval,
 }: {
   page: ProjectPage;
+  isCustomer: boolean;
   attentionReasons?: Map<string, string[]>;
   onSelectSection?: (sectionId: string) => void;
   onAddSection?: () => void;
+  onRestoreRemoval?: (removalId: string) => void;
+  onDismissRemoval?: (removalId: string) => void;
 }) {
   const ordered = [...page.sections].sort((a, b) => a.order - b.order);
   const attention = ordered.filter((s) => (attentionReasons?.get(s.id)?.length ?? 0) > 0);
+  const removals = isCustomer ? [] : (page.pendingRemovals ?? []);
 
   return (
     <div className="flex h-full flex-col">
@@ -175,6 +272,49 @@ function PageOverviewPanel({
         </div>
       </div>
       <div className="flex-1 space-y-5 overflow-y-auto p-4">
+        {removals.length > 0 && (
+          <section>
+            <h3 className="mb-2 flex items-center gap-1.5 text-[11px] font-bold tracking-[0.08em] text-rose-700 uppercase">
+              <Trash2 className="size-3.5" aria-hidden />
+              Removed by the customer
+            </h3>
+            <ul className="space-y-1.5">
+              {removals.map((removal: PendingSectionRemoval) => {
+                const variation = getVariation(removal.snapshot.variationId);
+                return (
+                  <li
+                    key={removal.id}
+                    className="rounded-lg border border-rose-200/70 bg-rose-50/60 px-2.5 py-2"
+                  >
+                    <span className="block truncate text-xs font-semibold text-slate-800">
+                      {variation?.name ?? SECTION_TYPE_LABELS[removal.snapshot.sectionType]}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] text-rose-800/80">
+                      Removed {formatRelative(removal.removedAt)}
+                    </span>
+                    <span className="mt-1.5 flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => onRestoreRemoval?.(removal.id)}
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-rose-300 bg-white px-2 py-1 text-[11px] font-semibold text-rose-800 transition-colors hover:bg-rose-100"
+                      >
+                        <History className="size-3" aria-hidden />
+                        Restore
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDismissRemoval?.(removal.id)}
+                        className="inline-flex cursor-pointer items-center rounded-md px-2 py-1 text-[11px] font-semibold text-rose-700 transition-colors hover:bg-rose-100"
+                      >
+                        Dismiss
+                      </button>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
         {attention.length > 0 ? (
           <section>
             <h3 className="mb-2 flex items-center gap-1.5 text-[11px] font-bold tracking-[0.08em] text-amber-700 uppercase">

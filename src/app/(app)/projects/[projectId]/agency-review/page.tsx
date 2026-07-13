@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -8,6 +9,7 @@ import {
   BadgeCheck,
   ChevronDown,
   ClipboardCheck,
+  GitCompareArrows,
   Lightbulb,
   MessageSquarePlus,
   Palette,
@@ -41,6 +43,7 @@ import {
 } from "@/lib/review-transitions";
 import { useProject } from "@/hooks/use-project";
 import { useCollabUiStore } from "@/stores/collab-ui-store";
+import { selectProjectVersions, useVersionsStore } from "@/stores/versions-store";
 import { selectProjectComments, useCommentsStore } from "@/stores/comments-store";
 import { useProjectsStore } from "@/stores/projects-store";
 import { useSessionStore } from "@/stores/session-store";
@@ -78,6 +81,22 @@ export default function AgencyReviewPage() {
   const openComposer = useCollabUiStore((s) => s.openComposer);
   const selectComment = useCollabUiStore((s) => s.selectComment);
   const selectedCommentId = useCollabUiStore((s) => s.selectedCommentId);
+  const router = useRouter();
+  // "What changed" jumps straight into the right version comparison: the
+  // customer's newest submission snapshot against the checkpoint before it.
+  const setCompare = useCollabUiStore((s) => s.setCompare);
+  const loadVersions = useVersionsStore((s) => s.load);
+  const versions = useVersionsStore((s) => selectProjectVersions(s, projectId));
+  useEffect(() => {
+    if (projectId) void loadVersions(projectId);
+  }, [projectId, loadVersions]);
+  const sortedVersions = [...versions].sort((a, b) => b.versionNumber - a.versionNumber);
+  const latestSubmission = sortedVersions.find(
+    (v) => v.trigger === "review-submission" || v.trigger === "revision-submission",
+  );
+  const previousVersion = latestSubmission
+    ? sortedVersions.find((v) => v.versionNumber < latestSubmission.versionNumber)
+    : undefined;
   const loadComments = useCommentsStore((s) => s.load);
   const comments = useCommentsStore((s) => selectProjectComments(s, projectId));
 
@@ -231,6 +250,19 @@ export default function AgencyReviewPage() {
                   Send for approval
                 </Button>
               )}
+            {latestSubmission && previousVersion && (
+              <Button
+                variant="outline"
+                title={`Compare “${latestSubmission.label}” with “${previousVersion.label}”`}
+                onClick={() => {
+                  setCompare(previousVersion.id, latestSubmission.id);
+                  router.push(`/projects/${projectId}/versions`);
+                }}
+              >
+                <GitCompareArrows className="size-4" aria-hidden />
+                What changed
+              </Button>
+            )}
             <Link href={`/projects/${projectId}/editor${page ? `?page=${page.id}` : ""}`}>
               <Button variant="outline">
                 <PencilRuler className="size-4" aria-hidden />

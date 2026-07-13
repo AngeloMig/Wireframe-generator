@@ -698,6 +698,135 @@ function Sketch({ variation }: { variation: SectionVariation }) {
           ))}
         </div>
       );
+    case "ecom-featured":
+    case "ecom-grid":
+      return (
+        <div className="flex flex-col gap-1">
+          <div className="mx-auto h-1 w-1/2 rounded-full bg-slate-500" />
+          <div className="flex gap-1">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex flex-1 flex-col gap-0.5">
+                {block("h-2.5 w-full")}
+                <div className="h-0.5 w-2/3 rounded-full bg-slate-300" />
+                <div className="h-0.5 w-1/3 rounded-full bg-slate-500" />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    case "ecom-best-sellers":
+      return (
+        <div className="flex gap-1">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="relative flex-1">
+              <div className="absolute top-0.5 left-0.5 z-10 flex size-2 items-center justify-center rounded-full bg-slate-600 text-[6px] leading-none text-white">
+                {i + 1}
+              </div>
+              {block("h-3 w-full")}
+              <div className="mt-0.5 h-0.5 w-2/3 rounded-full bg-slate-300" />
+              <div className="mt-0.5 h-0.5 w-1/3 rounded-full bg-slate-500" />
+            </div>
+          ))}
+        </div>
+      );
+    case "ecom-benefits":
+      return (
+        <div className="grid grid-cols-2 gap-1">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-1">
+              <span className="size-2 shrink-0 rounded-full border border-slate-400" />
+              <div className="flex-1 space-y-0.5">
+                {line("w-full")}
+                {line("w-2/3")}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    case "ecom-product-detail":
+      return (
+        <div className="flex h-full items-center gap-1">
+          {block("h-full flex-1")}
+          <div className="flex flex-1 flex-col gap-1">
+            {line("w-full", "bg-slate-500")}
+            <span className="text-[7px] font-bold leading-none text-slate-500">$</span>
+            <div className="flex gap-0.5">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <span key={i} className="size-1.5 rounded-full border border-slate-400" />
+              ))}
+            </div>
+            {btn("w-full")}
+          </div>
+        </div>
+      );
+    case "ecom-reviews":
+      return (
+        <div className="flex flex-col items-center gap-1">
+          <span className="text-[9px] font-bold text-slate-600">4.8</span>
+          <span className="text-[5px] leading-none text-amber-400">★★★★★</span>
+          <div className="flex w-full gap-0.5">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex-1 space-y-0.5 rounded-sm border border-slate-200 p-0.5">
+                <span className="block text-[4px] leading-none text-amber-400">★★★★★</span>
+                <div className="h-0.5 w-full rounded-full bg-slate-300" />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    case "ecom-variant-selector":
+      return (
+        <div className="flex h-full items-center gap-1">
+          {block("h-full flex-1")}
+          <div className="flex flex-1 flex-col gap-1">
+            {line("w-full", "bg-slate-500")}
+            <span className="text-[7px] font-bold leading-none text-slate-500">$</span>
+            <div className="flex gap-0.5">
+              {["S", "M", "L"].map((s) => (
+                <span key={s} className="rounded-sm border border-slate-300 px-1 text-[6px] leading-tight text-slate-500">
+                  {s}
+                </span>
+              ))}
+            </div>
+            {btn("w-full")}
+          </div>
+        </div>
+      );
+    case "ecom-upsell":
+      return (
+        <div className="space-y-1">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-1">
+              {block("size-2.5 shrink-0")}
+              <div className="flex-1 space-y-0.5">
+                {line("w-full")}
+                {line("w-1/3")}
+              </div>
+              <span className="flex size-2 items-center justify-center rounded-full border border-slate-400 text-[6px] leading-none text-slate-400">
+                +
+              </span>
+            </div>
+          ))}
+        </div>
+      );
+    case "ecom-filter-grid":
+      return (
+        <div className="flex gap-1">
+          <div className="flex w-1/4 flex-col gap-0.5">
+            {line("w-full")}
+            {line("w-2/3")}
+            {line("w-full")}
+          </div>
+          <div className="grid flex-1 grid-cols-2 gap-0.5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-0.5">
+                {block("h-2 w-full")}
+                <div className="h-0.5 w-2/3 rounded-full bg-slate-300" />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
     default:
       break;
   }

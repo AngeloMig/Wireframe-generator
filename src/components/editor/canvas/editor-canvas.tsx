@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { MousePointerClick } from "lucide-react";
@@ -67,7 +67,24 @@ export function EditorCanvas({
   const setFitZoom = useEditorStore((s) => s.setFitZoom);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const deviceWidth = DEVICE_WIDTHS[device];
+
+  // `transform: scale()` only affects paint, not layout — the scaled div
+  // still occupies its full unscaled height in the document, which would
+  // otherwise leave a huge invisible scrollable dead zone below the visible
+  // (shrunk) page whenever zoom < 1. Measure the true unscaled height and
+  // size the outer wrapper to the *visual* (scaled) height instead.
+  const [contentHeight, setContentHeight] = useState(0);
+  useEffect(() => {
+    const node = contentRef.current;
+    if (!node) return;
+    const observer = new ResizeObserver((entries) => {
+      setContentHeight(entries[0].contentRect.height);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   // Figma/Shopify-style zoom: Ctrl/Cmd + scroll. Native listener because the
   // browser's wheel events are passive by default and we must preventDefault
@@ -121,9 +138,14 @@ export function EditorCanvas({
     >
       <div
         className="mx-auto"
-        style={{ width: deviceWidth * zoom, minHeight: "100%" }}
+        style={{
+          width: deviceWidth * zoom,
+          minHeight: "100%",
+          height: contentHeight ? contentHeight * zoom : undefined,
+        }}
       >
         <div
+          ref={contentRef}
           style={{
             width: deviceWidth,
             transform: `scale(${zoom})`,

@@ -24,6 +24,7 @@ import {
   projectChecklist,
   projectCompletion,
 } from "@/lib/project-utils";
+import { stageOf } from "@/lib/project-stages";
 import { useProject } from "@/hooks/use-project";
 import { useCollabUiStore } from "@/stores/collab-ui-store";
 import { selectProjectComments, useCommentsStore } from "@/stores/comments-store";
@@ -67,7 +68,8 @@ function ProjectOverview() {
   const checklist = projectChecklist(project);
   const completion = projectCompletion(project);
   const missing = checklist.filter((i) => !i.done);
-  const action = nextRecommendedAction(project);
+  const action = nextRecommendedAction(project, user.role);
+  const stage = stageOf(project.status);
   const statusMeta = PROJECT_STATUS_META[project.status];
   const q = project.questionnaire;
   const platformLabel =
@@ -109,7 +111,7 @@ function ProjectOverview() {
                 href={action.href}
                 className="group inline-flex items-center gap-3 rounded-full bg-[#e0492c] py-2.5 pr-2.5 pl-5 text-sm font-semibold text-white shadow-[0_4px_16px_rgb(224_73_44/0.28)] transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:shadow-[0_8px_24px_rgb(224_73_44/0.38)] active:scale-[0.98]"
               >
-                {action.label}
+                {action.cta ?? action.label}
                 <span className="flex size-8 items-center justify-center rounded-full bg-white/20 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5">
                   <ArrowRight className="size-4" aria-hidden />
                 </span>
@@ -126,7 +128,7 @@ function ProjectOverview() {
               <div className="h-full rounded-full bg-[var(--text-primary)] transition-all duration-500" style={{ width: `${completion}%` }} />
             </div>
             <p className="mt-3 text-xs leading-5 text-[var(--text-muted)]">
-              {missing.length ? `${missing.length} checklist item${missing.length === 1 ? "" : "s"} still need attention.` : "Everything is ready for the next step."}
+              {missing.length ? `${missing.length} checklist ${missing.length === 1 ? "item still needs" : "items still need"} attention.` : "Everything is ready for the next step."}
             </p>
           </div>
         </div>
@@ -152,32 +154,61 @@ function ProjectOverview() {
         </div>
       )}
 
-      {/* Primary actions */}
+      {/* Primary actions — the third card follows the project's stage, so the
+          workflow action here always matches what the agency should do next. */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
           {
             href: `${base}/editor`,
             icon: LayoutGrid,
-            label: "Continue Building",
-            hint: "Open the wireframe editor",
+            label: "Open the Editor",
+            hint: "View and edit the wireframes",
           },
           {
             href: `${base}/sitemap`,
             icon: Network,
-            label: "View Sitemap",
-            hint: "Manage pages and structure",
+            label: "Manage Pages",
+            hint: "Pages, structure, and sitemap",
           },
-          {
-            href: `${base}/review`,
-            icon: Send,
-            label: "Submit for Review",
-            hint: "Send the blueprint to the agency",
-          },
+          stage === "review"
+            ? {
+                href: `${base}/agency-review`,
+                icon: Send,
+                label: "Review Queue",
+                hint: "The submitted blueprint awaits review",
+              }
+            : stage === "revisions"
+              ? {
+                  href: `${base}/activity`,
+                  icon: Send,
+                  label: "Track Revisions",
+                  hint: "The customer is making your changes",
+                }
+              : stage === "approval"
+                ? {
+                    href: `${base}/review`,
+                    icon: Send,
+                    label: "Approval Status",
+                    hint: "Waiting on the customer's sign-off",
+                  }
+                : stage === "approved"
+                  ? {
+                      href: `${base}/handoff`,
+                      icon: Send,
+                      label: "Export Handoff",
+                      hint: "Package the blueprint for the build",
+                    }
+                  : {
+                      href: `${base}/activity`,
+                      icon: Send,
+                      label: "Customer Activity",
+                      hint: "Follow the drafting progress",
+                    },
           {
             href: `${base}/questionnaire`,
             icon: Settings2,
-            label: "Project Settings",
-            hint: "Update the questionnaire",
+            label: "Project Brief",
+            hint: "Questionnaire and goals",
           },
         ].map((item) => (
           <Link

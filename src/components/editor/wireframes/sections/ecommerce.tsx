@@ -1,5 +1,6 @@
 "use client";
 
+import { Star } from "lucide-react";
 import { imageOf, itemsOf, str } from "@/lib/editor-utils";
 import { cn } from "@/utils/cn";
 import {
@@ -15,6 +16,7 @@ import {
   Para,
   useWire,
   WireButton,
+  WireCard,
 } from "../primitives";
 import type { SectionComponentProps } from "../registry-types";
 
@@ -292,6 +294,129 @@ export function EcomFilterGrid({ section }: SectionComponentProps) {
           ))}
         </div>
       </div>
+    </>
+  );
+}
+
+// Customer reviews — aggregate rating summary plus individual star reviews.
+export function EcomReviews({ section }: SectionComponentProps) {
+  const { device } = useWire();
+  const c = section.content;
+  const reviews = shownItems(section);
+  const cols = effectiveColumns(device, section.layout.columns, 1, true);
+  return (
+    <div className={cn("flex flex-col gap-6", alignClass(section.layout.alignment))}>
+      <div className={cn("flex flex-col gap-1.5", alignClass(section.layout.alignment))}>
+        <div className="flex items-center gap-2">
+          <InlineText text={str(c, "rating")} path="rating" className="text-3xl font-bold" as="span" />
+          <div className="flex gap-0.5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star key={i} className="size-4 fill-amber-400 text-amber-400" aria-hidden />
+            ))}
+          </div>
+        </div>
+        <InlineText text={str(c, "ratingLabel")} path="ratingLabel" className="text-xs opacity-60" as="span" />
+        <Heading text={str(c, "heading")} path="heading" size="md" className="mt-2" />
+      </div>
+      <Grid columns={cols} className="w-full">
+        {reviews.map((review, i) => {
+          const filled = Math.min(5, Math.max(0, Math.round(Number(review.rating) || 5)));
+          return (
+            <WireCard key={i} className="flex flex-col gap-2">
+              <div className="flex gap-0.5">
+                {Array.from({ length: 5 }).map((_, s) => (
+                  <Star
+                    key={s}
+                    className={cn("size-3.5", s < filled ? "fill-amber-400 text-amber-400" : "text-current/20")}
+                    aria-hidden
+                  />
+                ))}
+              </div>
+              <InlineText text={String(review.description ?? "")} path={`items.${i}.description`} className="text-sm" />
+              <InlineText text={String(review.title ?? "")} path={`items.${i}.title`} className="text-xs font-medium opacity-60" />
+            </WireCard>
+          );
+        })}
+      </Grid>
+    </div>
+  );
+}
+
+// Size & options — a compact buy box with size pills, quantity, and add to cart.
+export function EcomVariantSelector({ section }: SectionComponentProps) {
+  const { device, theme } = useWire();
+  const c = section.content;
+  const stacked = device === "mobile";
+  const sizes = shownItems(section);
+  return (
+    <div className={cn("flex gap-10", stacked && "flex-col")}>
+      <div className={cn(stacked ? "w-full" : "w-2/5")}>
+        <ImagePh image={imageOf(c, "image")} ratio="aspect-square" label="Product image" />
+      </div>
+      <div className="flex flex-1 flex-col gap-4">
+        <Eyebrow text={str(c, "eyebrow")} path="eyebrow" />
+        <Heading text={str(c, "heading")} path="heading" size="md" />
+        <InlineText text={str(c, "price")} path="price" className="text-xl font-bold" as="span" />
+        <Para text={str(c, "description")} className="max-w-md" />
+
+        {sizes.length > 0 && (
+          <div>
+            <p className="mb-1.5 text-[11px] font-semibold tracking-wide uppercase opacity-60">Size</p>
+            <div className="flex flex-wrap gap-2">
+              {sizes.map((size, i) => (
+                <span
+                  key={i}
+                  className={cn(
+                    "flex h-9 min-w-9 items-center justify-center rounded-md border px-3 text-xs",
+                    i === 0 ? "border-current font-semibold" : "border-current/25 opacity-70",
+                  )}
+                >
+                  {String(size.title ?? `Size ${i + 1}`)}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center gap-3">
+          <span className={cn("flex items-center gap-3 border border-current/25 px-3 py-2 text-xs", theme.buttonRadius)}>
+            − <span className="w-4 text-center font-semibold">1</span> +
+          </span>
+          <span className="flex-1"><WireButton label={str(c, "buttonLabel") || "Add to cart"} path="buttonLabel" /></span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// You may also like — a compact upsell row with quick-add controls.
+export function EcomUpsell({ section }: SectionComponentProps) {
+  const { device } = useWire();
+  const c = section.content;
+  const items = shownItems(section);
+  const cols = effectiveColumns(device, section.layout.columns, 2, true);
+  return (
+    <>
+      <HeadingBlock
+        eyebrow={str(c, "eyebrow")}
+        heading={str(c, "heading")}
+        alignment={section.layout.alignment}
+        size="sm"
+      />
+      <Grid columns={cols}>
+        {items.map((item, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <ImagePh ratio="aspect-square" className="w-16 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <InlineText text={String(item.title ?? "")} path={`items.${i}.title`} className="truncate text-sm font-medium" />
+              <InlineText text={String(item.price ?? "")} path={`items.${i}.price`} className="text-xs opacity-70" />
+            </div>
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-current/25 text-sm">
+              +
+            </span>
+          </div>
+        ))}
+      </Grid>
     </>
   );
 }

@@ -44,6 +44,7 @@ const ACTIVITY_ICONS: Record<ActivityType, LucideIcon> = {
   "revisions-requested": RefreshCcw,
   "revisions-submitted": Send,
   "section-approved": CheckCircle2,
+  "section-reverted": History,
   "page-approved": CheckCircle2,
   "project-approved": CheckCircle2,
   "approval-revoked": ShieldX,

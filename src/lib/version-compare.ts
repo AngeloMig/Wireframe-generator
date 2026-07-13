@@ -67,7 +67,8 @@ function describeContentChange(key: string, before: unknown, after: unknown): st
   return `${key.charAt(0).toUpperCase() + key.slice(1)} updated`;
 }
 
-function compareSections(before: PageSection, after: PageSection): string[] {
+/** Field-level "what changed" summary between two revisions of one section. */
+export function compareSections(before: PageSection, after: PageSection): string[] {
   const details: string[] = [];
 
   if (before.variationId !== after.variationId) {
