@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { normalizeSectionOrder } from "@/lib/sections";
-import { withActivity } from "@/lib/project-utils";
+import { withActivity, withThrottledActivity } from "@/lib/project-utils";
 import type { ActivityType, PageSection, PendingSectionRemoval } from "@/types";
 import { createId, nowIso } from "@/utils/id";
 import { useProjectsStore } from "./projects-store";
@@ -32,7 +32,14 @@ interface ApplyOptions {
    * coalesce into a single undo step instead of one per keystroke.
    */
   editKey?: string;
-  activity?: { type: ActivityType; message: string };
+  activity?: {
+    type: ActivityType;
+    message: string;
+    pageId?: string;
+    sectionId?: string;
+    /** Collapse rapid repeats from the same actor+section into one entry. */
+    throttleMs?: number;
+  };
 }
 
 /**
@@ -196,7 +203,11 @@ function writeSections(
       ),
       lastEditedAt: nowIso(),
     };
-    return activity ? withActivity(next, activity.type, activity.message, user) : next;
+    if (!activity) return next;
+    const meta = { pageId: activity.pageId ?? pageId, sectionId: activity.sectionId };
+    return activity.throttleMs
+      ? withThrottledActivity(next, activity.type, activity.message, user, meta, activity.throttleMs)
+      : withActivity(next, activity.type, activity.message, user, meta);
   });
 }
 

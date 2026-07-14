@@ -259,6 +259,7 @@ export function withActivity(
   type: ActivityType,
   message: string,
   actor: Pick<AppUser, "id" | "name" | "role">,
+  meta?: { pageId?: string; sectionId?: string },
 ): Project {
   const entry: ActivityEntry = {
     id: createId(),
@@ -268,6 +269,8 @@ export function withActivity(
     actorId: actor.id,
     actorName: actor.name,
     actorRole: actor.role,
+    pageId: meta?.pageId,
+    sectionId: meta?.sectionId,
     createdAt: nowIso(),
   };
   return {
@@ -275,6 +278,39 @@ export function withActivity(
     activity: [entry, ...project.activity],
     lastEditedAt: entry.createdAt,
   };
+}
+
+/**
+ * Same as `withActivity`, but bursts of edits to the same section from the
+ * same actor collapse into one entry (the timestamp and message just bump)
+ * instead of flooding the feed with one row per keystroke. Anyone reviewing
+ * "what changed" — the activity page, the dashboard, a "customer is editing"
+ * notification deep link — sees one live line per section, not a wall of noise.
+ */
+export function withThrottledActivity(
+  project: Project,
+  type: ActivityType,
+  message: string,
+  actor: Pick<AppUser, "id" | "name" | "role">,
+  meta: { pageId?: string; sectionId?: string },
+  windowMs = 3 * 60 * 1000,
+): Project {
+  const [latest, ...rest] = project.activity;
+  const canCollapse =
+    latest &&
+    latest.type === type &&
+    latest.actorId === actor.id &&
+    latest.sectionId === meta.sectionId &&
+    Date.now() - new Date(latest.createdAt).getTime() < windowMs;
+  const now = nowIso();
+  if (canCollapse) {
+    return {
+      ...project,
+      activity: [{ ...latest, message, createdAt: now }, ...rest],
+      lastEditedAt: now,
+    };
+  }
+  return withActivity(project, type, message, actor, meta);
 }
 
 /** Build a CreateProjectInput that deep-clones a project with fresh IDs. */

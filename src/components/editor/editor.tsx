@@ -513,17 +513,38 @@ export function Editor({
           sections.map((s) => (s.id === id ? { ...s, isLocked: !s.isLocked } : s)),
         ),
       onToggleCollapsed: (id) => toggleCollapsed(id),
-      onInlineEdit: (id, path, value) =>
-        applySections(project.id, (sections) =>
-          sections.map((s) =>
-            s.id === id ? { ...s, content: setContentValue(s.content, path, value) } : s,
-          ),
-        ),
+      onInlineEdit: (id, path, value) => {
+        const section = ordered.find((s) => s.id === id);
+        const name = section ? getVariation(section.variationId)?.name ?? "Section" : "Section";
+        applySections(
+          project.id,
+          (sections) =>
+            sections.map((s) =>
+              s.id === id ? { ...s, content: setContentValue(s.content, path, value) } : s,
+            ),
+          {
+            activity: {
+              type: "page-updated",
+              message: `${name} on ${page.name} edited`,
+              sectionId: id,
+              throttleMs: 3 * 60 * 1000,
+            },
+          },
+        );
+      },
       onSwapDesign: (id, variationId) => {
         const target = getVariation(variationId);
         if (!target) return;
-        applySections(project.id, (sections) =>
-          sections.map((s) => (s.id === id ? switchSectionVariation(s, target) : s)),
+        applySections(
+          project.id,
+          (sections) => sections.map((s) => (s.id === id ? switchSectionVariation(s, target) : s)),
+          {
+            activity: {
+              type: "page-updated",
+              message: `${target.name} design applied on ${page.name}`,
+              sectionId: id,
+            },
+          },
         );
         toast("Design changed", "success", `Now using “${target.name}”. Your content was kept.`);
       },
@@ -559,7 +580,8 @@ export function Editor({
           {
             activity: {
               type: "section-removed",
-              message: `${variation?.name ?? "Section"} removed`,
+              message: `${variation?.name ?? "Section"} removed from ${page.name}`,
+              sectionId: id,
             },
           },
         );
@@ -567,7 +589,7 @@ export function Editor({
         toast("Section removed", "info", "Use undo if that was a mistake.");
       },
     }),
-    [applySections, comments, moveSection, ordered, project.id, select, toggleCollapsed, updateComment],
+    [applySections, comments, moveSection, ordered, page.id, page.name, project.id, select, toggleCollapsed, updateComment],
   );
 
   // Agency-only: restore a customer-edited section to the last version where
