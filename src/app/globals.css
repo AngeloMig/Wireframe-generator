@@ -115,6 +115,21 @@
   --info: #0068a8;
   --info-soft: #e0f0ff;
   --info-text: #003a5a;
+  /* Shopify-inspired transactional surfaces used by the dashboard and
+     commerce-oriented template previews. Keep these semantic so the palette
+     can evolve without scattering hex values through JSX. */
+  --shopify-canvas: #fbfbf5;
+  --shopify-panel: #f2f4ee;
+  --shopify-hairline: #dfe5dc;
+  --shopify-border: #e4e7e1;
+  --shopify-border-hover: #c7d9c8;
+  --shopify-mint: #d4f9e0;
+  --shopify-mint-hover: #f8fcf5;
+  --shopify-ink: #000000;
+  --shopify-ink-hover: #232323;
+  --shopify-danger: #e0492c;
+  --shopify-danger-surface: #fff8f6;
+  --shopify-danger-border: #f2c7bd;
   --radius-small: 0.375rem;
   --radius-medium: 0.5rem;
   --radius-large: 0.75rem;
