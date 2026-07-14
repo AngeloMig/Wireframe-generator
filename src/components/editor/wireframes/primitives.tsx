@@ -3,7 +3,7 @@
 import { createContext, useContext } from "react";
 import { ImageIcon } from "lucide-react";
 import type { BrandTheme } from "@/lib/editor-utils";
-import { tint, type ImageValue } from "@/lib/editor-utils";
+import { colorsTooSimilar, needsLightText, tint, type ImageValue } from "@/lib/editor-utils";
 import type { DeviceKind } from "@/stores/editor-store";
 import type { PageSection, SectionLayoutSettings } from "@/types";
 import { cn } from "@/utils/cn";
@@ -19,6 +19,19 @@ export interface WireContext {
   styled: boolean;
   theme: BrandTheme;
   device: DeviceKind;
+  /**
+   * Whether the nearest SectionFrame ancestor resolved to a dark background —
+   * so a descendant drawing an inverse-fill badge (a solid dot using
+   * `currentColor`) knows which way to invert instead of guessing.
+   */
+  sectionIsDark: boolean;
+  /**
+   * The nearest SectionFrame ancestor's actual resolved background color
+   * (styled mode only) — lets a descendant check its own fixed brand color
+   * against it, e.g. an outline button in theme.primary sitting on a
+   * background that's also theme.primary ("brand" background type).
+   */
+  sectionBackgroundColor?: string;
 }
 
 const Ctx = createContext<WireContext>({
@@ -32,6 +45,7 @@ const Ctx = createContext<WireContext>({
     headingFont: "font-sans",
   },
   device: "desktop",
+  sectionIsDark: false,
 });
 
 export const WireProvider = Ctx.Provider;
@@ -123,13 +137,11 @@ export function SectionFrame({
   children: React.ReactNode;
   className?: string;
 }) {
-  const { styled, theme } = useWire();
+  const wire = useWire();
+  const { styled, theme, device } = wire;
   const { style, layout } = section;
 
-  const isDark =
-    style.background === "dark" || (styled && style.background === "brand");
-
-  let backgroundColor: string | undefined;
+  let backgroundColor: string;
   if (styled && style.backgroundColor) backgroundColor = style.backgroundColor;
   else if (style.background === "dark") backgroundColor = styled ? theme.secondary : "#1e293b";
   else if (style.background === "brand") backgroundColor = styled ? theme.primary : "#cbd5e1";
@@ -137,6 +149,13 @@ export function SectionFrame({
     backgroundColor = styled ? tint(theme.primary, 0.06) : "#f1f5f9";
   else if (style.background === "image") backgroundColor = styled ? "#334155" : "#94a3b8";
   else backgroundColor = "#ffffff";
+
+  // Text color follows the background's own brightness, not the semantic
+  // background name — a brand color light enough to defeat the "dark"/"brand"
+  // assumption would otherwise still force white text onto a pale surface.
+  // A custom textColor (styled mode only — wireframe mode never applies one)
+  // overrides this below, so it doesn't need to factor into the fallback.
+  const isDark = styled && style.textColor ? false : needsLightText(backgroundColor);
 
   const paddingY = style.spacing === "compact" ? 24 : style.spacing === "spacious" ? 72 : 48;
   const maxWidth = CONTENT_WIDTHS[layout.contentWidth];
@@ -157,8 +176,19 @@ export function SectionFrame({
         paddingBottom: paddingY,
       }}
     >
-      <div className="mx-auto w-full px-10" style={{ maxWidth }}>
-        {children}
+      <div
+        className={cn("mx-auto w-full", device === "mobile" ? "px-[15px]" : "px-10")}
+        style={{ maxWidth }}
+      >
+        <Ctx.Provider
+          value={{
+            ...wire,
+            sectionIsDark: isDark,
+            sectionBackgroundColor: styled ? backgroundColor : undefined,
+          }}
+        >
+          {children}
+        </Ctx.Provider>
       </div>
     </div>
   );
@@ -356,10 +386,18 @@ export function WireButton({
   kind?: "primary" | "secondary";
   path?: string;
 }) {
-  const { styled, theme } = useWire();
+  const { styled, theme, sectionBackgroundColor } = useWire();
   const editable = useEditableText(path, label);
   if (!label) return null;
   if (styled) {
+    // An outline button colored in the brand primary disappears if the
+    // section it sits on is filled with that same primary (a "brand"
+    // background) — fall back to whatever the section's own text already
+    // uses, which is guaranteed to read against that specific background.
+    const collides = sectionBackgroundColor && colorsTooSimilar(theme.primary, sectionBackgroundColor);
+    const secondaryColor = collides
+      ? (needsLightText(sectionBackgroundColor!) ? "#ffffff" : "#0f172a")
+      : theme.primary;
     return (
       <span
         className={cn(
@@ -369,8 +407,8 @@ export function WireButton({
         )}
         style={
           kind === "primary"
-            ? { backgroundColor: theme.primary, color: "#ffffff" }
-            : { borderColor: theme.primary, color: theme.primary }
+            ? { backgroundColor: theme.primary, color: needsLightText(theme.primary) ? "#ffffff" : "#0f172a" }
+            : { borderColor: secondaryColor, color: secondaryColor }
         }
       >
         <span {...editable} className={cn(editable && EDITABLE_TEXT_CLASS)}>{label}</span>

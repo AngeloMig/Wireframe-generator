@@ -453,7 +453,7 @@ export default function AgencyReviewPage() {
                     )}
 
                     <ScaledPreview scale={0.65} className="pointer-events-none max-h-80">
-                      <WireProvider value={{ styled: false, theme, device: "desktop" }}>
+                      <WireProvider value={{ styled: false, theme, device: "desktop", sectionIsDark: false }}>
                         <SectionRenderer section={section} />
                       </WireProvider>
                     </ScaledPreview>

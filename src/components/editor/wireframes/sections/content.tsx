@@ -255,6 +255,7 @@ export function ContentBento({ section }: SectionComponentProps) {
 
 // Comparison / spec table — labelled rows with check cells (SaaS, tech).
 export function ContentSpecTable({ section }: SectionComponentProps) {
+  const { sectionIsDark } = useWire();
   const c = section.content;
   const items = shownItems(section, "items");
   return (
@@ -290,7 +291,12 @@ export function ContentSpecTable({ section }: SectionComponentProps) {
                 <p className="text-[11px] opacity-50">{String(item.description)}</p>
               ) : null}
             </div>
-            <span className="mx-auto flex size-5 items-center justify-center rounded-full bg-current/80 text-[10px] font-bold text-white">
+            <span
+              className={cn(
+                "mx-auto flex size-5 items-center justify-center rounded-full bg-current/80 text-[10px] font-bold",
+                sectionIsDark ? "text-slate-900" : "text-white",
+              )}
+            >
               ✓
             </span>
             <span className="mx-auto size-2 rounded-full bg-current opacity-20" aria-hidden />
@@ -348,6 +354,7 @@ export function ContentGallery({ section }: SectionComponentProps) {
 
 // Scroll story — pinned frames with motion annotations (animated path).
 export function ContentScrollStory({ section }: SectionComponentProps) {
+  const { sectionIsDark } = useWire();
   const c = section.content;
   const items = shownItems(section, "items");
   const frames = items.length > 0 ? items.slice(0, 4) : [{}, {}, {}];
@@ -365,7 +372,12 @@ export function ContentScrollStory({ section }: SectionComponentProps) {
             className="flex items-stretch gap-4 rounded-lg border border-dashed border-current/25 p-4"
           >
             <div className="flex w-10 shrink-0 flex-col items-center gap-1.5">
-              <span className="flex size-6 items-center justify-center rounded-full bg-current/80 text-[10px] font-bold text-white">
+              <span
+                className={cn(
+                  "flex size-6 items-center justify-center rounded-full bg-current/80 text-[10px] font-bold",
+                  sectionIsDark ? "text-slate-900" : "text-white",
+                )}
+              >
                 {i + 1}
               </span>
               {i < frames.length - 1 && (

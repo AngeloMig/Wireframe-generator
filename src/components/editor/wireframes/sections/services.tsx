@@ -1,6 +1,6 @@
 "use client";
 
-import { itemsOf, str } from "@/lib/editor-utils";
+import { itemsOf, needsLightText, str } from "@/lib/editor-utils";
 import { cn } from "@/utils/cn";
 import {
   alignClass,
@@ -74,7 +74,7 @@ function NumberDot({ n }: { n: number }) {
         "flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
         !styled && "bg-slate-200 text-slate-600",
       )}
-      style={styled ? { backgroundColor: theme.primary, color: "#fff" } : undefined}
+      style={styled ? { backgroundColor: theme.primary, color: needsLightText(theme.primary) ? "#fff" : "#0f172a" } : undefined}
     >
       {n}
     </span>

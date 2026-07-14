@@ -40,7 +40,7 @@ export function SheetPreview({
       {sections.length > 0 ? (
         <ScaledPreview scale={0.28}>
           <WireProvider
-            value={{ styled: false, theme: brandTheme(project), device: "desktop" }}
+            value={{ styled: false, theme: brandTheme(project), device: "desktop", sectionIsDark: false }}
           >
             {sections.map((section) => (
               <SectionRenderer key={section.id} section={section} />

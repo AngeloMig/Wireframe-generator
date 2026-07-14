@@ -1,7 +1,7 @@
 "use client";
 
 import { Play } from "lucide-react";
-import { imageOf, itemsOf, str } from "@/lib/editor-utils";
+import { imageOf, itemsOf, needsLightText, str } from "@/lib/editor-utils";
 import type { SectionLayoutSettings } from "@/types";
 import { cn } from "@/utils/cn";
 import {
@@ -304,8 +304,9 @@ export function HeroPromo({ section }: SectionComponentProps) {
           className={cn(
             "w-fit rounded-full px-3 py-1 text-xs font-bold tracking-wide uppercase",
             !styled && "bg-slate-800 text-white",
+            styled && (needsLightText(theme.accent) ? "text-white" : "text-slate-900"),
           )}
-          style={styled ? { backgroundColor: theme.accent, color: "#fff" } : undefined}
+          style={styled ? { backgroundColor: theme.accent } : undefined}
         >
           {str(c, "badge")}
         </span>

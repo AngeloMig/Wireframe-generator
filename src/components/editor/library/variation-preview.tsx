@@ -175,7 +175,7 @@ export function VariationPreview({
                 transformOrigin: "top left",
               }}
             >
-              <WireProvider value={{ styled: mode === "styled", theme, device }}>
+              <WireProvider value={{ styled: mode === "styled", theme, device, sectionIsDark: false }}>
                 <div className="overflow-hidden rounded-[1rem] bg-white shadow-[0_18px_45px_rgb(23_32_29/0.12)] ring-1 ring-[#d6ddd8]">
                   <SectionRenderer section={previewSection} />
                 </div>

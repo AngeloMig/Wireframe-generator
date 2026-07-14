@@ -64,6 +64,7 @@ export function LibraryItem({
             value={{
               styled: false,
               device: "desktop",
+              sectionIsDark: false,
               theme: {
                 primary: "#315f53",
                 secondary: "#24332e",

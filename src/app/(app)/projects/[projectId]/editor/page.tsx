@@ -196,7 +196,7 @@ function MobileEditor({
           {page.name} · {page.sections.length}{" "}
           {page.sections.length === 1 ? "section" : "sections"}
         </p>
-        <WireProvider value={{ styled: false, theme: brandTheme(project), device: "mobile" }}>
+        <WireProvider value={{ styled: false, theme: brandTheme(project), device: "mobile", sectionIsDark: false }}>
           <div className="overflow-hidden rounded-xl bg-white shadow ring-1 ring-slate-200">
             {[...page.sections]
               .sort((a, b) => a.order - b.order)

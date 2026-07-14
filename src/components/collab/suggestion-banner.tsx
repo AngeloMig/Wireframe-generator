@@ -166,7 +166,7 @@ export function SuggestionDialog({
             </figcaption>
             <ScaledPreview className="rounded-lg border border-slate-200">
               {section && (
-                <WireProvider value={{ styled: false, theme, device: "desktop" }}>
+                <WireProvider value={{ styled: false, theme, device: "desktop", sectionIsDark: false }}>
                   <SectionRenderer section={section} />
                 </WireProvider>
               )}
@@ -178,7 +178,7 @@ export function SuggestionDialog({
             </figcaption>
             <ScaledPreview className="rounded-lg border-2 border-violet-300">
               {previewSection && (
-                <WireProvider value={{ styled: false, theme, device: "desktop" }}>
+                <WireProvider value={{ styled: false, theme, device: "desktop", sectionIsDark: false }}>
                   <SectionRenderer section={previewSection} />
                 </WireProvider>
               )}

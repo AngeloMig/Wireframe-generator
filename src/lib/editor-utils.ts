@@ -194,3 +194,55 @@ export function tint(hex: string, opacity: number): string {
   const b = value & 255;
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
+
+/** Parses "#rrggbb" or "rgb(a)(...)" into 0-255 channels + alpha (1 if absent). */
+function parseColor(color: string): [number, number, number, number] | null {
+  const hex = /^#?([\da-f]{6})$/i.exec(color.trim());
+  if (hex) {
+    const value = parseInt(hex[1], 16);
+    return [(value >> 16) & 255, (value >> 8) & 255, value & 255, 1];
+  }
+  const rgba = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+))?\s*\)$/i.exec(
+    color.trim(),
+  );
+  if (rgba) {
+    return [Number(rgba[1]), Number(rgba[2]), Number(rgba[3]), rgba[4] !== undefined ? Number(rgba[4]) : 1];
+  }
+  return null;
+}
+
+/**
+ * Whether a background needs white text to stay readable, judged by the
+ * background's own perceived brightness rather than by which semantic
+ * background type produced it. A "dark" or "brand" background is only dark
+ * because it usually is — a brand color light enough to defeat that
+ * assumption (a pastel picked as the secondary/primary color) would
+ * otherwise still force white text onto a pale surface. Translucent colors
+ * (tinted "muted" backgrounds) are blended toward white first, since that's
+ * what they render over.
+ */
+export function needsLightText(backgroundColor: string): boolean {
+  const parsed = parseColor(backgroundColor);
+  if (!parsed) return false;
+  const [r, g, b, a] = parsed;
+  const br = r * a + 255 * (1 - a);
+  const bg = g * a + 255 * (1 - a);
+  const bb = b * a + 255 * (1 - a);
+  const brightness = (br * 299 + bg * 587 + bb * 114) / 1000;
+  return brightness < 150;
+}
+
+/**
+ * Whether two colors are close enough that text/a border drawn in one would
+ * disappear against a fill of the other — an outline button colored with the
+ * brand primary, sitting on a section whose background is *also* the brand
+ * primary (background type "brand"), is the concrete case this catches.
+ * Unresolvable colors return false (assume fine) rather than block on it.
+ */
+export function colorsTooSimilar(a: string, b: string): boolean {
+  const pa = parseColor(a);
+  const pb = parseColor(b);
+  if (!pa || !pb) return false;
+  const distance = Math.sqrt((pa[0] - pb[0]) ** 2 + (pa[1] - pb[1]) ** 2 + (pa[2] - pb[2]) ** 2);
+  return distance < 60;
+}

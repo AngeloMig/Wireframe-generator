@@ -900,7 +900,7 @@ function PageTemplatePreview({
     >
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_260px]">
         <div className="max-h-[68vh] overflow-y-auto rounded-[14px] border border-[#dce6ee] bg-[#eef4f8] p-3 sm:p-5">
-          <WireProvider value={{ styled: false, theme: TEMPLATE_THEME, device: "desktop" }}>
+          <WireProvider value={{ styled: false, theme: TEMPLATE_THEME, device: "desktop", sectionIsDark: false }}>
             <div className="mx-auto max-w-[1080px] overflow-hidden rounded-[14px] bg-white shadow-[0_16px_35px_rgb(38_57_74/0.12)] ring-1 ring-[#d8e2e9]">
               {sections.map((section) => (
                 <SectionRenderer key={section.id} section={section} />
@@ -949,7 +949,7 @@ function ActualSectionVisual({ variation }: { variation: SectionVariation }) {
   const section = createSectionFromVariation(variation);
   return (
     <PreviewFrame>
-      <WireProvider value={{ styled: false, theme: TEMPLATE_THEME, device: "desktop" }}>
+      <WireProvider value={{ styled: false, theme: TEMPLATE_THEME, device: "desktop", sectionIsDark: false }}>
         <SectionRenderer section={section} />
       </WireProvider>
     </PreviewFrame>
@@ -963,7 +963,7 @@ function ActualPageVisual({ template }: { template: PageTemplate }) {
   });
   return (
     <PreviewFrame height={220} scale={0.19}>
-      <WireProvider value={{ styled: false, theme: TEMPLATE_THEME, device: "desktop" }}>
+      <WireProvider value={{ styled: false, theme: TEMPLATE_THEME, device: "desktop", sectionIsDark: false }}>
         <div className="overflow-hidden rounded-[10px] bg-white">
           {sections.slice(0, 5).map((section) => <SectionRenderer key={section.id} section={section} />)}
         </div>

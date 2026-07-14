@@ -157,6 +157,7 @@ export function EditorCanvas({
               styled: mode === "styled",
               theme,
               device,
+              sectionIsDark: false,
             }}
           >
             <div
