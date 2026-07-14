@@ -3,18 +3,21 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ArchiveRestore,
+  ChevronDown,
   Eye,
   GitCompareArrows,
   History,
+  ListChecks,
   Pencil,
   Plus,
   ShieldCheck,
+  X,
 } from "lucide-react";
 import { restoreVersion } from "@/lib/collab-service";
 import { snapshotOf } from "@/lib/collab-service";
 import { brandTheme, type BrandTheme } from "@/lib/editor-utils";
 import { canCreateManualVersion, canRestoreVersion } from "@/lib/permissions";
-import { compareSnapshots } from "@/lib/version-compare";
+import { compareSnapshots, type VersionComparison } from "@/lib/version-compare";
 import { useProject } from "@/hooks/use-project";
 import { selectProjectApprovals, useApprovalsStore } from "@/stores/approvals-store";
 import { selectProjectMembers, useMembersStore } from "@/stores/members-store";
@@ -29,11 +32,29 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
+import { DropdownItem, DropdownMenu } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input, Label, Textarea } from "@/components/ui/input";
 import { ScaledPreview } from "@/components/collab/scaled-preview";
 import { WireProvider } from "@/components/editor/wireframes/primitives";
 import { SectionRenderer } from "@/components/editor/wireframes/section-renderer";
+
+/** One plain-language line describing a version's change vs. the one before it. */
+function summarizeChange(result: VersionComparison): string {
+  if (result.totalChanges === 0) return "No differences from the version before it";
+  const changedPages = result.pages.filter((p) => p.kind !== "unchanged");
+  const sectionChanges = changedPages.reduce((sum, p) => sum + p.sections.length, 0);
+  const parts = [...result.summary];
+  if (sectionChanges > 0) {
+    parts.push(
+      `${sectionChanges} section${sectionChanges === 1 ? "" : "s"} changed across ${changedPages.length} page${changedPages.length === 1 ? "" : "s"}`,
+    );
+  }
+  return (
+    parts.slice(0, 2).join(" · ") ||
+    `${result.totalChanges} change${result.totalChanges === 1 ? "" : "s"}`
+  );
+}
 
 const TRIGGER_LABELS: Record<VersionTrigger, string> = {
   manual: "Manual save",
@@ -67,6 +88,34 @@ export default function VersionsPage() {
   const [renaming, setRenaming] = useState<ProjectVersion | null>(null);
   const [restoring, setRestoring] = useState<ProjectVersion | null>(null);
   const [creating, setCreating] = useState(false);
+  // Two ways to compare: a one-click "vs. the version right before it" (the
+  // common case, always available), or picking any two versions by hand —
+  // that mode is opt-in so the list reads as a plain timeline by default.
+  const [picking, setPicking] = useState(false);
+
+  const sortedAsc = useMemo(
+    () => [...versions].sort((a, b) => a.versionNumber - b.versionNumber),
+    [versions],
+  );
+  // What changed vs. the previous version, computed once per pair so every
+  // row can say what happened without anyone opening the compare view.
+  const changeSummaries = useMemo(() => {
+    const map = new Map<string, string>();
+    sortedAsc.forEach((version, index) => {
+      if (index === 0) return;
+      const previous = sortedAsc[index - 1];
+      map.set(version.id, summarizeChange(compareSnapshots(previous.snapshot, version.snapshot)));
+    });
+    return map;
+  }, [sortedAsc]);
+  const previousVersionOf = useMemo(() => {
+    const map = new Map<string, ProjectVersion>();
+    sortedAsc.forEach((version, index) => {
+      if (index > 0) map.set(version.id, sortedAsc[index - 1]);
+    });
+    return map;
+  }, [sortedAsc]);
+  const sortedDesc = useMemo(() => [...sortedAsc].reverse(), [sortedAsc]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -98,6 +147,11 @@ export default function VersionsPage() {
     if (!compareToId) return setCompare(compareFromId, version.id);
     setCompare(compareToId, version.id);
   };
+  const exitPicking = () => {
+    setPicking(false);
+    setCompare(null, null);
+  };
+  const pickedCount = [compareFromId, compareToId].filter(Boolean).length;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -109,14 +163,37 @@ export default function VersionsPage() {
               Version history
             </span>
           }
-          description="A snapshot is saved at every review milestone. Pick two versions to compare them."
+          description={
+            picking
+              ? pickedCount === 0
+                ? "Select the first of two versions to compare."
+                : pickedCount === 1
+                  ? "Select the second version to compare."
+                  : "Both versions selected — see the comparison below."
+              : "A snapshot is saved at every review milestone, newest first. Every version shows what changed since the one before it."
+          }
           action={
-            canCreateManualVersion(user.role) ? (
-              <Button size="sm" onClick={() => setCreating(true)}>
-                <Plus className="size-3.5" aria-hidden />
-                Save version
-              </Button>
-            ) : undefined
+            <div className="flex items-center gap-2">
+              {picking ? (
+                <Button variant="outline" size="sm" onClick={exitPicking}>
+                  <X className="size-3.5" aria-hidden />
+                  Cancel
+                </Button>
+              ) : (
+                versions.length > 1 && (
+                  <Button variant="outline" size="sm" onClick={() => setPicking(true)}>
+                    <ListChecks className="size-3.5" aria-hidden />
+                    Compare two versions
+                  </Button>
+                )
+              )}
+              {canCreateManualVersion(user.role) && (
+                <Button size="sm" onClick={() => setCreating(true)}>
+                  <Plus className="size-3.5" aria-hidden />
+                  Save version
+                </Button>
+              )}
+            </div>
           }
         />
         <CardBody className="p-0">
@@ -129,81 +206,116 @@ export default function VersionsPage() {
               />
             </div>
           ) : (
-            <ol className="divide-y divide-slate-100">
-              {versions.map((version) => {
+            <ol className="px-5 py-4">
+              {sortedDesc.map((version, index) => {
                 const isApprovedVersion = project.approvedVersionId === version.id;
                 const hasApproval = approvals.some(
                   (a) => a.versionId === version.id && !a.revokedAt,
                 );
-                const selected =
-                  compareFromId === version.id || compareToId === version.id;
+                const selected = compareFromId === version.id || compareToId === version.id;
+                const previous = previousVersionOf.get(version.id);
+                const isLastRow = index === sortedDesc.length - 1;
                 return (
-                  <li
-                    key={version.id}
-                    className={cn(
-                      "flex flex-wrap items-center gap-3 px-5 py-3.5",
-                      selected && "bg-indigo-50/60",
-                    )}
-                  >
-                    <label className="flex cursor-pointer items-center">
-                      <input
-                        type="checkbox"
-                        className="size-4 accent-indigo-600"
-                        checked={selected}
-                        onChange={() => toggleCompare(version)}
-                        aria-label={`Select version ${version.versionNumber} for comparison`}
+                  <li key={version.id} className="relative flex gap-3">
+                    {/* Timeline rail: a dot per version, connected top to bottom —
+                        the same "book of work" visual language as the dashboard
+                        pipeline, so history reads as a trail, not a table. */}
+                    <div className="flex shrink-0 flex-col items-center">
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "z-10 mt-1.5 size-2.5 shrink-0 rounded-full ring-[3px] ring-white",
+                          isApprovedVersion ? "bg-emerald-500" : "bg-slate-300",
+                        )}
                       />
-                    </label>
-                    <div className="min-w-0 flex-1">
-                      <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-900">
-                        v{version.versionNumber} — {version.label}
-                        {isApprovedVersion && (
-                          <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">
-                            <ShieldCheck className="mr-0.5 size-3" aria-hidden />
-                            Approved version
-                          </Badge>
-                        )}
-                        {!isApprovedVersion && hasApproval && (
-                          <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">
-                            Has approvals
-                          </Badge>
-                        )}
-                      </p>
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        {TRIGGER_LABELS[version.trigger]} · {memberName(version.createdById)}{" "}
-                        · {formatRelative(version.createdAt)}
-                        {version.description && ` · ${version.description}`}
-                      </p>
+                      {!isLastRow && <span aria-hidden className="w-px flex-1 bg-slate-200" />}
                     </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={`View version ${version.versionNumber}`}
-                        onClick={() => setViewing(version)}
-                      >
-                        <Eye className="size-4" aria-hidden />
-                      </Button>
-                      {version.trigger === "manual" && canCreateManualVersion(user.role) && (
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={`Rename version ${version.versionNumber}`}
-                          onClick={() => setRenaming(version)}
-                        >
-                          <Pencil className="size-4" aria-hidden />
-                        </Button>
+                    <div
+                      className={cn(
+                        "min-w-0 flex-1 rounded-xl px-3 py-3 pb-5 transition-colors",
+                        selected && "bg-indigo-50/60 ring-1 ring-indigo-200",
                       )}
-                      {canRestoreVersion(user.role) && (
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={`Restore version ${version.versionNumber}`}
-                          onClick={() => setRestoring(version)}
-                        >
-                          <ArchiveRestore className="size-4" aria-hidden />
-                        </Button>
-                      )}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
+                            v{version.versionNumber} — {version.label}
+                            {isApprovedVersion && (
+                              <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                                <ShieldCheck className="mr-0.5 size-3" aria-hidden />
+                                Approved version
+                              </Badge>
+                            )}
+                            {!isApprovedVersion && hasApproval && (
+                              <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                                Has approvals
+                              </Badge>
+                            )}
+                          </p>
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            {TRIGGER_LABELS[version.trigger]} · {memberName(version.createdById)} ·{" "}
+                            {formatRelative(version.createdAt)}
+                          </p>
+                          {/* The whole point: what changed, in plain language, with
+                              no need to enter compare mode to find out. */}
+                          <p className="mt-1.5 text-sm text-slate-700">
+                            {changeSummaries.get(version.id) ?? "Starting point — nothing to compare it with yet."}
+                          </p>
+                          {version.description && (
+                            <p className="mt-1 text-xs text-slate-500">{version.description}</p>
+                          )}
+                        </div>
+
+                        {picking ? (
+                          <label className="flex shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600">
+                            <input
+                              type="checkbox"
+                              className="size-3.5 accent-indigo-600"
+                              checked={selected}
+                              onChange={() => toggleCompare(version)}
+                              aria-label={`Select version ${version.versionNumber} for comparison`}
+                            />
+                            Select
+                          </label>
+                        ) : (
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            {previous && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCompare(previous.id, version.id)}
+                              >
+                                <GitCompareArrows className="size-3.5" aria-hidden />
+                                Compare with previous
+                              </Button>
+                            )}
+                            <DropdownMenu
+                              trigger={(props) => (
+                                <Button variant="ghost" size="icon-sm" aria-label="More actions" {...props}>
+                                  <ChevronDown className="size-4" aria-hidden />
+                                </Button>
+                              )}
+                            >
+                              <DropdownItem onSelect={() => setViewing(version)}>
+                                <Eye className="size-3.5 text-slate-400" aria-hidden />
+                                View pages
+                              </DropdownItem>
+                              {version.trigger === "manual" && canCreateManualVersion(user.role) && (
+                                <DropdownItem onSelect={() => setRenaming(version)}>
+                                  <Pencil className="size-3.5 text-slate-400" aria-hidden />
+                                  Rename
+                                </DropdownItem>
+                              )}
+                              {canRestoreVersion(user.role) && (
+                                <DropdownItem onSelect={() => setRestoring(version)}>
+                                  <ArchiveRestore className="size-3.5 text-slate-400" aria-hidden />
+                                  Restore this version
+                                </DropdownItem>
+                              )}
+                            </DropdownMenu>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </li>
                 );
@@ -230,7 +342,8 @@ export default function VersionsPage() {
                 : `${comparison.result.totalChanges} change${comparison.result.totalChanges === 1 ? "" : "s"} found.`
             }
             action={
-              <Button variant="ghost" size="sm" onClick={() => setCompare(null, null)}>
+              <Button variant="ghost" size="sm" onClick={exitPicking}>
+                <X className="size-3.5" aria-hidden />
                 Clear
               </Button>
             }
@@ -252,7 +365,7 @@ export default function VersionsPage() {
           </CardBody>
         </Card>
       )}
-      {(compareFrom || compareTo) && !comparison && (
+      {picking && (compareFrom || compareTo) && !comparison && (
         <p className="text-center text-sm text-slate-500">
           Select one more version to compare.
         </p>
@@ -483,7 +596,7 @@ function SnapshotPagePreview({
           scale={0.3}
           className="pointer-events-none max-h-96 rounded-lg border border-slate-200"
         >
-          <WireProvider value={{ styled: false, theme, device: "desktop" }}>
+          <WireProvider value={{ styled: false, theme, device: "desktop", sectionIsDark: false }}>
             <div style={{ width: 1200 }}>
               {[...page.sections]
                 .sort((a, b) => a.order - b.order)
