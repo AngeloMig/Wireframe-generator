@@ -87,7 +87,7 @@ const nav = (input: TypedVariationInput) =>
 // Navigation — 10 designs (+ the standalone announcement bar)
 // ---------------------------------------------------------------------------
 
-const NAV_BASE_KEYS = ["logoText", "links", "ctaLabel", "ctaUrl"];
+const NAV_BASE_KEYS = ["logoText", "links", "ctaLabel", "ctaUrl", "mobileMenuStyle"];
 
 const navigation: SectionVariation[] = [
   nav({
@@ -102,7 +102,7 @@ const navigation: SectionVariation[] = [
     name: "Centered Logo",
     description: "Links split around a centered logo, with an optional announcement bar above.",
     tags: ["boutique", "editorial", "announcement"],
-    contentKeys: ["logoText", "links", "announcementText"],
+    contentKeys: ["logoText", "links", "announcementText", "mobileMenuStyle"],
     contentDefaults: {
       links: [{ label: "Shop" }, { label: "About" }, { label: "Journal" }, { label: "Contact" }],
     },
@@ -126,7 +126,7 @@ const navigation: SectionVariation[] = [
     description: "Category links plus search, account, and cart — with an optional announcement bar.",
     tags: ["store", "search", "cart", "announcement"],
     supportedPageTypes: ALL_PAGES,
-    contentKeys: ["logoText", "links", "announcementText", "showSearch", "showAccount", "showCart"],
+    contentKeys: ["logoText", "links", "announcementText", "showSearch", "showAccount", "showCart", "mobileMenuStyle"],
     contentDefaults: {
       logoText: "Your Store",
       links: [{ label: "New In" }, { label: "Shop" }, { label: "Collections" }, { label: "Sale" }],
@@ -148,7 +148,10 @@ const navigation: SectionVariation[] = [
     name: "Transparent Overlay",
     description: "Transparent header that overlaps a hero, with light/dark tones and a sticky-state preview.",
     tags: ["overlay", "transparent", "sticky"],
-    contentKeys: [...NAV_BASE_KEYS, "overlayTone"],
+    // Its own dedicated overlay/sticky-state preview already fills the
+    // mobile slot with a plain hamburger glyph — no drawer mockup here to
+    // avoid a control that quietly does nothing.
+    contentKeys: NAV_BASE_KEYS.filter((key) => key !== "mobileMenuStyle").concat("overlayTone"),
     defaultStyle: { ...BASE_STYLE, spacing: "compact", background: "dark" },
   }),
   nav({
@@ -157,14 +160,14 @@ const navigation: SectionVariation[] = [
     description: "A fixed vertical navigation panel on the left — great for portfolio or editorial sites.",
     tags: ["vertical", "portfolio", "editorial"],
     supportedPageTypes: ["homepage", "portfolio", "case-study", "blog", "about", "custom"],
-    contentKeys: ["logoText", "links", "ctaLabel"],
+    contentKeys: ["logoText", "links", "ctaLabel", "mobileMenuStyle"],
   }),
   nav({
     id: "nav-utility",
     name: "Utility Bar",
     description: "A slim contact/language bar above the main navigation.",
     tags: ["utility", "contact", "language"],
-    contentKeys: ["logoText", "links", "contactPhone", "contactEmail", "languageLabel", "ctaLabel", "ctaUrl"],
+    contentKeys: ["logoText", "links", "contactPhone", "contactEmail", "languageLabel", "ctaLabel", "ctaUrl", "mobileMenuStyle"],
   }),
   nav({
     id: "nav-cta",
@@ -182,7 +185,7 @@ const navigation: SectionVariation[] = [
     name: "Editorial",
     description: "An oversized centered logo with spacious links below — premium, editorial feel.",
     tags: ["editorial", "premium", "oversized logo"],
-    contentKeys: ["logoText", "links"],
+    contentKeys: ["logoText", "links", "mobileMenuStyle"],
     defaultLayout: { ...BASE_LAYOUT, contentWidth: "full", alignment: "center" },
     defaultStyle: { ...BASE_STYLE, spacing: "normal" },
   }),

@@ -83,6 +83,14 @@ const navigation: SectionTypeDefinition = {
       { value: "dark", label: "Dark text (light hero)" },
       { value: "light", label: "Light text (dark hero)" },
     ]),
+    select("mobileMenuStyle", "Mobile menu style", [
+      { value: "drawer-right", label: "Slide-in drawer (right)" },
+      { value: "drawer-left", label: "Slide-in drawer (left)" },
+      { value: "fullscreen", label: "Full-screen takeover" },
+      { value: "bottom-sheet", label: "Bottom sheet" },
+      { value: "dropdown", label: "Inline dropdown" },
+      { value: "bottom-tabs", label: "Persistent bottom tabs" },
+    ]),
   ],
   defaultContent: {
     logoText: "Your Brand",
@@ -98,6 +106,7 @@ const navigation: SectionTypeDefinition = {
     contactEmail: "hello@example.com",
     languageLabel: "EN / USD",
     overlayTone: "light",
+    mobileMenuStyle: "drawer-right",
   },
 };
 
